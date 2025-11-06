@@ -15,7 +15,7 @@ export default function ChatbotWidget() {
   const [loading, setLoading] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const [pendingOptions, setPendingOptions] = useState<string[]>([])
-  const [pendingMode, setPendingMode] = useState<'buttons' | 'dropdown' | null>(null)
+  const [pendingMode, setPendingMode] = useState<'buttons' | 'dropdown' | 'form' | null>(null)
   const [selectedOption, setSelectedOption] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<string[]>([])
 
@@ -64,7 +64,7 @@ export default function ChatbotWidget() {
     // If backend asks for button input next
     const rType = (res.data as any)?.response_type
     const opts = ((res.data as any)?.options || []) as string[]
-    if ((rType === 'buttons' || rType === 'dropdown') && Array.isArray(opts) && opts.length > 0) {
+    if ((rType === 'buttons' || rType === 'dropdown' || rType === 'form') && Array.isArray(opts) && opts.length > 0) {
       setPendingOptions(opts)
       setPendingMode(rType)
     }
@@ -199,6 +199,18 @@ export default function ChatbotWidget() {
             </button>
           </div>
         )}
+        {/* Form mode for pending options */}
+        {!loading && pendingOptions.length > 0 && pendingMode === 'form' && (
+          <FormOptions
+            options={pendingOptions}
+            onSubmit={async (formValues: Record<string, string>) => {
+              const msg = Object.entries(formValues)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ');
+              await handleSend(msg);
+            }}
+          />
+        )}
             </div>
 
             <div className="cp-chatbot__footer">
@@ -227,6 +239,36 @@ export default function ChatbotWidget() {
       )}
     </>
   )
+}
+
+// FormOptions component for form mode
+function FormOptions({ options, onSubmit }: { options: string[]; onSubmit: (values: Record<string, string>) => void }) {
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(options.map((o) => [o, ''])));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, opt: string) => {
+    setValues((prev) => ({ ...prev, [opt]: e.target.value }));
+  };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(values);
+  };
+  return (
+    <form className="cp-form-options" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {options.map((opt) => (
+        <label key={opt} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <span>{opt}</span>
+          <input
+            className="cp-input"
+            value={values[opt]}
+            onChange={(e) => handleChange(e, opt)}
+            required
+          />
+        </label>
+      ))}
+      <button className="cp-option" type="submit" style={{ alignSelf: 'flex-end' }}>
+        Submit
+      </button>
+    </form>
+  );
 }
 
 
