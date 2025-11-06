@@ -1,0 +1,279 @@
+.cp-chatbot-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9999;
+}
+
+.cp-chatbot {
+  width: 320px;
+  height: 520px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(22, 34, 51, 0.22);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.cp-chatbot__header {
+  padding: 12px 14px 10px;
+  color: #fff;
+  background: linear-gradient(135deg, #1e8bff, #5a5cff);
+  position: relative;
+}
+
+.cp-chatbot__title {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.cp-chatbot__subtitle {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}
+
+.cp-chatbot__close {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-chatbot__body {
+  flex: 1;
+  padding: 10px;
+  background: #f6f9fc;
+  overflow: auto;
+}
+
+.cp-msg {
+  max-width: 85%;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #e6edf5;
+  color: #0c1b33;
+}
+
+.cp-msg--user {
+  margin-left: auto;
+  background: #e9eef4;
+}
+
+.cp-msg--bot {
+  margin-right: auto;
+  background: #e6edf5;
+}
+
+.cp-chatbot__footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: #ffffff;
+  border-top: 1px solid #e9eef4;
+}
+
+.cp-input {
+  flex: 1;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #d7dfeb;
+  padding: 0 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.cp-input:focus {
+  border-color: #5a5cff;
+  box-shadow: 0 0 0 3px rgba(90, 92, 255, 0.12);
+}
+
+.cp-send {
+  width: 44px;
+  height: 36px;
+  border-radius: 6px;
+  border: 0;
+  color: #fff;
+  background: #2b7cff;
+  cursor: pointer;
+}
+
+.cp-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cp-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cp-options--row {
+  align-items: center;
+}
+
+.cp-option {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d7dfeb;
+  background: #fff;
+  color: #0c1b33;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cp-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cp-select {
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid #d7dfeb;
+  background: #fff;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+/* Property cards */
+.cp-prop-group {
+  margin-top: 10px;
+}
+
+.cp-prop-header {
+  margin: 6px 0 8px;
+  color: #0c1b33;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cp-prop-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.cp-prop-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06);
+}
+
+.cp-prop-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2b7cff;
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-prop-image {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  background: #f2f4f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cp-prop-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-prop-image--ph {
+  font-size: 11px;
+  color: #8a94a6;
+}
+
+.cp-prop-title {
+  margin-top: 8px;
+  font-weight: 700;
+  color: #0c1b33;
+  font-size: 14px;
+}
+
+.cp-prop-price {
+  margin-top: 4px;
+  color: #0b66ff;
+  font-weight: 700;
+}
+
+.cp-prop-mls {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #566074;
+}
+
+.cp-prop-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 10px;
+  color: #566074;
+  font-size: 12px;
+}
+
+.cp-prop-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.cp-prop-btn {
+  margin-top: 10px;
+  width: 110px;
+  height: 30px;
+  border-radius: 6px;
+  border: 0;
+  background: #2b7cff;
+  color: #fff;
+}
+
+/* Floating launcher (shown when chat is closed) */
+.cp-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #1e8bff, #5a5cff);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(22,34,51,0.25);
+  cursor: pointer;
+  z-index: 9999;
+}
+
+.cp-launcher__icon {
+  font-size: 22px;
+}
+
+
