@@ -27,10 +27,10 @@ export default function ChatbotWidget() {
     // localStorage.setItem(key, v)
     return v
   }, [])
-
-  useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages])
+  // for scroll to bottom on new message
+  // useEffect(() => {
+  //   listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+  // }, [messages])
 
   async function handleSend(customText?: string) {
     const trimmed = (customText ?? input).trim()
@@ -244,26 +244,66 @@ export default function ChatbotWidget() {
 // FormOptions component for form mode
 function FormOptions({ options, onSubmit }: { options: string[]; onSubmit: (values: Record<string, string>) => void }) {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(options.map((o) => [o, ''])));
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Validation helpers
+  function getInputProps(opt: string) {
+    const lower = opt.toLowerCase();
+    if (lower.includes('email')) {
+      return { type: 'email', pattern: undefined, autoComplete: 'email', placeholder: 'Enter your email', validate: (v: string) => /.+@.+\..+/.test(v) ? '' : 'Invalid email' };
+    }
+    if (lower.includes('phone')) {
+      return { type: 'tel', pattern: '[0-9\-\+\s]{10,}', autoComplete: 'tel', placeholder: 'Enter your phone number', validate: (v: string) => /^[0-9\-\+\s]{10,}$/.test(v) ? '' : 'Invalid phone number' };
+    }
+    if (lower.includes('name')) {
+      return { type: 'text', pattern: "[A-Za-z\s\.'-]{2,}", autoComplete: 'name', placeholder: 'Enter your name', validate: (v: string) => /^[A-Za-z\s\.'-]{2,}$/.test(v) ? '' : 'Invalid name' };
+    }
+    return { type: 'text', pattern: undefined, autoComplete: undefined, placeholder: '', validate: (_: string) => '' };
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, opt: string) => {
     setValues((prev) => ({ ...prev, [opt]: e.target.value }));
+    const { validate } = getInputProps(opt);
+    setErrors((prev) => ({ ...prev, [opt]: validate(e.target.value) }));
   };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate all fields before submit
+    let valid = true;
+    const newErrors: Record<string, string> = {};
+    options.forEach((opt) => {
+      const { validate } = getInputProps(opt);
+      const err = validate(values[opt]);
+      if (err) valid = false;
+      newErrors[opt] = err;
+    });
+    setErrors(newErrors);
+    if (!valid) return;
     onSubmit(values);
   };
+
   return (
     <form className="cp-form-options" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {options.map((opt) => (
-        <label key={opt} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span>{opt}</span>
-          <input
-            className="cp-input"
-            value={values[opt]}
-            onChange={(e) => handleChange(e, opt)}
-            required
-          />
-        </label>
-      ))}
+      {options.map((opt) => {
+        const { type, pattern, autoComplete, placeholder } = getInputProps(opt);
+        return (
+          <label key={opt} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span>{opt}</span>
+            <input
+              className="cp-input"
+              value={values[opt]}
+              onChange={(e) => handleChange(e, opt)}
+              required
+              type={type}
+              pattern={pattern}
+              autoComplete={autoComplete}
+              placeholder={placeholder}
+            />
+            {errors[opt] && <span style={{ color: 'red', fontSize: 12 }}>{errors[opt]}</span>}
+          </label>
+        );
+      })}
       <button className="cp-option" type="submit" style={{ alignSelf: 'flex-end' }}>
         Submit
       </button>
