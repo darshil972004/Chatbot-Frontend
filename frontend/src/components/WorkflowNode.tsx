@@ -4,9 +4,9 @@ import { Handle, Position, NodeProps } from 'reactflow';
 interface WorkflowNodeData {
   label: string;
   type: string;
-  prompt: string;
+  question_text: string;
   options?: Array<{ id: number; text: string; warning?: boolean }>;
-  formFields?: Array<{ id: number; label: string; type: string; required?: boolean }>;
+  formFields?: Array<{ id: number; label: string; type: string; required: boolean }>;
   onDelete?: (nodeId: string) => void;
   onEdit?: (nodeId: string) => void;
 }
@@ -78,7 +78,7 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
       </div>
 
       <div className="node-content">
-        <p className="node-prompt">{data.prompt}</p>
+        <p className="node-prompt">{data.question_text}</p>
         
         {data.type === 'text-input' && (
           <p className="node-subtext">Awaits user input</p>

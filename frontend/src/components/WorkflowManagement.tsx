@@ -140,9 +140,9 @@ export default function WorkflowManagement() {
           }
 
           let formFields: Array<{ id: number; label: string; type: string; required?: boolean }> = [];
-          if (nodeData.form_fields_json) {
+          if (nodeData.options_json) {
             try {
-              formFields = JSON.parse(nodeData.form_fields_json);
+              formFields = JSON.parse(nodeData.options_json);
             } catch (e) {
               console.error('Error parsing form_fields_json:', e);
             }
@@ -155,7 +155,7 @@ export default function WorkflowManagement() {
             data: {
               label: nodeData.label,
               type: nodeData.type,
-              prompt: nodeData.prompt,
+              question_text: nodeData.question_text,
               options,
               formFields,
             },
@@ -383,20 +383,19 @@ export default function WorkflowManagement() {
           id: node.id,
           type: node.data.type,
           label: node.data.label,
-          prompt: node.data.prompt || '',
+          question_text: node.data.question_text || '',
           position_x: Math.round(node.position.x),
           position_y: Math.round(node.position.y),
-          options_json: node.data.options && node.data.options.length > 0
+          options_json:node.data.options && node.data.options.length > 0
             ? JSON.stringify(node.data.options)
-            : null,
-          form_fields_json: node.data.formFields && node.data.formFields.length > 0
+            : node.data.formFields && node.data.formFields.length > 0
             ? JSON.stringify(node.data.formFields)
             : null,
           next_nodes_json: nextNodes.length > 0
             ? JSON.stringify(nextNodes)
             : null,
           order_index: orderMap.get(node.id) || 0,
-          workflow_id: workflowId || 'temp-workflow-id',
+          workflow_id: workflowId || '',
           created_at: new Date().toISOString(),
         };
       });
@@ -419,7 +418,7 @@ export default function WorkflowManagement() {
             data: {
               label: node.data.label,
               type: node.data.type,
-              prompt: node.data.prompt,
+              question_text: node.data.question_text,
               options: node.data.options || [],
               formFields: node.data.formFields || [],
             },
@@ -485,7 +484,7 @@ export default function WorkflowManagement() {
               ...node,
               data: {
                 ...node.data,
-                prompt: editPrompt,
+                question_text: editPrompt,
                 options: (editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown')
                   ? (editOptions.length > 0 ? editOptions : node.data.options)
                   : node.data.options,
@@ -737,7 +736,7 @@ export default function WorkflowManagement() {
             </div>
             <div className="data-modal-body">
               <div className="edit-form-group">
-                <label htmlFor="edit-prompt">Prompt:</label>
+                <label htmlFor="edit-prompt">Question Text:</label>
                 <input
                   id="edit-prompt"
                   type="text"

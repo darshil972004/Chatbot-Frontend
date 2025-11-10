@@ -15,8 +15,12 @@ export default function WorkflowList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadWorkflows();
-    fetchActiveWorkflow();
+    const init = async () => {
+      await loadWorkflows();
+      await fetchActiveWorkflow();
+    };
+
+    init();
   }, []);
 
   const loadWorkflows = async () => {
@@ -46,6 +50,8 @@ export default function WorkflowList() {
         setStatusType(null);
       } else if (result.success) {
         setActiveWorkflowId(null);
+        setStatusMessage(null);
+        setStatusType(null);
       } else {
         setStatusType('error');
         setStatusMessage(result.error || 'Failed to fetch active workflow');

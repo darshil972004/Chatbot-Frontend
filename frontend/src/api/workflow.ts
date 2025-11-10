@@ -2,11 +2,10 @@ export interface WorkflowNodeData {
   id: string;
   type: string;
   label: string;
-  prompt: string;
+  question_text: string;
   position_x: number;
   position_y: number;
   options_json: string | null;
-  form_fields_json: string | null;
   next_nodes_json: string | null;
   order_index: number;
   workflow_id: string;
@@ -71,7 +70,7 @@ export async function saveWorkflow(
   };
 
   try {
-    const res = await fetch(`${API_BASE}/workflow/save`, {
+    const res = await fetch(`${API_BASE}/workflow_save`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -205,7 +204,10 @@ export async function deleteWorkflow(workflowId: string): Promise<{ success: boo
 // Retrieve the active workflow used by the chatbot
 export async function getActiveWorkflow(): Promise<ActiveWorkflowResponse> {
   try {
-    const res = await fetch(`${API_BASE}/workflow/active`, {
+    console.log("CHATBOT_TOKEN:", CHATBOT_TOKEN);
+    console.log("Authorization header:", `Bearer ${CHATBOT_TOKEN}`);
+    console.log("Calling:", `${API_BASE}/workflows/active`);
+    const res = await fetch(`${API_BASE}/workflows/active`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
