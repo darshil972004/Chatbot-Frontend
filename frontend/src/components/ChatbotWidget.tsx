@@ -63,10 +63,23 @@ export default function ChatbotWidget() {
 
     // If backend asks for button input next
     const rType = (res.data as any)?.response_type
-    const opts = ((res.data as any)?.options || []) as string[]
-    if ((rType === 'buttons' || rType === 'Dropdown' || rType === 'form') && Array.isArray(opts) && opts.length > 0) {
-      setPendingOptions(opts)
-      setPendingMode(rType)
+    let optsRaw = (res.data as any)?.options || [];
+    let opts: any[] = [];
+    let formHeading = '';
+    // Handle 'Get User Details' or object-based options_json
+    if ((rType === 'Get User Details' || Array.isArray(optsRaw) && optsRaw.length > 0 && typeof optsRaw[0] === 'object')) {
+      try {
+        // If options_json is a string, parse it
+        if (typeof optsRaw === 'string') optsRaw = JSON.parse(optsRaw);
+      } catch {}
+      opts = optsRaw;
+      formHeading = (res.data as any)?.label || (res.data as any)?.question_text || 'User Details';
+      setPendingOptions(opts);
+      setPendingMode('Form');
+      (window as any).cpFormHeading = formHeading; // for passing heading to FormOptions
+    } else if ((rType === 'buttons' || rType === 'Dropdown' || rType === 'form') && Array.isArray(optsRaw) && optsRaw.length > 0) {
+      setPendingOptions(optsRaw);
+      setPendingMode(rType);
     }
   }
 
@@ -203,6 +216,7 @@ export default function ChatbotWidget() {
         {!loading && pendingOptions.length > 0 && pendingMode === 'Form' && (
           <FormOptions
             options={pendingOptions}
+            heading={(window as any).cpFormHeading}
             onSubmit={async (formValues: Record<string, string>) => {
               const msg = Object.entries(formValues)
                 .map(([k, v]) => `${k}: ${v}`)
@@ -242,29 +256,42 @@ export default function ChatbotWidget() {
 }
 
 // FormOptions component for form mode
-function FormOptions({ options, onSubmit }: { options: string[]; onSubmit: (values: Record<string, string>) => void }) {
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(options.map((o) => [o, ''])));
+function FormOptions({ options, heading, onSubmit }: { options: any[]; heading?: string; onSubmit: (values: Record<string, string>) => void }) {
+  // Support both string and object options
+  const opts = Array.isArray(options) ? options : [];
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(opts.map((o: any) => [o.label || o, ''])));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Validation helpers
-  function getInputProps(opt: string) {
-    const lower = opt.toLowerCase();
-    if (lower.includes('email')) {
-      return { type: 'email', pattern: undefined, autoComplete: 'email', placeholder: 'Enter your email', validate: (v: string) => /.+@.+\..+/.test(v) ? '' : 'Invalid email' };
+  function getInputProps(opt: any) {
+    const label = typeof opt === 'string' ? opt : opt.label;
+    const type = typeof opt === 'string' ? 'text' : (opt.type || 'text');
+    const required = typeof opt === 'string' ? true : !!opt.required;
+    let pattern, autoComplete, placeholder, validate;
+    const lower = label.toLowerCase();
+    if (type === 'email' || lower.includes('email')) {
+      pattern = undefined; autoComplete = 'email'; placeholder = 'Enter your email'; validate = (v: string) => /.+@.+\..+/.test(v) ? '' : 'Invalid email';
+    } else if (type === 'tel' || lower.includes('phone')) {
+      pattern = '[0-9\-\+\s]{10,}'; autoComplete = 'tel'; placeholder = 'Enter your phone number'; validate = (v: string) => /^[0-9\-\+\s]{10,}$/.test(v) ? '' : 'Invalid phone number';
+    } else if (type === 'number' || lower.includes('income')) {
+      pattern = undefined; autoComplete = 'off'; placeholder = 'Enter number'; validate = (v: string) => /^\d+$/.test(v) ? '' : 'Invalid number';
+    } else if (type === 'date' || lower.includes('dob')) {
+      pattern = undefined; autoComplete = 'bday'; placeholder = 'Select date'; validate = (v: string) => v ? '' : 'Required';
+    } else if (type === 'textarea') {
+      pattern = undefined; autoComplete = 'off'; placeholder = 'Enter address'; validate = (_: string) => '';
+    } else if (type === 'text' || lower.includes('name')) {
+      pattern = "[A-Za-z\s\.'-]{2,}"; autoComplete = 'name'; placeholder = 'Enter your name'; validate = (v: string) => /^[A-Za-z\s\.'-]{2,}$/.test(v) ? '' : 'Invalid name';
+    } else {
+      pattern = undefined; autoComplete = undefined; placeholder = ''; validate = (_: string) => '';
     }
-    if (lower.includes('phone')) {
-      return { type: 'tel', pattern: '[0-9\-\+\s]{10,}', autoComplete: 'tel', placeholder: 'Enter your phone number', validate: (v: string) => /^[0-9\-\+\s]{10,}$/.test(v) ? '' : 'Invalid phone number' };
-    }
-    if (lower.includes('name')) {
-      return { type: 'text', pattern: "[A-Za-z\s\.'-]{2,}", autoComplete: 'name', placeholder: 'Enter your name', validate: (v: string) => /^[A-Za-z\s\.'-]{2,}$/.test(v) ? '' : 'Invalid name' };
-    }
-    return { type: 'text', pattern: undefined, autoComplete: undefined, placeholder: '', validate: (_: string) => '' };
+    return { type, pattern, autoComplete, placeholder, validate, required };
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, opt: string) => {
-    setValues((prev) => ({ ...prev, [opt]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, opt: any) => {
+    const label = typeof opt === 'string' ? opt : opt.label;
+    setValues((prev) => ({ ...prev, [label]: e.target.value }));
     const { validate } = getInputProps(opt);
-    setErrors((prev) => ({ ...prev, [opt]: validate(e.target.value) }));
+    setErrors((prev) => ({ ...prev, [label]: validate(e.target.value) }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -272,11 +299,12 @@ function FormOptions({ options, onSubmit }: { options: string[]; onSubmit: (valu
     // Validate all fields before submit
     let valid = true;
     const newErrors: Record<string, string> = {};
-    options.forEach((opt) => {
-      const { validate } = getInputProps(opt);
-      const err = validate(values[opt]);
+    opts.forEach((opt: any) => {
+      const label = typeof opt === 'string' ? opt : opt.label;
+      const { validate, required } = getInputProps(opt);
+      const err = required ? validate(values[label]) : '';
       if (err) valid = false;
-      newErrors[opt] = err;
+      newErrors[label] = err;
     });
     setErrors(newErrors);
     if (!valid) return;
@@ -285,22 +313,36 @@ function FormOptions({ options, onSubmit }: { options: string[]; onSubmit: (valu
 
   return (
     <form className="cp-form-options" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {options.map((opt) => {
-        const { type, pattern, autoComplete, placeholder } = getInputProps(opt);
+      {heading && <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>{heading}</div>}
+      {opts.map((opt: any) => {
+        const label = typeof opt === 'string' ? opt : opt.label;
+        const { type, pattern, autoComplete, placeholder, required } = getInputProps(opt);
         return (
-          <label key={opt} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <span>{opt}</span>
-            <input
-              className="cp-input"
-              value={values[opt]}
-              onChange={(e) => handleChange(e, opt)}
-              required
-              type={type}
-              pattern={pattern}
-              autoComplete={autoComplete}
-              placeholder={placeholder}
-            />
-            {errors[opt] && <span style={{ color: 'red', fontSize: 12 }}>{errors[opt]}</span>}
+          <label key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span>{label}{required ? ' *' : ''}</span>
+            {type === 'textarea' ? (
+              <textarea
+                className="cp-input"
+                value={values[label]}
+                onChange={(e) => handleChange(e, opt)}
+                required={required}
+                autoComplete={autoComplete}
+                placeholder={placeholder}
+                style={{ minHeight: 60 }}
+              />
+            ) : (
+              <input
+                className="cp-input"
+                value={values[label]}
+                onChange={(e) => handleChange(e, opt)}
+                required={required}
+                type={type}
+                pattern={pattern}
+                autoComplete={autoComplete}
+                placeholder={placeholder}
+              />
+            )}
+            {errors[label] && <span style={{ color: 'red', fontSize: 12 }}>{errors[label]}</span>}
           </label>
         );
       })}
