@@ -14,15 +14,15 @@ interface WorkflowNodeData {
 export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowNodeData>) {
   const getTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
-      'text-input': '#9333ea',
-      'button-list': '#3b82f6',
-      'dropdown': '#8b5cf6',
-      'message': '#10b981',
-      'get-user-details': '#f59e0b',
-      'set-data': '#8b5cf6',
-      'actions': '#ef4444',
-      'conditions': '#06b6d4',
-      'rest-api': '#6366f1',
+            'text-input': '#ea3333ff',
+            'button-list': '#f6a53bff',
+            'dropdown': '#ebd828ff',
+            'message': '#043d02ff',
+            'get-user-details': '#0bf5ceff',
+            'set-data': '#5c5ff6ff',
+            'actions': '#c744efff',
+            'conditions': '#00000011',
+            'rest-api': '#946b6bff',
     };
     return colors[type] || '#6b7280';
   };

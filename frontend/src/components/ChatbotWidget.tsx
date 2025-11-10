@@ -15,7 +15,7 @@ export default function ChatbotWidget() {
   const [loading, setLoading] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const [pendingOptions, setPendingOptions] = useState<string[]>([])
-  const [pendingMode, setPendingMode] = useState<'Button List' | 'Dropdown' | 'Form' | null>(null)
+  const [pendingMode, setPendingMode] = useState<'button-list' | 'dropdown' | 'form' | null>(null)
   const [selectedOption, setSelectedOption] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<string[]>([])
 
@@ -66,8 +66,8 @@ export default function ChatbotWidget() {
     let optsRaw = (res.data as any)?.options || [];
     let opts: any[] = [];
     let formHeading = '';
-    // Handle 'Get User Details' or object-based options_json
-    if ((rType === 'Get User Details' || Array.isArray(optsRaw) && optsRaw.length > 0 && typeof optsRaw[0] === 'object')) {
+    // Handle 'form' or object-based options_json
+    if ((rType === 'form' || rType === 'Get User Details' || Array.isArray(optsRaw) && optsRaw.length > 0 && typeof optsRaw[0] === 'object')) {
       try {
         // If options_json is a string, parse it
         if (typeof optsRaw === 'string') optsRaw = JSON.parse(optsRaw);
@@ -75,9 +75,9 @@ export default function ChatbotWidget() {
       opts = optsRaw;
       formHeading = (res.data as any)?.label || (res.data as any)?.question_text || 'User Details';
       setPendingOptions(opts);
-      setPendingMode('Form');
+      setPendingMode('form');
       (window as any).cpFormHeading = formHeading; // for passing heading to FormOptions
-    } else if ((rType === 'buttons' || rType === 'Dropdown' || rType === 'form') && Array.isArray(optsRaw) && optsRaw.length > 0) {
+    } else if ((rType === 'button-list' || rType === 'dropdown') && Array.isArray(optsRaw) && optsRaw.length > 0) {
       setPendingOptions(optsRaw);
       setPendingMode(rType);
     }
@@ -178,7 +178,7 @@ export default function ChatbotWidget() {
           </div>
         ))}
         {loading && <div className="cp-msg cp-msg--bot">Typing…</div>}
-        {!loading && pendingOptions.length > 0 && pendingMode === 'Button List' && (
+        {!loading && pendingOptions.length > 0 && pendingMode === 'button-list' && (
           <div className="cp-options">
             {pendingOptions.map((opt) => (
               <button key={opt} className="cp-option" onClick={() => handleSend(opt)}>
@@ -187,7 +187,7 @@ export default function ChatbotWidget() {
             ))}
           </div>
         )}
-        {!loading && pendingOptions.length > 0 && pendingMode === 'Dropdown' && (
+        {!loading && pendingOptions.length > 0 && pendingMode === 'dropdown' && (
           <div className="cp-options cp-options--row">
             <select
               className="cp-select"
@@ -213,7 +213,7 @@ export default function ChatbotWidget() {
           </div>
         )}
         {/* Form mode for pending options */}
-        {!loading && pendingOptions.length > 0 && pendingMode === 'Form' && (
+        {!loading && pendingOptions.length > 0 && pendingMode === 'form' && (
           <FormOptions
             options={pendingOptions}
             heading={(window as any).cpFormHeading}
