@@ -106,78 +106,100 @@ export default function ChatbotWidget() {
             </div>
 
             <div className="cp-chatbot__body" ref={listRef}>
-        {messages.map((m) => (
-          <div key={m.id}>
-            <div className={`cp-msg ${m.role === 'user' ? 'cp-msg--user' : 'cp-msg--bot'}`}>{m.text}</div>
-            {/* If this bot message has propertyGroup, render properties here */}
-            {m.role === 'bot' && m.propertyGroup && (
-              (() => {
-                const group = m.propertyGroup;
-                const isExpanded = expandedGroups.includes(group.id);
-                const itemsToShow = isExpanded ? group.items : group.items.slice(0, 5);
-                const hasMore = group.items.length > 5 && !isExpanded;
-                return (
-                  <div className="cp-prop-group">
-                    {/* {group.header && <div className="cp-prop-header">{group.header}</div>} */}
-                    <div className="cp-prop-grid">
-                      {itemsToShow.map((p, idx) => {
-                        // console.log('Property item', p)
-                        const currency = p?.varCurrency ;
-                        const title = p?.varTitle || p?.title || p?.varName || 'Property';
-                        const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
-                        const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
-                        const priceText = price ? `CI$${price.toLocaleString()}` : '';
-                        const mls = p?.varMLS || p?.mls || p?.mls_no || '';
-                        const beds = p?.intBeds ?? p?.beds ?? p?.num_beds;
-                        const baths = p?.intBaths ?? p?.baths ?? p?.num_baths;
-                        const desc = p?.txtDescription || p?.description || '';
-                        const img = p?.varFeaturedImage || p?.image || p?.thumbnail || '';
-                        const location = p?.city_name || p?.location || '';
-                        const sendDetails = () => {
-                          const m = String(mls || '').replace(/[^0-9]/g, '');
-                          if (m) {
-                            handleSend(m);
-                          }
-                        };
-                        return (
-                          <div key={idx} className="cp-prop-card">
-                            <div className="cp-prop-badge">{idx + 1}</div>
-                            <div className="cp-prop-image">
-                              {img ? (
-                                <img src={img} alt={title} />
-                              ) : (
-                                <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
-                              )}
-                            </div>
-                            <div className="cp-prop-title">{title}</div>
-                            {priceText && <div className="cp-prop-price">{currency} {priceRaw}</div>}
-                            {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
-                            <div className="cp-prop-meta">
-                              {beds ? <span>🛏️ {beds} beds</span> : null}
-                              {baths ? <span>🚿 {baths} baths</span> : null}
-                              {location ? <span>📍 {location}</span> : null}
-                            </div>
-                            {/* {desc && <div className="cp-prop-desc">{String(desc).slice(0, 110)}...</div>} */}
-                            <button className="cp-prop-btn" onClick={sendDetails}>View Details</button>
-                          </div>
-                        );
-                      })}
+        {messages.map((m) => {
+          // Check if this is a user message that looks like a form submission (contains ": ")
+          if (m.role === 'user' && m.text.includes(':')) {
+            // Parse the message into key-value pairs
+            const fields = m.text.split(',').map(f => {
+              const [label, ...rest] = f.split(':');
+              return { label: label?.trim(), value: rest.join(':').trim() };
+            });
+            return (
+              <div key={m.id} className="cp-msg cp-msg--user">
+                <div className="cp-form-summary" style={{ background: '#f6f6f9', borderRadius: 8, padding: 12, margin: '8px 0', boxShadow: '0 1px 4px #eee' }}>
+                  {fields.map((field, idx) => (
+                    <div key={idx} style={{ marginBottom: 10 }}>
+                      <span style={{ fontWeight: 500, minWidth: 120, display: 'block' }}>{field.label}:</span>
+                      <span style={{ marginLeft: 0, display: 'block', wordBreak: 'break-word', whiteSpace: 'pre-line', color: '#333', paddingLeft: 8 }}>{field.value}</span>
                     </div>
-                    {hasMore && (
-                      <button
-                        className="cp-prop-btn cp-prop-btn--more"
-                        onClick={() => setExpandedGroups((prev) => [...prev, group.id])}
-                        style={{ margin: '16px auto', display: 'block' }}
-                      >
-                        More Properties
-                      </button>
-                    )}
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        ))}
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div key={m.id}>
+              <div className={`cp-msg ${m.role === 'user' ? 'cp-msg--user' : 'cp-msg--bot'}`}>{m.text}</div>
+              {/* If this bot message has propertyGroup, render properties here */}
+              {m.role === 'bot' && m.propertyGroup && (
+                (() => {
+                  const group = m.propertyGroup;
+                  const isExpanded = expandedGroups.includes(group.id);
+                  const itemsToShow = isExpanded ? group.items : group.items.slice(0, 5);
+                  const hasMore = group.items.length > 5 && !isExpanded;
+                  return (
+                    <div className="cp-prop-group">
+                      {/* {group.header && <div className="cp-prop-header">{group.header}</div>} */}
+                      <div className="cp-prop-grid">
+                        {itemsToShow.map((p, idx) => {
+                          // ...existing code...
+                          const currency = p?.varCurrency ;
+                          const title = p?.varTitle || p?.title || p?.varName || 'Property';
+                          const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
+                          const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
+                          const priceText = price ? `${price.toLocaleString()}` : '';
+                          const mls = p?.varMLS || p?.mls || p?.mls_no || '';
+                          const beds = p?.intBeds ?? p?.beds ?? p?.num_beds;
+                          const baths = p?.intBaths ?? p?.baths ?? p?.num_baths;
+                          const desc = p?.txtDescription || p?.description || '';
+                          const img = p?.varFeaturedImage || p?.image || p?.thumbnail || '';
+                          const location = p?.city_name || p?.location || '';
+                          const sendDetails = () => {
+                            const m = String(mls || '').replace(/[^0-9]/g, '');
+                            if (m) {
+                              handleSend(m);
+                            }
+                          };
+                          return (
+                            <div key={idx} className="cp-prop-card">
+                              <div className="cp-prop-badge">{idx + 1}</div>
+                              <div className="cp-prop-image">
+                                {img ? (
+                                  <img src={img} alt={title} />
+                                ) : (
+                                  <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
+                                )}
+                              </div>
+                              <div className="cp-prop-title">{title}</div>
+                              {priceText && <div className="cp-prop-price">{currency} {priceText}</div>}
+                              {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
+                              <div className="cp-prop-meta">
+                                {beds ? <span>🛏️ {beds} beds</span> : null}
+                                {baths ? <span>🚿 {baths} baths</span> : null}
+                                {location ? <span>📍 {location}</span> : null}
+                              </div>
+                              {/* {desc && <div className="cp-prop-desc">{String(desc).slice(0, 110)}...</div>} */}
+                              <button className="cp-prop-btn" onClick={sendDetails}>View Details</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {hasMore && (
+                        <button
+                          className="cp-prop-btn cp-prop-btn--more"
+                          onClick={() => setExpandedGroups((prev) => [...prev, group.id])}
+                          style={{ margin: '16px auto', display: 'block' }}
+                        >
+                          More Properties
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          );
+        })}
         {loading && <div className="cp-msg cp-msg--bot">Typing…</div>}
         {!loading && pendingOptions.length > 0 && pendingMode === 'button-list' && (
           <div className="cp-options">
