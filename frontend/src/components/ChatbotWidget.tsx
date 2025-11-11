@@ -122,6 +122,7 @@ export default function ChatbotWidget() {
                     <div className="cp-prop-grid">
                       {itemsToShow.map((p, idx) => {
                         // console.log('Property item', p)
+                        const currency = p?.varCurrency ;
                         const title = p?.varTitle || p?.title || p?.varName || 'Property';
                         const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
                         const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
@@ -149,7 +150,7 @@ export default function ChatbotWidget() {
                               )}
                             </div>
                             <div className="cp-prop-title">{title}</div>
-                            {priceText && <div className="cp-prop-price">{priceText}</div>}
+                            {priceText && <div className="cp-prop-price">{currency} {priceRaw}</div>}
                             {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
                             <div className="cp-prop-meta">
                               {beds ? <span>🛏️ {beds} beds</span> : null}

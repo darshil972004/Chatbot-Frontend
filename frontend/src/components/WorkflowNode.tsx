@@ -18,7 +18,7 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
             'button-list': '#f6a53bff',
             'dropdown': '#ebd828ff',
             'message': '#043d02ff',
-            'get-user-details': '#0bf5ceff',
+            'form': '#0bf5ceff',
             'set-data': '#5c5ff6ff',
             'actions': '#c744efff',
             'conditions': '#00000011',
@@ -33,7 +33,7 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
       'button-list': 'Button list',
       'dropdown': 'Dropdown',
       'message': 'Message',
-      'get-user-details': 'Get User Details',
+      'form': 'Get User Details',
       'set-data': 'Set Data',
       'actions': 'Actions',
       'conditions': 'Conditions',
@@ -84,7 +84,7 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
           <p className="node-subtext">Awaits user input</p>
         )}
 
-        {(data.type === 'button-list' || data.type === 'dropdown') && data.options && (
+        {(data.type === 'button-list' || data.type === 'dropdown' || data.type === 'dropdown' ) && data.options && (
           <div className="node-options">
             {data.options.map((option) => (
               <div key={option.id} className="node-option-item">
@@ -100,7 +100,7 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
           </div>
         )}
 
-        {data.type === 'get-user-details' && data.formFields && (
+        {data.type === 'form' && data.formFields && (
           <div className="node-form-fields">
             {data.formFields.map((field) => (
               <div key={field.id} className="node-form-field-item">

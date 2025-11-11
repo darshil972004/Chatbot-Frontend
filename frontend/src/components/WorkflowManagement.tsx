@@ -38,7 +38,7 @@ const componentPalette: ComponentPaletteItem[] = [
   { id: 'text-input', type: 'text-input', label: 'Text Input', icon: 'T' },
   { id: 'dropdown', type: 'dropdown', label: 'Dropdown', icon: '▼' },
   { id: 'message', type: 'message', label: 'Message', icon: '💬' },
-  { id: 'get-user-details', type: 'get-user-details', label: 'Get User Details', icon: '👤' },
+  { id: 'form', type: 'form', label: 'Get User Details', icon: '👤' },
   { id: 'set-data', type: 'set-data', label: 'Set Data', icon: '📊' },
   { id: 'actions', type: 'actions', label: 'Actions', icon: '⚡' },
   { id: 'conditions', type: 'conditions', label: 'Conditions', icon: '🔀' },
@@ -77,7 +77,7 @@ export default function WorkflowManagement() {
       'button-list': 'Please select an option:',
       'dropdown': 'Please select from dropdown:',
       'message': 'Enter your message:',
-      'get-user-details': 'Get user information:',
+      'form': 'Get user information:',
       'set-data': 'Set data value:',
       'actions': 'Configure action:',
       'conditions': 'Set condition:',
@@ -99,7 +99,9 @@ export default function WorkflowManagement() {
     if (!node) return;
 
     setEditingNode(node);
-    setEditPrompt(node.data.prompt || '');
+    // Use question_text or prompt, whichever is available
+    setEditPrompt(node.data.question_text || node.data.prompt || '');
+    // Copy options and formFields (shallow copy is fine for arrays of objects)
     setEditOptions(node.data.options ? [...node.data.options] : []);
     setEditFormFields(node.data.formFields ? [...node.data.formFields] : []);
     setShowEditModal(true);
@@ -131,20 +133,26 @@ export default function WorkflowManagement() {
         // Transform database nodes to ReactFlow nodes
         const loadedNodes: Node[] = result.nodes.map((nodeData) => {
           let options: Array<{ id: number; text: string; warning?: boolean }> = [];
-          if (nodeData.options_json) {
+          let formFields: Array<{ id: number; label: string; type: string; required?: boolean }> = [];
+
+          // Parse options_json based on node type
+          // For form nodes: options_json contains formFields
+          // For button-list/dropdown: options_json contains options
+          if (nodeData.options_json && nodeData.options_json.trim() !== '') {
             try {
-              options = JSON.parse(nodeData.options_json);
+              const parsed = JSON.parse(nodeData.options_json);
+              // Ensure parsed value is an array
+              if (Array.isArray(parsed)) {
+                if (nodeData.type === 'form') {
+                  // For form nodes, parse as formFields
+                  formFields = parsed;
+                } else if (nodeData.type === 'button-list' || nodeData.type === 'dropdown') {
+                  // For button-list and dropdown, parse as options
+                  options = parsed;
+                }
+              }
             } catch (e) {
               console.error('Error parsing options_json:', e);
-            }
-          }
-
-          let formFields: Array<{ id: number; label: string; type: string; required?: boolean }> = [];
-          if (nodeData.options_json) {
-            try {
-              formFields = JSON.parse(nodeData.options_json);
-            } catch (e) {
-              console.error('Error parsing form_fields_json:', e);
             }
           }
 
@@ -156,6 +164,7 @@ export default function WorkflowManagement() {
               label: nodeData.label,
               type: nodeData.type,
               question_text: nodeData.question_text,
+              prompt: nodeData.question_text,
               options,
               formFields,
             },
@@ -231,6 +240,7 @@ export default function WorkflowManagement() {
         y: dragEvent.clientY - reactFlowBounds.top,
       });
 
+      const defaultPrompt = getDefaultPrompt(componentType);
       const newNode: Node = {
         id: `${componentType}-${Date.now()}`,
         type: 'workflowNode',
@@ -238,11 +248,12 @@ export default function WorkflowManagement() {
         data: {
           label: componentPalette.find((c) => c.type === componentType)?.label || componentType,
           type: componentType,
-          prompt: getDefaultPrompt(componentType),
+          prompt: defaultPrompt,
+          question_text: defaultPrompt,
           options: (componentType === 'button-list' || componentType === 'dropdown') 
             ? [{ id: 1, text: 'Option 1', warning: true }] 
             : [],
-          formFields: componentType === 'get-user-details'
+          formFields: componentType === 'form'
             ? [{ id: 1, label: 'Name', type: 'text', required: true }]
             : [],
           onDelete: handleDeleteNode,
@@ -379,18 +390,31 @@ export default function WorkflowManagement() {
       const workflowNodesData: WorkflowNodeData[] = nodes.map(node => {
         const nextNodes = nextNodesMap.get(node.id) || [];
         
+        // Save to options_json based on node type
+        // For form nodes: save formFields to options_json
+        // For button-list/dropdown: save options to options_json
+        let options_json: string | null = null;
+        if (node.data.type === 'form') {
+          // Form nodes: always save formFields array (even if empty) to options_json
+          // This ensures we can clear form fields by saving an empty array
+          if (Array.isArray(node.data.formFields)) {
+            options_json = JSON.stringify(node.data.formFields);
+          }
+        } else if (node.data.type === 'button-list' || node.data.type === 'dropdown') {
+          // Button-list and dropdown: save options (only if not empty)
+          if (node.data.options && node.data.options.length > 0) {
+            options_json = JSON.stringify(node.data.options);
+          }
+        }
+        
         return {
           id: node.id,
           type: node.data.type,
           label: node.data.label,
-          question_text: node.data.question_text || '',
+          question_text: node.data.question_text || node.data.prompt || '',
           position_x: Math.round(node.position.x),
           position_y: Math.round(node.position.y),
-          options_json:node.data.options && node.data.options.length > 0
-            ? JSON.stringify(node.data.options)
-            : node.data.formFields && node.data.formFields.length > 0
-            ? JSON.stringify(node.data.formFields)
-            : null,
+          options_json,
           next_nodes_json: nextNodes.length > 0
             ? JSON.stringify(nextNodes)
             : null,
@@ -476,25 +500,33 @@ export default function WorkflowManagement() {
 
   const handleSaveEdit = () => {
     if (!editingNode) return;
-
+    
     setNodes((nds) =>
-      nds.map((node) =>
-        node.id === editingNode.id
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                question_text: editPrompt,
-                options: (editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown')
-                  ? (editOptions.length > 0 ? editOptions : node.data.options)
-                  : node.data.options,
-                formFields: editingNode.data.type === 'get-user-details'
-                  ? (editFormFields.length > 0 ? editFormFields : node.data.formFields)
-                  : node.data.formFields,
-              },
-            }
-          : node
-      )
+      nds.map((node) => {
+        if (node.id === editingNode.id) {
+          const updatedData: any = {
+            ...node.data,
+            question_text: editPrompt,
+            prompt: editPrompt,
+          };
+          
+          // Always update based on node type - use edited values directly
+          if (editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown') {
+            updatedData.options = editOptions;
+          }
+          
+          if (editingNode.data.type === 'form') {
+            // Always use editFormFields - even if empty, this allows clearing all fields
+            updatedData.formFields = editFormFields;
+          }
+          
+          return {
+            ...node,
+            data: updatedData,
+          };
+        }
+        return node;
+      })
     );
 
     setShowEditModal(false);
@@ -653,7 +685,7 @@ export default function WorkflowManagement() {
                 'button-list': '#f6a53bff',
                 'dropdown': '#ebd828ff',
                 'message': '#043d02ff',
-                'get-user-details': '#0bf5ceff',
+                'form': '#0bf5ceff',
                 'set-data': '#5c5ff6ff',
                 'actions': '#c744efff',
                 'conditions': '#00000011',
@@ -789,7 +821,7 @@ export default function WorkflowManagement() {
                 </div>
               )}
 
-              {editingNode.data.type === 'get-user-details' && (
+              {editingNode.data.type === 'form' && (
                 <div className="edit-form-group">
                   <div className="edit-options-header">
                     <label>Form Fields:</label>
