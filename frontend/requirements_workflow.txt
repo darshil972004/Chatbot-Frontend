@@ -1,0 +1,16 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+sqlalchemy==2.0.23
+python-multipart==0.0.6
+
+# Database drivers (uncomment based on your database)
+# For PostgreSQL:
+# psycopg2-binary==2.9.9
+
+# For MySQL:
+# pymysql==1.1.0
+# cryptography==41.0.7
+
+# For SQLite (included in Python standard library, no extra package needed)
+
