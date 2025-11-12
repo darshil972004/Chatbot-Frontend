@@ -6,75 +6,73 @@
 **/node_modules/
 
 # Package managers
-# Package managers
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-yarn.lock
-package-lock.json
-.pnpm-store/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+**/yarn.lock
+**/package-lock.json
+**/.pnpm-store/
 
+# Build output (in any subdir)
+**/dist/
+**/build/
+**/out/
+**/*.log
 
-# Build output
-dist/
-build/
-out/
-*.log
-
-# Local environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# # Local environment
+# **/.env
+# **/.env.local
+# **/.env.development.local
+# **/.env.test.local
+# **/.env.production.local
 
 # Editor / IDE
-.vscode/
-.idea/
-*.sw?
-*.swo
-*.swn
-*.swp
+**/.vscode/
+**/.idea/
+**/*.sw?
+**/*.swo
+**/*.swn
+**/*.swp
 
 # OS files
-.DS_Store
-Thumbs.db
+**/.DS_Store
+**/Thumbs.db
 
 # Testing
-coverage/
-*.lcov
+**/coverage/
+**/*.lcov
 
 # TypeScript
-*.tsbuildinfo
+**/*.tsbuildinfo
 
 # Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
+**/tmp/
+**/temp/
+**/*.tmp
+**/*.bak
 
 # Cache
-.cache/
-.vite/
-.next/
-storybook-static/
-.cypress_cache/
-playwright-report/
-allure-results/
+**/.cache/
+**/.vite/
+**/.next/
+**/storybook-static/
+**/.cypress_cache/
+**/playwright-report/
+**/allure-results/
 
 # Logs and debug
-logs/
-debug.log
+**/logs/
+**/debug.log
 
-# Optional: Ignore build-specific config
+# Optional build configs
 # (Uncomment if you don't want to commit)
-# tsconfig.tsbuildinfo
-# .eslintcache
+# **/tsconfig.tsbuildinfo
+# **/.eslintcache
 
 # Misc
-*.orig
-*.rej
+**/*.orig
+**/*.rej
 
 # =========================================
 # End of File
