@@ -168,7 +168,6 @@ export default function ChatbotWidget() {
       try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
       return updated;
     });
-
     // If backend asks for button input next
     const rType = (res.data as any)?.response_type;
     let optsRaw = (res.data as any)?.options || [];
@@ -190,7 +189,6 @@ export default function ChatbotWidget() {
       setPendingMode(rType);
     }
   }
-
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') handleSend()
   }
@@ -293,24 +291,20 @@ export default function ChatbotWidget() {
               </div>
             );
           }
-          // ...existing code...
           return (
             <div key={m.id}>
               <div className={`cp-msg ${m.role === 'user' ? 'cp-msg--user' : 'cp-msg--bot'}`}>{m.text}</div>
               {/* ...existing code... */}
               {m.role === 'bot' && m.propertyGroup && (
                 (() => {
-                  // ...existing code...
                   const group = m.propertyGroup;
                   const isExpanded = expandedGroups.includes(group.id);
                   const itemsToShow = isExpanded ? group.items : group.items.slice(0, 5);
                   const hasMore = group.items.length > 5 && !isExpanded;
                   return (
                     <div className="cp-prop-group">
-                      {/* ...existing code... */}
                       <div className="cp-prop-grid">
                         {itemsToShow.map((p, idx) => {
-                          // ...existing code...
                           const currency = p?.varCurrency ;
                           const title = p?.varTitle || p?.title || p?.varName || 'Property';
                           const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
@@ -349,7 +343,6 @@ export default function ChatbotWidget() {
                                 {baths ? <span>🚿 {baths} baths</span> : null}
                                 {location ? <span>📍 {location}</span> : null}
                               </div>
-                              {/* ...existing code... */}
                               <button className="cp-prop-btn" onClick={sendDetails}>View Details</button>
                             </div>
                           );
@@ -495,7 +488,6 @@ export default function ChatbotWidget() {
     </>
   )
 }
-
 // FormOptions component for form mode
 function FormOptions({ options, heading, onSubmit }: { options: any[]; heading?: string; onSubmit: (values: Record<string, string>) => void }) {
   // Support both string and object options
