@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-
-
-/frontend/node_modules
-=======
 # =========================================
 # React + TypeScript Project .gitignore
 # =========================================
@@ -13,7 +8,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-package-lock.json
 yarn.lock
 .pnpm-store/
 
@@ -80,4 +74,3 @@ debug.log
 # =========================================
 # End of File
 # =========================================
->>>>>>> 158c64d7b9404b68f02ca2ba92127fe4ad8d5325
