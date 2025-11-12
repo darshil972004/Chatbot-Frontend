@@ -1,3 +1,113 @@
+/* Modal styles for conversation history */
+.cp-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.18);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-modal {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px #2222;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 400px;
+  position: relative;
+}
+
+.cp-modal-title {
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.cp-modal-close {
+  position: absolute;
+  right: 24px;
+  top: 18px;
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.cp-modal-list {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.cp-modal-empty {
+  color: #888;
+  font-size: 14px;
+}
+
+.cp-modal-item {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #fff;
+}
+.cp-modal-item--active {
+  background: #f6f9fc;
+}
+.cp-modal-item-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+.cp-modal-item-date {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+.cp-modal-view-btn {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #e6edf5;
+  border: 1px solid #d7dfeb;
+  cursor: pointer;
+}
+.cp-modal-item-preview {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #444;
+}
+.cp-modal-msg-preview {
+  margin-bottom: 4px;
+}
+.cp-modal-msg-role {
+  font-weight: 500;
+}
+.cp-modal-msg-more {
+  color: #888;
+}
+
+/* Footer styles for column and row layout */
+.cp-footer-col {
+  flex-direction: column;
+  gap: 8px;
+}
+.cp-footer-row {
+  display: flex;
+  gap: 8px;
+}
+.cp-footer-btn {
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #f2f2f2;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  width: 100%;
+}
 .cp-chatbot-container {
   position: fixed;
   right: 20px;

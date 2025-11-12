@@ -7,62 +7,140 @@ function uid() {
 
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(true)
-  // Add propertyGroup to ChatMessage type via type assertion
-  const [messages, setMessages] = useState<(ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } })[]>([
-    { id: uid(), role: 'bot', text: 'Hello,Welcome to Crighton Properties.' },
-  ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const listRef = useRef<HTMLDivElement>(null)
-  const [pendingOptions, setPendingOptions] = useState<string[]>([])
-  const [pendingMode, setPendingMode] = useState<'button-list' | 'dropdown' | 'form' | null>(null)
-  const [selectedOption, setSelectedOption] = useState('')
-  const [expandedGroups, setExpandedGroups] = useState<string[]>([])
+  // Persist chat history in localStorage
+  const LOCAL_KEY = 'cp_chatbot_history';
+  const defaultMsg: ChatMessage = { id: uid(), role: 'bot', text: 'Hello,Welcome to Crighton Properties.' };
+  const [messages, setMessages] = useState<(ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } })[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [defaultMsg];
+  });
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [pendingOptions, setPendingOptions] = useState<string[]>([]);
+  const [pendingMode, setPendingMode] = useState<'button-list' | 'dropdown' | 'form' | null>(null);
+  const [selectedOption, setSelectedOption] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
-  const userId = useMemo(() => {
-    const key = 'cp_chat_user_id'
-    const existing = localStorage.getItem(key)
-    if (existing) return existing
-    const v = `${uid()}`
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(messages));
+    } catch {}
+  }, [messages]);
+
+  // Manage multiple conversations
+  const CONVOS_KEY = 'cp_chatbot_convos';
+  const [showConvos, setShowConvos] = useState(false);
+  const [convos, setConvos] = useState<{ id: string; userId: string; messages: any[]; created: number }[]>([]);
+  const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
+
+  function handleShowConvos() {
+    // Load all conversations from localStorage
+    let all = [];
+    try {
+      all = JSON.parse(localStorage.getItem(CONVOS_KEY) || '[]');
+    } catch {}
+    setConvos(all);
+    setShowConvos(true);
+  }
+
+  function handleCloseConvos() {
+    setShowConvos(false);
+  }
+
+  function handleSelectConvo(convo: { id: string; userId: string; messages: any[]; created: number }) {
+    setActiveConvoId(convo.id);
+    setUserId(convo.userId);
+    setMessages(convo.messages);
+    localStorage.setItem('cp_chat_user_id', convo.userId);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(convo.messages));
+    setShowConvos(false);
+    setPendingOptions([]);
+    setPendingMode(null);
+    setSelectedOption('');
+    setExpandedGroups([]);
+    setInput('');
+  }
+
+
+  const [userId, setUserId] = useState(() => {
+    const key = 'cp_chat_user_id';
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const v = `${uid()}`;
     // localStorage.setItem(key, v)
-    return v
-  }, [])
+    return v;
+  });
   // for scroll to bottom on new message
+  // Save conversation to history only if there is a user message
+  useEffect(() => {
+    // Only save if there is at least one user message
+    const hasUserMsg = messages.some(m => m.role === 'user');
+    if (hasUserMsg) {
+      let all = [];
+      try {
+        all = JSON.parse(localStorage.getItem(CONVOS_KEY) || '[]');
+      } catch {}
+      // Use a unique id for each conversation
+      const convoId = `${userId}_${messages[0]?.id || ''}`;
+      // Remove any with same convoId
+      all = all.filter((c: any) => c.id !== convoId);
+      all.push({ id: convoId, userId, messages, created: Date.now() });
+      localStorage.setItem(CONVOS_KEY, JSON.stringify(all));
+    }
+  }, [messages, userId]);
   // useEffect(() => {
   //   listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   // }, [messages])
 
   async function handleSend(customText?: string) {
-    const trimmed = (customText ?? input).trim()
-    if (!trimmed || loading) return
+    const trimmed = (customText ?? input).trim();
+    if (!trimmed || loading) return;
 
-    const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed }
-    setMessages((m) => [...m, userMsg])
-    setInput('')
-    setPendingOptions([])
-    setPendingMode(null)
-    setSelectedOption('')
-    setLoading(true)
+    const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
+    setMessages((m) => {
+      const updated = [...m, userMsg];
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    setInput('');
+    setPendingOptions([]);
+    setPendingMode(null);
+    setSelectedOption('');
+    setLoading(true);
 
-    const res = await sendMessageToBot(userId, trimmed)
-    setLoading(false)
+    const res = await sendMessageToBot(userId, trimmed);
+    setLoading(false);
 
     if (!('success' in res) || res.success !== true) {
-      setMessages((m) => [...m, { id: uid(), role: 'bot', text: 'Failed to fetch' }])
-      return
+      setMessages((m) => {
+        const failedMsg: ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } } = { id: uid(), role: 'bot', text: 'Failed to fetch' };
+        const updated = [...m, failedMsg];
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      return;
     }
 
-    const botText = res.data?.result ?? '…'
+    const botText = res.data?.result ?? '…';
     // If backend returned properties, attach to bot message
-    const propsArr = (res.data as any)?.properties
-    let botMsg: ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } } = { id: uid(), role: 'bot', text: botText }
+    const propsArr = (res.data as any)?.properties;
+    let botMsg: ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } } = { id: uid(), role: 'bot', text: botText };
     if (Array.isArray(propsArr) && propsArr.length > 0) {
-      botMsg.propertyGroup = { id: uid(), header: botText, items: propsArr }
+      botMsg.propertyGroup = { id: uid(), header: botText, items: propsArr };
     }
-    setMessages((m) => [...m, botMsg])
+    setMessages((m) => {
+      const updated = [...m, botMsg];
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     // If backend asks for button input next
-    const rType = (res.data as any)?.response_type
+    const rType = (res.data as any)?.response_type;
     let optsRaw = (res.data as any)?.options || [];
     let opts: any[] = [];
     let formHeading = '';
@@ -87,6 +165,32 @@ export default function ChatbotWidget() {
     if (e.key === 'Enter') handleSend()
   }
 
+  function handleNewChat() {
+    // Before starting new chat, save current conversation if it has user messages
+    const hasUserMsg = messages.some(m => m.role === 'user');
+    if (hasUserMsg) {
+      let all = [];
+      try {
+        all = JSON.parse(localStorage.getItem(CONVOS_KEY) || '[]');
+      } catch {}
+      const convoId = `${userId}_${messages[0]?.id || ''}`;
+      all = all.filter((c: any) => c.id !== convoId);
+      all.push({ id: convoId, userId, messages, created: Date.now() });
+      localStorage.setItem(CONVOS_KEY, JSON.stringify(all));
+    }
+    // Generate new user id and reset chat
+    const newUserId = uid();
+    setUserId(newUserId);
+    localStorage.setItem('cp_chat_user_id', newUserId);
+    setMessages([defaultMsg]);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify([defaultMsg]));
+    setPendingOptions([]);
+    setPendingMode(null);
+    setSelectedOption('');
+    setExpandedGroups([]);
+    setInput('');
+  }
+
   return (
     <>
       {!isOpen && (
@@ -107,9 +211,9 @@ export default function ChatbotWidget() {
 
             <div className="cp-chatbot__body" ref={listRef}>
         {messages.map((m) => {
-          // Check if this is a user message that looks like a form submission (contains ": ")
+          // ...existing code...
           if (m.role === 'user' && m.text.includes(':')) {
-            // Parse the message into key-value pairs
+            // ...existing code...
             const fields = m.text.split(',').map(f => {
               const [label, ...rest] = f.split(':');
               return { label: label?.trim(), value: rest.join(':').trim() };
@@ -127,19 +231,21 @@ export default function ChatbotWidget() {
               </div>
             );
           }
+          // ...existing code...
           return (
             <div key={m.id}>
               <div className={`cp-msg ${m.role === 'user' ? 'cp-msg--user' : 'cp-msg--bot'}`}>{m.text}</div>
-              {/* If this bot message has propertyGroup, render properties here */}
+              {/* ...existing code... */}
               {m.role === 'bot' && m.propertyGroup && (
                 (() => {
+                  // ...existing code...
                   const group = m.propertyGroup;
                   const isExpanded = expandedGroups.includes(group.id);
                   const itemsToShow = isExpanded ? group.items : group.items.slice(0, 5);
                   const hasMore = group.items.length > 5 && !isExpanded;
                   return (
                     <div className="cp-prop-group">
-                      {/* {group.header && <div className="cp-prop-header">{group.header}</div>} */}
+                      {/* ...existing code... */}
                       <div className="cp-prop-grid">
                         {itemsToShow.map((p, idx) => {
                           // ...existing code...
@@ -181,7 +287,7 @@ export default function ChatbotWidget() {
                                 {baths ? <span>🚿 {baths} baths</span> : null}
                                 {location ? <span>📍 {location}</span> : null}
                               </div>
-                              {/* {desc && <div className="cp-prop-desc">{String(desc).slice(0, 110)}...</div>} */}
+                              {/* ...existing code... */}
                               <button className="cp-prop-btn" onClick={sendDetails}>View Details</button>
                             </div>
                           );
@@ -253,27 +359,74 @@ export default function ChatbotWidget() {
         )}
             </div>
 
-            <div className="cp-chatbot__footer">
-              <input
-                className="cp-input"
-                placeholder="Type your property search request..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <button
-                className="cp-send"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
-                disabled={loading}
-                aria-label="Send"
-                type="button"
-              >
-                →
-              </button>
+            <div className="cp-chatbot__footer cp-footer-col">
+              <div className="cp-footer-row">
+                <input
+                  className="cp-input"
+                  placeholder="Type your property search request..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+                <button
+                  className="cp-send"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSend();
+                  }}
+                  disabled={loading}
+                  aria-label="Send"
+                  type="button"
+                >
+                  →
+                </button>
+              </div>
+              <div className="cp-footer-row">
+                <button
+                  className="cp-chatbot__newchat cp-footer-btn"
+                  onClick={handleNewChat}
+                  aria-label="Start new chat"
+                  type="button"
+                >
+                  Start New Chat
+                </button>
+                <button
+                  className="cp-chatbot__showconvos cp-footer-btn"
+                  onClick={handleShowConvos}
+                  aria-label="History"
+                  type="button"
+                >
+                  History
+                </button>
+              </div>
             </div>
+      {/* Modal for all conversations */}
+      {showConvos && (
+        <div className="cp-modal-overlay">
+          <div className="cp-modal">
+            <div className="cp-modal-title">All Conversations</div>
+            <button className="cp-modal-close" onClick={handleCloseConvos}>×</button>
+            <div className="cp-modal-list">
+              {convos.length === 0 && <div className="cp-modal-empty">No previous conversations found.</div>}
+              {convos.map((c) => (
+                <div key={c.id} className={`cp-modal-item${activeConvoId === c.id ? ' cp-modal-item--active' : ''}`}>
+                  <div className="cp-modal-item-title">Conversation {c.id.slice(0, 8)}</div>
+                  <div className="cp-modal-item-date">Started: {new Date(c.created).toLocaleString()}</div>
+                  <button className="cp-modal-view-btn" onClick={() => handleSelectConvo(c)}>View Conversation</button>
+                  <div className="cp-modal-item-preview">
+                    {c.messages.slice(0, 2).map((m: any, idx: number) => (
+                      <div key={idx} className="cp-modal-msg-preview">
+                        <span className="cp-modal-msg-role">{m.role === 'user' ? 'User:' : 'Bot:'}</span> {m.text.length > 60 ? m.text.slice(0, 60) + '...' : m.text}
+                      </div>
+                    ))}
+                    {c.messages.length > 2 && <div className="cp-modal-msg-more">...{c.messages.length - 2} more messages</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
           </div>
         </div>
       )}
