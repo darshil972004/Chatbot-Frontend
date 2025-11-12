@@ -17,7 +17,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import './workflow.css';
 import WorkflowNode from './WorkflowNode';
-import { saveWorkflow, WorkflowNodeData, getWorkflow, getWorkflows } from '../api/workflow';
+import { saveWorkflow, WorkflowNodeData, getWorkflow, getWorkflows, getCategoryOptions } from '../api/workflow';
 
 const nodeTypes: NodeTypes = {
   workflowNode: WorkflowNode,
@@ -65,6 +65,11 @@ export default function WorkflowManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [showCategoryOptionsModal, setShowCategoryOptionsModal] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ id: number; text: string }>>([]);
+  const [selectedCategoryOptions, setSelectedCategoryOptions] = useState<Set<number>>(new Set());
+  const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
+  const [isLoadingCategoryOptions, setIsLoadingCategoryOptions] = useState(false);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -566,6 +571,89 @@ export default function WorkflowManagement() {
     setEditFormFields(editFormFields.filter(f => f.id !== id));
   };
 
+  // Detect category from question text
+  const detectCategoryFromText = (text: string): string | null => {
+    const lowerText = text.toLowerCase();
+    const categoryKeywords = [
+      { keywords: ['property view', 'view'], category: 'property view' },
+      { keywords: ['location', 'locate'], category: 'location' },
+      { keywords: ['property type', 'type'], category: 'property type' },
+      { keywords: ['bed', 'bedroom', 'beds'], category: 'beds' },
+      { keywords: ['bath', 'bathroom', 'baths'], category: 'baths' },
+      { keywords: ['price', 'cost'], category: 'price' },
+      { keywords: ['sq ft', 'square feet', 'square footage'], category: 'sq ft' },
+      { keywords: ['depth'], category: 'depth' },
+      { keywords: ['year built', 'built'], category: 'year built' },
+    ];
+
+    for (const { keywords, category } of categoryKeywords) {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        return category;
+      }
+    }
+    return null;
+  };
+
+  // Load category options from database
+  const handleLoadCategoryOptions = async (category: string) => {
+    setIsLoadingCategoryOptions(true);
+    try {
+      const result = await getCategoryOptions(category);
+      if (result.success && result.options) {
+        setCategoryOptions(result.options);
+        setDetectedCategory(result.category || category);
+        setSelectedCategoryOptions(new Set());
+        setShowCategoryOptionsModal(true);
+      } else {
+        alert(`Failed to load options: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error loading category options:', error);
+      alert('Error loading options from database');
+    } finally {
+      setIsLoadingCategoryOptions(false);
+    }
+  };
+
+  // Add selected category options to editOptions
+  const handleAddSelectedCategoryOptions = () => {
+    const newOptions = Array.from(selectedCategoryOptions)
+      .map(optionId => {
+        const option = categoryOptions.find(opt => opt.id === optionId);
+        return option ? { id: Date.now() + optionId, text: option.text, warning: false } : null;
+      })
+      .filter((opt): opt is { id: number; text: string; warning: boolean } => opt !== null);
+
+    // Merge with existing options, avoiding duplicates
+    const existingTexts = new Set(editOptions.map(opt => opt.text.toLowerCase()));
+    const uniqueNewOptions = newOptions.filter(opt => !existingTexts.has(opt.text.toLowerCase()));
+
+    // Get the next available ID
+    const maxId = editOptions.length > 0 ? Math.max(...editOptions.map(o => o.id)) : 0;
+    const optionsWithIds = uniqueNewOptions.map((opt, idx) => ({
+      ...opt,
+      id: maxId + idx + 1
+    }));
+
+    setEditOptions([...editOptions, ...optionsWithIds]);
+    setShowCategoryOptionsModal(false);
+    setSelectedCategoryOptions(new Set());
+    setCategoryOptions([]);
+  };
+
+  // Toggle selection of a category option
+  const handleToggleCategoryOption = (optionId: number) => {
+    setSelectedCategoryOptions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(optionId)) {
+        newSet.delete(optionId);
+      } else {
+        newSet.add(optionId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="workflow-management">
       {/* Header Bar */}
@@ -783,9 +871,27 @@ export default function WorkflowManagement() {
                 <div className="edit-form-group">
                   <div className="edit-options-header">
                     <label>Options:</label>
-                    <button className="add-option-btn" onClick={handleAddOption}>
-                      + Add Option
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {detectCategoryFromText(editPrompt) && (
+                        <button 
+                          className="add-option-btn" 
+                          onClick={() => handleLoadCategoryOptions(detectCategoryFromText(editPrompt)!)}
+                          disabled={isLoadingCategoryOptions}
+                          style={{ 
+                            backgroundColor: '#10b981', 
+                            color: 'white',
+                            fontSize: '12px',
+                            padding: '6px 12px'
+                          }}
+                          title={`Load ${detectCategoryFromText(editPrompt)} options from database`}
+                        >
+                          {isLoadingCategoryOptions ? 'Loading...' : '📥 Load from Database'}
+                        </button>
+                      )}
+                      <button className="add-option-btn" onClick={handleAddOption}>
+                        + Add Option
+                      </button>
+                    </div>
                   </div>
                   <div className="edit-options-list">
                     {editOptions.map((option) => (
@@ -881,6 +987,93 @@ export default function WorkflowManagement() {
                 </button>
                 <button className="save-button" onClick={handleSaveEdit}>
                   💾 Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Options Selection Modal */}
+      {showCategoryOptionsModal && (
+        <div className="data-modal-overlay" onClick={() => setShowCategoryOptionsModal(false)}>
+          <div className="data-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh' }}>
+            <div className="data-modal-header">
+              <h2>Select Options from Database</h2>
+              <button className="close-modal-btn" onClick={() => setShowCategoryOptionsModal(false)}>
+                ×
+              </button>
+            </div>
+            <div className="data-modal-body">
+              <p style={{ marginBottom: '16px', color: '#666' }}>
+                Select options to add for <strong>{detectedCategory}</strong>:
+              </p>
+              <div style={{ 
+                maxHeight: '400px', 
+                overflowY: 'auto', 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '6px',
+                padding: '8px'
+              }}>
+                {categoryOptions.map((option) => (
+                  <label
+                    key={option.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      marginBottom: '4px',
+                      backgroundColor: selectedCategoryOptions.has(option.id) ? '#e0f2fe' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedCategoryOptions.has(option.id)) {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedCategoryOptions.has(option.id)) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCategoryOptions.has(option.id)}
+                      onChange={() => handleToggleCategoryOption(option.id)}
+                      style={{ marginRight: '12px', cursor: 'pointer' }}
+                    />
+                    <span>{option.text}</span>
+                  </label>
+                ))}
+                {categoryOptions.length === 0 && (
+                  <p style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+                    No options available
+                  </p>
+                )}
+              </div>
+              <div className="data-modal-actions" style={{ marginTop: '16px' }}>
+                <button 
+                  className="close-btn" 
+                  onClick={() => {
+                    setShowCategoryOptionsModal(false);
+                    setSelectedCategoryOptions(new Set());
+                    setCategoryOptions([]);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="save-button" 
+                  onClick={handleAddSelectedCategoryOptions}
+                  disabled={selectedCategoryOptions.size === 0}
+                  style={{ 
+                    opacity: selectedCategoryOptions.size === 0 ? 0.5 : 1,
+                    cursor: selectedCategoryOptions.size === 0 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Add Selected ({selectedCategoryOptions.size})
                 </button>
               </div>
             </div>

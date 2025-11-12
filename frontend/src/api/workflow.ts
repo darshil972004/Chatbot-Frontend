@@ -284,3 +284,44 @@ export async function setActiveWorkflow(
   }
 }
 
+export interface CategoryOptionsResponse {
+  success: boolean;
+  category?: string;
+  options?: Array<{ id: number; text: string }>;
+  error?: string;
+}
+
+// Get category options from database for workflow editor
+export async function getCategoryOptions(category: string): Promise<CategoryOptionsResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/workflow/category-options/${encodeURIComponent(category)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${CHATBOT_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) {
+      let detail = '';
+      try {
+        const j = await res.json();
+        detail = (j as any)?.detail || (j as any)?.error || JSON.stringify(j);
+      } catch {
+        detail = res.statusText;
+      }
+      console.error('Get category options API error', res.status, detail);
+      return { success: false, error: detail };
+    }
+
+    const result = await res.json();
+    return result as CategoryOptionsResponse;
+  } catch (error) {
+    console.error('Error fetching category options:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}
+
