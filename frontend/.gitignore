@@ -1,0 +1,78 @@
+# =========================================
+# React + TypeScript + Fullstack Project .gitignore
+# =========================================
+
+# Node (ignore ALL node_modules, even in subfolders)
+**/node_modules/
+
+# Package managers
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+yarn.lock
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+*.log
+
+# Local environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor / IDE
+.vscode/
+.idea/
+*.sw?
+*.swo
+*.swn
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+*.lcov
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Cache
+.cache/
+.vite/
+.next/
+storybook-static/
+.cypress_cache/
+playwright-report/
+allure-results/
+
+# Logs and debug
+logs/
+debug.log
+
+# Optional: Ignore build-specific config
+# (Uncomment if you don't want to commit)
+# tsconfig.tsbuildinfo
+# .eslintcache
+
+# Misc
+*.orig
+*.rej
+
+# =========================================
+# End of File
+# =========================================
