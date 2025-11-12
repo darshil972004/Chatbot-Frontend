@@ -1,9 +1,11 @@
 # =========================================
-# React + TypeScript Project .gitignore
+# React + TypeScript + Fullstack Project .gitignore
 # =========================================
 
-# Node
-node_modules/
+# Node (ignore ALL node_modules, even in subfolders)
+**/node_modules/
+
+# Package managers
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
