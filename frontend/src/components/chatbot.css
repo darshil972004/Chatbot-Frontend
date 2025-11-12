@@ -1,3 +1,20 @@
+/* Blog info styles */
+.cp-blog-title {
+  display: inline-block;
+  margin-bottom: 4px;
+}
+.cp-blog-label {
+  color: #000000;
+  font-weight: 500;
+  font-size: 13px;
+}
+.cp-blog-name {
+  color: #1e8bff;
+  font-weight: bold;
+  font-size: 13px;
+  font-family: inherit;
+  text-decoration: none;
+}
 /* Modal styles for conversation history */
 .cp-modal-overlay {
   position: fixed;

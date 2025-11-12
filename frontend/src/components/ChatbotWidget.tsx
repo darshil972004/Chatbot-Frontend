@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChatMessage, sendMessageToBot } from '../api/chatbot'
+import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
+
+// Extend ChatMessage to support optional blog property (array)
+type BlogInfo = { blog_id: string; title: string; blog_url: string };
+type ChatMessage = BaseChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] }, blog?: BlogInfo[] };
 
 function uid() {
   return Math.random().toString(36).slice(2)
@@ -72,7 +76,7 @@ export default function ChatbotWidget() {
     const existing = localStorage.getItem(key);
     if (existing) return existing;
     const v = `${uid()}`;
-    // localStorage.setItem(key, v)
+    localStorage.setItem(key, v)
     return v;
   });
   // for scroll to bottom on new message
@@ -120,6 +124,32 @@ export default function ChatbotWidget() {
       setMessages((m) => {
         const failedMsg: ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } } = { id: uid(), role: 'bot', text: 'Failed to fetch' };
         const updated = [...m, failedMsg];
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      return;
+    }
+
+    // Handle RAG type response
+    if ((res.data as any)?.type === 'RAG') {
+      const ragResult = res.data as any;
+      // blogs can be an array or object
+      let blogs: BlogInfo[] = [];
+      if (Array.isArray(ragResult.blogs) && ragResult.blogs.length > 0) {
+        blogs = ragResult.blogs;
+      } else if (ragResult.blogs && typeof ragResult.blogs === 'object' && ragResult.blogs.title) {
+        blogs = [ragResult.blogs];
+      }
+      setMessages((m) => {
+        const updated = [
+          ...m,
+          {
+            id: uid(),
+            role: 'bot' as const,
+            text: ragResult.answer || ragResult.result || '',
+            blog: blogs.length > 0 ? blogs : undefined
+          }
+        ];
         try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
         return updated;
       });
@@ -211,22 +241,54 @@ export default function ChatbotWidget() {
 
             <div className="cp-chatbot__body" ref={listRef}>
         {messages.map((m) => {
-          // ...existing code...
+          // Show form summary for user message
           if (m.role === 'user' && m.text.includes(':')) {
-            // ...existing code...
             const fields = m.text.split(',').map(f => {
               const [label, ...rest] = f.split(':');
               return { label: label?.trim(), value: rest.join(':').trim() };
             });
             return (
               <div key={m.id} className="cp-msg cp-msg--user">
-                <div className="cp-form-summary" style={{ background: '#f6f6f9', borderRadius: 8, padding: 12, margin: '8px 0', boxShadow: '0 1px 4px #eee' }}>
+                <div className="cp-form-summary">
                   {fields.map((field, idx) => (
-                    <div key={idx} style={{ marginBottom: 10 }}>
-                      <span style={{ fontWeight: 500, minWidth: 120, display: 'block' }}>{field.label}:</span>
-                      <span style={{ marginLeft: 0, display: 'block', wordBreak: 'break-word', whiteSpace: 'pre-line', color: '#333', paddingLeft: 8 }}>{field.value}</span>
+                    <div key={idx} className="cp-form-summary-row">
+                      <span className="cp-form-summary-label">{field.label}:</span>
+                      <span className="cp-form-summary-value">{field.value}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            );
+          }
+            // Show RAG blog info after bot answer
+          if (m.role === 'bot' && m.blog && Array.isArray(m.blog)) {
+            const blogsArr = m.blog;
+            return (
+              <div key={m.id}>
+                <div className="cp-msg cp-msg--bot">{m.text}</div>
+                <div className="cp-blog-info">
+                  {blogsArr.length > 0 ? (
+                    blogsArr.map((blog, idx) => {
+                      const isBlogValid = blog && blog.title && blog.blog_url;
+                      return isBlogValid ? (
+                        <span className="cp-blog-title" key={blog.blog_id || idx} style={{ display: 'block', marginBottom: 4 }}>
+                          <span className="cp-blog-label">Blog:</span>&nbsp;
+                          <a
+                            className="cp-blog-name"
+                            href={blog.blog_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {blog.title}
+                          </a>
+                        </span>
+                      ) : (
+                        <span className="cp-blog-error" key={idx}>Blog info not fetched completely from backend.</span>
+                      );
+                    })
+                  ) : (
+                    <span className="cp-blog-error">Blog info not fetched completely from backend.</span>
+                  )}
                 </div>
               </div>
             );
