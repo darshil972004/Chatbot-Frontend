@@ -155,9 +155,12 @@ export default function ChatbotWidget() {
                           const img = p?.varFeaturedImage || p?.image || p?.thumbnail || '';
                           const location = p?.city_name || p?.location || '';
                           const sendDetails = () => {
-                            const m = String(mls || '').replace(/[^0-9]/g, '');
+                            const m = String(mls || '').replace(/\D/g, '');
                             if (m) {
-                              handleSend(m);
+                              const message = `Provide the details for the property listed under MLS number ${m}`;
+                              handleSend(message);
+                            } else {
+                              console.warn('Invalid or missing MLS ID.');
                             }
                           };
                           return (
