@@ -1,8 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
-import ChatbotWidget from './components/ChatbotWidget'
-import WorkflowManagement from './components/WorkflowManagement'
-import WorkflowList from './components/WorkflowList'
-import './components/chatbot.css'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
+import { RecoilRoot } from 'recoil';
+import ChatbotWidget from './components/ChatbotWidget';
+import AdminLayout from './components/AdminPanel/AdminLayout';
+import ChatbotConfig from './components/AdminPanel/ChatbotConfig';
+import WorkflowManagement from './components/WorkflowManagement';
+import WorkflowList from './components/WorkflowList';
+import './components/chatbot.css';
 
 function Home() {
   return (
@@ -17,24 +20,30 @@ function Home() {
       </div>
       <ChatbotWidget />
     </div>
-  )
+  );
 }
 
 function WorkflowPage() {
-  return <WorkflowManagement />
+  return <WorkflowManagement />;
 }
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/workflows" element={<WorkflowList />} />
-        <Route path="/workflow" element={<WorkflowPage />} />
-        <Route path="/workflow/:workflowId" element={<WorkflowPage />} />
-      </Routes>
-    </Router>
-  )
+    <RecoilRoot>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/workflows" element={<WorkflowList />} />
+          <Route path="/workflow" element={<WorkflowPage />} />
+          <Route path="/workflow/:workflowId" element={<WorkflowPage />} />
+          {/* Admin routes */}
+          <Route path="/admin-panel" element={<AdminLayout />}>
+            <Route index element={<Navigate to="chatbot" replace />} />
+            <Route path="chatbot" element={<ChatbotConfig />} />
+            {/* Add more admin routes here as needed */}
+          </Route>
+        </Routes>
+      </Router>
+    </RecoilRoot>
+  );
 }
-
-
