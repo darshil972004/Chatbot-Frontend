@@ -9,11 +9,10 @@
   font-size: 13px;
 }
 .cp-blog-name {
-  color: #1e8bff;
-  font-weight: bold;
-  font-size: 13px;
-  font-family: inherit;
-  text-decoration: none;
+  color: #0000EE;
+  font-weight: 520;
+  font-size: 14px;
+  font-family: 'system-ui';
 }
 /* Modal styles for conversation history */
 .cp-modal-overlay {
@@ -117,13 +116,16 @@
   gap: 8px;
 }
 .cp-footer-btn {
-  font-size: 14px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #f2f2f2;
-  border: 1px solid #ddd;
-  cursor: pointer;
-  width: 100%;
+  font-size: 15px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #2b7cffe6;
+    border: 1px solid #1e8bff;
+    cursor: pointer;
+    width: 100%;
+    color: #ffffff;
+    font-weight: 500;
+    font-family: 'Segoe UI';
 }
 .cp-chatbot-container {
   position: fixed;
@@ -381,6 +383,183 @@
   border: 0;
   background: #2b7cff;
   color: #fff;
+}
+
+.cp-form-options {
+  margin-top: 12px;
+  animation: cpFormFadeIn 0.3s ease;
+}
+
+.cp-form-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), #f8fbff);
+  border-radius: 14px;
+  border: 1px solid rgba(32, 56, 108, 0.08);
+  box-shadow: 0 18px 42px rgba(9, 20, 61, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-form-header {
+  padding: 18px 20px 12px;
+  background: radial-gradient(circle at top right, rgba(90, 92, 255, 0.16), transparent 55%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-form-pill {
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #3657ff;
+  border-radius: 999px;
+  background: rgba(54, 87, 255, 0.12);
+  text-transform: uppercase;
+}
+
+.cp-form-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #09143d;
+}
+
+.cp-form-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: #5a6680;
+  line-height: 1.5;
+}
+
+.cp-form-body {
+  padding: 16px 20px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0c1b33;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cp-form-required {
+  color: #ff4d6d;
+  font-weight: 700;
+}
+
+.cp-form-description {
+  font-size: 12px;
+  color: #6b7790;
+  line-height: 1.4;
+}
+
+.cp-form-input {
+  width: 90%;
+  border-radius: 10px;
+  border: 1px solid rgba(32, 56, 108, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #0c1b33;
+  transition: border 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cp-form-input::placeholder {
+  color: #9aa6c3;
+}
+
+.cp-form-input:focus {
+  border-color: #5a5cff;
+  box-shadow: 0 0 0 4px rgba(90, 92, 255, 0.12);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.cp-form-input--textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.cp-form-field--error .cp-form-input {
+  border-color: #ff4d6d;
+  box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.15);
+}
+
+.cp-form-error {
+  font-size: 12px;
+  color: #ff4d6d;
+  margin-top: -2px;
+}
+
+.cp-form-footer {
+  padding: 16px 20px 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cp-form-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #1e8bff, #5a5cff);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(30, 139, 255, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cp-form-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(30, 139, 255, 0.3);
+}
+
+.cp-form-submit:active {
+  transform: translateY(0);
+}
+
+.cp-form-submit-icon {
+  font-size: 16px;
+}
+
+@keyframes cpFormFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 360px) {
+  .cp-form-card {
+    border-radius: 10px;
+  }
+
+  .cp-form-footer {
+    padding: 14px 16px 18px;
+  }
 }
 
 /* Floating launcher (shown when chat is closed) */

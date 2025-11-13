@@ -13,14 +13,14 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(true)
   // Persist chat history in localStorage
   const LOCAL_KEY = 'cp_chatbot_history';
-  const defaultMsg: ChatMessage = { id: uid(), role: 'bot', text: 'Hello,Welcome to Crighton Properties.' };
   const [messages, setMessages] = useState<(ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } })[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_KEY);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [defaultMsg];
+    return [];
   });
+  const [isInitialized, setIsInitialized] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -101,16 +101,65 @@ export default function ChatbotWidget() {
   //   listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   // }, [messages])
 
-  async function handleSend(customText?: string) {
-    const trimmed = (customText ?? input).trim();
-    if (!trimmed || loading) return;
+  // Fetch initial message from backend on mount or when starting new chat
+  useEffect(() => {
+    if (!isInitialized && messages.length === 0) {
+      const fetchInitialMessage = async () => {
+        setLoading(true);
+        try {
+          const res = await sendMessageToBot(userId, 'init');
+          if (res.success && res.data?.result) {
+            const initialMsg: ChatMessage = { 
+              id: uid(), 
+              role: 'bot', 
+              text: res.data.result 
+            };
+            setMessages([initialMsg]);
+            localStorage.setItem(LOCAL_KEY, JSON.stringify([initialMsg]));
+            
+            // Check if initial response requires auto-send
+            const rType = (res.data as any)?.response_type;
+            if (rType === 'message') {
+              setLoading(false);
+              // Auto-send "defult" for initial message
+              await handleSend('defult', true);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch initial message:', err);
+          const fallbackMsg: ChatMessage = { 
+            id: uid(), 
+            role: 'bot', 
+            text: 'Hello, Welcome to Crighton Properties.' 
+          };
+          setMessages([fallbackMsg]);
+          localStorage.setItem(LOCAL_KEY, JSON.stringify([fallbackMsg]));
+        }
+        setLoading(false);
+        setIsInitialized(true);
+      };
+      fetchInitialMessage();
+    }
+  }, [userId, isInitialized]);
 
-    const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
-    setMessages((m) => {
-      const updated = [...m, userMsg];
-      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
-      return updated;
-    });
+  async function handleSend(customText?: string, skipAutoRespond: boolean = false) {
+    const trimmed = (customText ?? input).trim();
+    if (!trimmed) return;
+    
+    // Allow auto-respond to bypass loading check
+    if (!skipAutoRespond && loading) return;
+
+    // Only add user message if it's not an auto-response
+    if (!skipAutoRespond) {
+      const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
+      setMessages((m) => {
+        const updated = [...m, userMsg];
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }
+
     setInput('');
     setPendingOptions([]);
     setPendingMode(null);
@@ -130,6 +179,8 @@ export default function ChatbotWidget() {
       return;
     }
 
+    const rTypeEarly = (res.data as any)?.response_type;
+    
     // Handle RAG type response
     if ((res.data as any)?.type === 'RAG') {
       const ragResult = res.data as any;
@@ -168,6 +219,13 @@ export default function ChatbotWidget() {
       try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    // Auto-send if response_type is 'message' - send hidden "defult" message and show next result
+    if (rTypeEarly === 'message' && !skipAutoRespond) {
+      const autoText = 'defult';
+      await handleSend(autoText, true);
+    }
+
     // If backend asks for button input next
     const rType = (res.data as any)?.response_type;
     let optsRaw = (res.data as any)?.options || [];
@@ -189,6 +247,7 @@ export default function ChatbotWidget() {
       setPendingMode(rType);
     }
   }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') handleSend()
   }
@@ -210,8 +269,9 @@ export default function ChatbotWidget() {
     const newUserId = uid();
     setUserId(newUserId);
     localStorage.setItem('cp_chat_user_id', newUserId);
-    setMessages([defaultMsg]);
-    localStorage.setItem(LOCAL_KEY, JSON.stringify([defaultMsg]));
+    setMessages([]);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify([]));
+    setIsInitialized(false);
     setPendingOptions([]);
     setPendingMode(null);
     setSelectedOption('');
@@ -291,20 +351,24 @@ export default function ChatbotWidget() {
               </div>
             );
           }
+          // ...existing code...
           return (
             <div key={m.id}>
               <div className={`cp-msg ${m.role === 'user' ? 'cp-msg--user' : 'cp-msg--bot'}`}>{m.text}</div>
               {/* ...existing code... */}
               {m.role === 'bot' && m.propertyGroup && (
                 (() => {
+                  // ...existing code...
                   const group = m.propertyGroup;
                   const isExpanded = expandedGroups.includes(group.id);
                   const itemsToShow = isExpanded ? group.items : group.items.slice(0, 5);
                   const hasMore = group.items.length > 5 && !isExpanded;
                   return (
                     <div className="cp-prop-group">
+                      {/* ...existing code... */}
                       <div className="cp-prop-grid">
                         {itemsToShow.map((p, idx) => {
+                          // ...existing code...
                           const currency = p?.varCurrency ;
                           const title = p?.varTitle || p?.title || p?.varName || 'Property';
                           const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
@@ -343,6 +407,7 @@ export default function ChatbotWidget() {
                                 {baths ? <span>🚿 {baths} baths</span> : null}
                                 {location ? <span>📍 {location}</span> : null}
                               </div>
+                              {/* ...existing code... */}
                               <button className="cp-prop-btn" onClick={sendDetails}>View Details</button>
                             </div>
                           );
@@ -448,10 +513,10 @@ export default function ChatbotWidget() {
                 <button
                   className="cp-chatbot__showconvos cp-footer-btn"
                   onClick={handleShowConvos}
-                  aria-label="History"
+                  aria-label="Chat History"
                   type="button"
                 >
-                  History
+                  Chat History
                 </button>
               </div>
             </div>
@@ -488,54 +553,89 @@ export default function ChatbotWidget() {
     </>
   )
 }
+
 // FormOptions component for form mode
 function FormOptions({ options, heading, onSubmit }: { options: any[]; heading?: string; onSubmit: (values: Record<string, string>) => void }) {
-  // Support both string and object options
   const opts = Array.isArray(options) ? options : [];
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(opts.map((o: any) => [o.label || o, ''])));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const displayHeading = heading?.trim().length ? heading : 'Tell us how we can help';
 
-  // Validation helpers
   function getInputProps(opt: any) {
     const label = typeof opt === 'string' ? opt : opt.label;
     const type = typeof opt === 'string' ? 'text' : (opt.type || 'text');
     const required = typeof opt === 'string' ? true : !!opt.required;
-    let pattern, autoComplete, placeholder, validate;
+    const placeholderFromConfig = typeof opt === 'object' ? opt.placeholder : '';
+    const description = typeof opt === 'object' ? opt.description || opt.help_text : '';
+    let pattern: string | undefined;
+    let autoComplete: string | undefined;
+    let placeholder = placeholderFromConfig || 'Type your answer';
+    let validate: (value: string) => string = (value: string) =>
+      required && !value.trim() ? 'This field is required' : '';
     const lower = label.toLowerCase();
     if (type === 'email' || lower.includes('email')) {
-      pattern = undefined; autoComplete = 'email'; placeholder = 'Enter your email'; validate = (v: string) => /.+@.+\..+/.test(v) ? '' : 'Invalid email';
+      placeholder = placeholderFromConfig || 'you@example.com';
+      autoComplete = 'email';
+      validate = (v: string) => /.+@.+\..+/.test(v) ? '' : 'Enter a valid email address';
     } else if (type === 'tel' || lower.includes('phone')) {
-      pattern = '[0-9\-\+\s]{10,}'; autoComplete = 'tel'; placeholder = 'Enter your phone number'; validate = (v: string) => /^[0-9\-\+\s]{10,}$/.test(v) ? '' : 'Invalid phone number';
-    } else if (type === 'number' || lower.includes('income')) {
-      pattern = undefined; autoComplete = 'off'; placeholder = 'Enter number'; validate = (v: string) => /^\d+$/.test(v) ? '' : 'Invalid number';
+      placeholder = placeholderFromConfig || '+1 (555) 123-4567';
+      autoComplete = 'tel';
+      pattern = '[0-9\\-\\+\\s]{10,}';
+      validate = (v: string) => /^[0-9\-\+\s]{10,}$/.test(v) ? '' : 'Enter a valid phone number';
+    } else if (type === 'number' || lower.includes('budget') || lower.includes('income') || lower.includes('price')) {
+      placeholder = placeholderFromConfig || 'Enter amount';
+      autoComplete = 'off';
+      validate = (v: string) => /^\d+(\.\d+)?$/.test(v) ? '' : 'Numbers only';
     } else if (type === 'date' || lower.includes('dob')) {
-      pattern = undefined; autoComplete = 'bday'; placeholder = 'Select date'; validate = (v: string) => v ? '' : 'Required';
-    } else if (type === 'textarea') {
-      pattern = undefined; autoComplete = 'off'; placeholder = 'Enter address'; validate = (_: string) => '';
+      placeholder = placeholderFromConfig || '';
+      autoComplete = 'bday';
+      validate = (v: string) => v ? '' : 'This field is required';
+    } else if (type === 'textarea' || lower.includes('message') || lower.includes('details')) {
+      placeholder = placeholderFromConfig || 'Add any extra details here...';
+      autoComplete = 'off';
+      validate = (_: string) => '';
     } else if (type === 'text' || lower.includes('name')) {
-      pattern = "[A-Za-z\s\.'-]{2,}"; autoComplete = 'name'; placeholder = 'Enter your name'; validate = (v: string) => /^[A-Za-z\s\.'-]{2,}$/.test(v) ? '' : 'Invalid name';
+      placeholder = placeholderFromConfig || 'Type your answer';
+      autoComplete = lower.includes('name') ? 'name' : 'off';
+      pattern = !lower.includes('address') ? "[A-Za-z\\s\\.'-]{2,}" : undefined;
+      validate = (v: string) => {
+        if (!lower.includes('address') && pattern) return /^[A-Za-z\s\.'-]{2,}$/.test(v) ? '' : 'Letters only';
+        return v.trim() ? '' : 'This field is required';
+      };
     } else {
-      pattern = undefined; autoComplete = undefined; placeholder = ''; validate = (_: string) => '';
+      placeholder = placeholderFromConfig || 'Type your answer';
+      autoComplete = 'off';
     }
-    return { type, pattern, autoComplete, placeholder, validate, required };
+    return { type, pattern, autoComplete, placeholder, validate, required, description };
   }
+
+  const validateField = (label: string, opt: any, value: string) => {
+    const { validate, required } = getInputProps(opt);
+    const err = required ? validate(value) : '';
+    setErrors((prev) => ({ ...prev, [label]: err }));
+    return err;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, opt: any) => {
     const label = typeof opt === 'string' ? opt : opt.label;
-    setValues((prev) => ({ ...prev, [label]: e.target.value }));
-    const { validate } = getInputProps(opt);
-    setErrors((prev) => ({ ...prev, [label]: validate(e.target.value) }));
+    const value = e.target.value;
+    setValues((prev) => ({ ...prev, [label]: value }));
+    validateField(label, opt, value);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, opt: any) => {
+    const label = typeof opt === 'string' ? opt : opt.label;
+    validateField(label, opt, e.target.value);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate all fields before submit
     let valid = true;
     const newErrors: Record<string, string> = {};
     opts.forEach((opt: any) => {
       const label = typeof opt === 'string' ? opt : opt.label;
-      const { validate, required } = getInputProps(opt);
-      const err = required ? validate(values[label]) : '';
+      const value = values[label];
+      const err = validateField(label, opt, value);
       if (err) valid = false;
       newErrors[label] = err;
     });
@@ -545,43 +645,60 @@ function FormOptions({ options, heading, onSubmit }: { options: any[]; heading?:
   };
 
   return (
-    <form className="cp-form-options" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {heading && <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>{heading}</div>}
-      {opts.map((opt: any) => {
-        const label = typeof opt === 'string' ? opt : opt.label;
-        const { type, pattern, autoComplete, placeholder, required } = getInputProps(opt);
-        return (
-          <label key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <span>{label}{required ? ' *' : ''}</span>
-            {type === 'textarea' ? (
-              <textarea
-                className="cp-input"
-                value={values[label]}
-                onChange={(e) => handleChange(e, opt)}
-                required={required}
-                autoComplete={autoComplete}
-                placeholder={placeholder}
-                style={{ minHeight: 60 }}
-              />
-            ) : (
-              <input
-                className="cp-input"
-                value={values[label]}
-                onChange={(e) => handleChange(e, opt)}
-                required={required}
-                type={type}
-                pattern={pattern}
-                autoComplete={autoComplete}
-                placeholder={placeholder}
-              />
-            )}
-            {errors[label] && <span style={{ color: 'red', fontSize: 12 }}>{errors[label]}</span>}
-          </label>
-        );
-      })}
-      <button className="cp-option" type="submit" style={{ alignSelf: 'flex-end' }}>
-        Submit
-      </button>
+    <form className="cp-form-options" onSubmit={handleSubmit}>
+      <div className="cp-form-card">
+        <div className="cp-form-header">
+          <span className="cp-form-pill">Quick Form</span>
+          <h3 className="cp-form-title">{displayHeading}</h3>
+          <p className="cp-form-subtitle">Share a few details so our concierge team can tailor suggestions just for you.</p>
+        </div>
+        <div className="cp-form-body">
+          {opts.map((opt: any) => {
+            const label = typeof opt === 'string' ? opt : opt.label;
+            const { type, pattern, autoComplete, placeholder, required, description } = getInputProps(opt);
+            const value = values[label] ?? '';
+            return (
+              <label key={label} className={`cp-form-field${errors[label] ? ' cp-form-field--error' : ''}`}>
+                <span className="cp-form-label">
+                  {label}
+                  {required ? <span className="cp-form-required">*</span> : null}
+                </span>
+                {description ? <span className="cp-form-description">{description}</span> : null}
+                {type === 'textarea' ? (
+                  <textarea
+                    className="cp-form-input cp-form-input--textarea"
+                    value={value}
+                    onChange={(e) => handleChange(e, opt)}
+                    onBlur={(e) => handleBlur(e, opt)}
+                    required={required}
+                    autoComplete={autoComplete}
+                    placeholder={placeholder}
+                  />
+                ) : (
+                  <input
+                    className="cp-form-input"
+                    value={value}
+                    onChange={(e) => handleChange(e, opt)}
+                    onBlur={(e) => handleBlur(e, opt)}
+                    required={required}
+                    type={type === 'textarea' ? 'text' : type}
+                    pattern={pattern}
+                    autoComplete={autoComplete}
+                    placeholder={placeholder}
+                  />
+                )}
+                {errors[label] && <span className="cp-form-error">{errors[label]}</span>}
+              </label>
+            );
+          })}
+        </div>
+        <div className="cp-form-footer">
+          <button className="cp-form-submit" type="submit">
+            Submit Details
+            <span className="cp-form-submit-icon">→</span>
+          </button>
+        </div>
+      </div>
     </form>
   );
 }
