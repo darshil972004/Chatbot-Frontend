@@ -5,7 +5,7 @@ interface WorkflowNodeData {
   label: string;
   type: string;
   question_text: string;
-  options?: Array<{ id: number; text: string; warning?: boolean }>;
+  options?: Array<{ id: number; text: string; nextStepId?: string }>;
   formFields?: Array<{ id: number; label: string; type: string; required: boolean }>;
   onDelete?: (nodeId: string) => void;
   onEdit?: (nodeId: string) => void;
@@ -89,9 +89,6 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
             {data.options.map((option) => (
               <div key={option.id} className="node-option-item">
                 <span>{option.id} {option.text || 'Empty option'}</span>
-                {option.warning && (
-                  <span className="warning-icon" title="Warning">⚠️</span>
-                )}
               </div>
             ))}
             {data.options.length === 0 && (

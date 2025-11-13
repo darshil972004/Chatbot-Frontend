@@ -26,6 +26,8 @@ const nodeTypes: NodeTypes = {
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
+type OptionConfig = { id: number; text: string; nextStepId?: string };
+
 interface ComponentPaletteItem {
   id: string;
   type: string;
@@ -58,7 +60,7 @@ export default function WorkflowManagement() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
-  const [editOptions, setEditOptions] = useState<Array<{ id: number; text: string; warning?: boolean }>>([]);
+  const [editOptions, setEditOptions] = useState<OptionConfig[]>([]);
   const [editFormFields, setEditFormFields] = useState<Array<{ id: number; label: string; type: string; required?: boolean }>>([]);
   const [workflowId, setWorkflowId] = useState<string | null>(routeWorkflowId || null);
   const [workflowName, setWorkflowName] = useState<string>('Untitled Workflow');
@@ -107,7 +109,8 @@ export default function WorkflowManagement() {
     // Use question_text or prompt, whichever is available
     setEditPrompt(node.data.question_text || node.data.prompt || '');
     // Copy options and formFields (shallow copy is fine for arrays of objects)
-    setEditOptions(node.data.options ? [...node.data.options] : []);
+    // Ensure nextStepId is included when copying options
+    setEditOptions(node.data.options ? node.data.options.map((opt: OptionConfig) => ({ ...opt })) : []);
     setEditFormFields(node.data.formFields ? [...node.data.formFields] : []);
     setShowEditModal(true);
   }, [nodes]);
@@ -137,7 +140,7 @@ export default function WorkflowManagement() {
         
         // Transform database nodes to ReactFlow nodes
         const loadedNodes: Node[] = result.nodes.map((nodeData) => {
-          let options: Array<{ id: number; text: string; warning?: boolean }> = [];
+          let options: OptionConfig[] = [];
           let formFields: Array<{ id: number; label: string; type: string; required?: boolean }> = [];
 
           // Parse options_json based on node type
@@ -153,7 +156,12 @@ export default function WorkflowManagement() {
                   formFields = parsed;
                 } else if (nodeData.type === 'button-list' || nodeData.type === 'dropdown') {
                   // For button-list and dropdown, parse as options
-                  options = parsed;
+                  // Ensure nextStepId is preserved
+                  options = parsed.map((opt: any) => ({
+                    id: opt.id,
+                    text: opt.text,
+                    nextStepId: opt.nextStepId
+                  }));
                 }
               }
             } catch (e) {
@@ -255,8 +263,8 @@ export default function WorkflowManagement() {
           type: componentType,
           prompt: defaultPrompt,
           question_text: defaultPrompt,
-          options: (componentType === 'button-list' || componentType === 'dropdown') 
-            ? [{ id: 1, text: 'Option 1', warning: true }] 
+            options: (componentType === 'button-list' || componentType === 'dropdown') 
+            ? [{ id: 1, text: 'Option 1', nextStepId: undefined }] 
             : [],
           formFields: componentType === 'form'
             ? [{ id: 1, label: 'Name', type: 'text', required: true }]
@@ -543,12 +551,12 @@ export default function WorkflowManagement() {
 
   const handleAddOption = () => {
     const newId = editOptions.length > 0 ? Math.max(...editOptions.map(o => o.id)) + 1 : 1;
-    setEditOptions([...editOptions, { id: newId, text: '', warning: false }]);
+    setEditOptions([...editOptions, { id: newId, text: '', nextStepId: undefined }]);
   };
 
-  const handleUpdateOption = (id: number, field: 'text' | 'warning', value: string | boolean) => {
+  const handleUpdateOption = (id: number, updates: Partial<OptionConfig>) => {
     setEditOptions(editOptions.map(opt =>
-      opt.id === id ? { ...opt, [field]: value } : opt
+      opt.id === id ? { ...opt, ...updates } : opt
     ));
   };
 
@@ -617,12 +625,13 @@ export default function WorkflowManagement() {
 
   // Add selected category options to editOptions
   const handleAddSelectedCategoryOptions = () => {
-    const newOptions = Array.from(selectedCategoryOptions)
-      .map(optionId => {
-        const option = categoryOptions.find(opt => opt.id === optionId);
-        return option ? { id: Date.now() + optionId, text: option.text, warning: false } : null;
-      })
-      .filter((opt): opt is { id: number; text: string; warning: boolean } => opt !== null);
+    const newOptions: OptionConfig[] = [];
+    Array.from(selectedCategoryOptions).forEach(optionId => {
+      const option = categoryOptions.find(opt => opt.id === optionId);
+      if (option) {
+        newOptions.push({ id: Date.now() + optionId, text: option.text });
+      }
+    });
 
     // Merge with existing options, avoiding duplicates
     const existingTexts = new Set(editOptions.map(opt => opt.text.toLowerCase()));
@@ -630,7 +639,7 @@ export default function WorkflowManagement() {
 
     // Get the next available ID
     const maxId = editOptions.length > 0 ? Math.max(...editOptions.map(o => o.id)) : 0;
-    const optionsWithIds = uniqueNewOptions.map((opt, idx) => ({
+    const optionsWithIds: OptionConfig[] = uniqueNewOptions.map((opt, idx) => ({
       ...opt,
       id: maxId + idx + 1
     }));
@@ -654,6 +663,16 @@ export default function WorkflowManagement() {
     });
   };
 
+  const handleSelectAllCategoryOptions = () => {
+    if (categoryOptions.length === 0) return;
+    setSelectedCategoryOptions((prev) => {
+      if (prev.size === categoryOptions.length) {
+        return new Set();
+      }
+      return new Set<number>(categoryOptions.map(option => option.id));
+    });
+  };
+
   return (
     <div className="workflow-management">
       {/* Header Bar */}
@@ -664,7 +683,7 @@ export default function WorkflowManagement() {
           </button>
         </div>
         <div className="header-center">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
+          <div className="workflow-name-wrapper">
             {/* <h1 className="workflow-title">{workflowId ? 'Edit Workflow' : 'Create Workflow'}</h1> */}
             <input
               type="text"
@@ -677,17 +696,6 @@ export default function WorkflowManagement() {
               }}
               className="workflow-name-input"
               placeholder="Workflow Name"
-              style={{
-                padding: '6px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '16px',
-                fontWeight: 600,
-                minWidth: '200px',
-                fontFamily: 'Times New Roman', 
-                color: '#7f8286',              
-              }}
-              
             />
           </div>
           <p className="workflow-instructions">
@@ -728,17 +736,7 @@ export default function WorkflowManagement() {
 
       {/* Loading State */}
       {isLoading && (
-        <div style={{ 
-          position: 'absolute', 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)',
-          zIndex: 1000,
-          background: 'white',
-          padding: '20px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-        }}>
+        <div className="workflow-loading-overlay">
           <p>Loading workflow...</p>
         </div>
       )}
@@ -849,79 +847,114 @@ export default function WorkflowManagement() {
         <div className="data-modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="data-modal-content edit-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="data-modal-header">
-              <h2>Edit {editingNode.data.label}</h2>
+              <h2>{editingNode.data.type === 'button-list' ? 'Button List' : `Edit ${editingNode.data.label}`}</h2>
               <button className="close-modal-btn" onClick={() => setShowEditModal(false)}>
                 ×
               </button>
             </div>
             <div className="data-modal-body">
               <div className="edit-form-group">
-                <label htmlFor="edit-prompt">Question Text:</label>
-                <input
+                <label htmlFor="edit-prompt">Message</label>
+                <textarea
                   id="edit-prompt"
-                  type="text"
                   value={editPrompt}
                   onChange={(e) => setEditPrompt(e.target.value)}
-                  className="edit-input"
-                  placeholder="Enter prompt text"
+                  className="edit-input edit-textarea"
+                  placeholder="Enter message text"
+                  rows={3}
                 />
               </div>
 
               {(editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown') && (
                 <div className="edit-form-group">
                   <div className="edit-options-header">
-                    <label>Options:</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <label>Buttons</label>
+                    <div className="edit-option-actions">
                       {detectCategoryFromText(editPrompt) && (
                         <button 
-                          className="add-option-btn" 
+                          className="add-option-btn load-db-btn" 
                           onClick={() => handleLoadCategoryOptions(detectCategoryFromText(editPrompt)!)}
                           disabled={isLoadingCategoryOptions}
-                          style={{ 
-                            backgroundColor: '#10b981', 
-                            color: 'white',
-                            fontSize: '12px',
-                            padding: '6px 12px'
-                          }}
                           title={`Load ${detectCategoryFromText(editPrompt)} options from database`}
                         >
                           {isLoadingCategoryOptions ? 'Loading...' : '📥 Load from Database'}
                         </button>
                       )}
                       <button className="add-option-btn" onClick={handleAddOption}>
-                        + Add Option
+                        + Add new item
                       </button>
                     </div>
                   </div>
                   <div className="edit-options-list">
-                    {editOptions.map((option) => (
-                      <div key={option.id} className="edit-option-item">
-                        <input
-                          type="text"
-                          value={option.text}
-                          onChange={(e) => handleUpdateOption(option.id, 'text', e.target.value)}
-                          className="edit-option-input"
-                          placeholder={`Option ${option.id}`}
-                        />
-                        <label className="warning-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={option.warning || false}
-                            onChange={(e) => handleUpdateOption(option.id, 'warning', e.target.checked)}
-                          />
-                          <span>Warning</span>
-                        </label>
-                        <button
-                          className="delete-option-btn"
-                          onClick={() => handleDeleteOption(option.id)}
-                          title="Delete option"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    ))}
+                    {editOptions.map((option, index) => {
+                      // Get direct child nodes (nodes connected from this node)
+                      const connectedNodes = edges
+                        .filter(edge => edge.source === editingNode.id)
+                        .map(edge => {
+                          const targetNode = nodes.find(n => n.id === edge.target);
+                          if (!targetNode) return null;
+                          const targetLabel =
+                            targetNode.data.question_text ||
+                            targetNode.data.prompt ||
+                            targetNode.data.label ||
+                            targetNode.data.type;
+                          return { id: targetNode.id, label: targetLabel };
+                        })
+                        .filter((node): node is { id: string; label: string } => node !== null);
+
+                      return (
+                        <div key={option.id} className="edit-option-section">
+                          <div className="edit-option-header">
+                            <span className="option-label">Option {index + 1}</span>
+                            <button
+                              className="delete-option-btn"
+                              onClick={() => handleDeleteOption(option.id)}
+                              title="Delete option"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="edit-option-item">
+                            <div className="edit-option-field">
+                              <label className="field-label-small">Button Text</label>
+                              <input
+                                type="text"
+                                value={option.text}
+                                onChange={(e) => handleUpdateOption(option.id, { text: e.target.value })}
+                                className="edit-option-input"
+                                placeholder={`Option ${index + 1}`}
+                              />
+                            </div>
+                            <div className="edit-option-field">
+                              <label className="field-label-small">Goes to Step (Direct Children Only)</label>
+                              <select
+                                value={option.nextStepId || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value || undefined;
+                                  handleUpdateOption(option.id, { nextStepId: value });
+                                }}
+                                className="edit-next-step-select"
+                              >
+                                <option value="">Please select an option:</option>
+                                {connectedNodes.length === 0 && (
+                                  <option value="" disabled>No next step (ends workflow)</option>
+                                )}
+                                {connectedNodes.map((node) => (
+                                  <option key={node.id} value={node.id}>
+                                    {node.label}
+                                  </option>
+                                ))}
+                              </select>
+                              {connectedNodes.length === 0 && option.nextStepId && (
+                                <span className="warning-text">No next step (ends workflow)</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                     {editOptions.length === 0 && (
-                      <p className="no-options-text">No options added. Click "Add Option" to add one.</p>
+                      <p className="no-options-text">No options added. Click "Add new item" to add one.</p>
                     )}
                   </div>
                 </div>
@@ -997,7 +1030,7 @@ export default function WorkflowManagement() {
       {/* Category Options Selection Modal */}
       {showCategoryOptionsModal && (
         <div className="data-modal-overlay" onClick={() => setShowCategoryOptionsModal(false)}>
-          <div className="data-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh' }}>
+          <div className="data-modal-content category-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="data-modal-header">
               <h2>Select Options from Database</h2>
               <button className="close-modal-btn" onClick={() => setShowCategoryOptionsModal(false)}>
@@ -1005,55 +1038,40 @@ export default function WorkflowManagement() {
               </button>
             </div>
             <div className="data-modal-body">
-              <p style={{ marginBottom: '16px', color: '#666' }}>
+              <p className="category-options-intro">
                 Select options to add for <strong>{detectedCategory}</strong>:
               </p>
-              <div style={{ 
-                maxHeight: '400px', 
-                overflowY: 'auto', 
-                border: '1px solid #e5e7eb', 
-                borderRadius: '6px',
-                padding: '8px'
-              }}>
+              <div className="category-options-toolbar">
+                <button
+                  className="select-all-button"
+                  onClick={handleSelectAllCategoryOptions}
+                  disabled={categoryOptions.length === 0}
+                >
+                  {selectedCategoryOptions.size === categoryOptions.length ? 'Clear All' : 'Select All'}
+                </button>
+              </div>
+              <div className="category-options-list">
                 {categoryOptions.map((option) => (
                   <label
                     key={option.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '8px',
-                      cursor: 'pointer',
-                      borderRadius: '4px',
-                      marginBottom: '4px',
-                      backgroundColor: selectedCategoryOptions.has(option.id) ? '#e0f2fe' : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!selectedCategoryOptions.has(option.id)) {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!selectedCategoryOptions.has(option.id)) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }
-                    }}
+                    className={`category-option-item${selectedCategoryOptions.has(option.id) ? ' selected' : ''}`}
                   >
                     <input
                       type="checkbox"
                       checked={selectedCategoryOptions.has(option.id)}
                       onChange={() => handleToggleCategoryOption(option.id)}
-                      style={{ marginRight: '12px', cursor: 'pointer' }}
+                      className="category-option-checkbox"
                     />
                     <span>{option.text}</span>
                   </label>
                 ))}
                 {categoryOptions.length === 0 && (
-                  <p style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+                  <p className="category-options-empty">
                     No options available
                   </p>
                 )}
               </div>
-              <div className="data-modal-actions" style={{ marginTop: '16px' }}>
+              <div className="data-modal-actions category-options-actions">
                 <button 
                   className="close-btn" 
                   onClick={() => {
@@ -1068,10 +1086,6 @@ export default function WorkflowManagement() {
                   className="save-button" 
                   onClick={handleAddSelectedCategoryOptions}
                   disabled={selectedCategoryOptions.size === 0}
-                  style={{ 
-                    opacity: selectedCategoryOptions.size === 0 ? 0.5 : 1,
-                    cursor: selectedCategoryOptions.size === 0 ? 'not-allowed' : 'pointer'
-                  }}
                 >
                   Add Selected ({selectedCategoryOptions.size})
                 </button>

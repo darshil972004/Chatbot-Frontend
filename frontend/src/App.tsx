@@ -11,13 +11,7 @@ const ADMIN_PASSWORD = (window as any).VITE_ADMIN_PASSWORD || 'admin123'
 
 function PublicHome() {
   return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ marginBottom: 12 }}>Chatbot</h1>
-      <p style={{ marginBottom: 20, maxWidth: 560, color: '#475569' }}>
-        Welcome! Use the chatbot below to explore property information. Workflow management tools are available from the admin panel.
-      </p>
       <ChatbotWidget />
-    </div>
   )
 }
 
