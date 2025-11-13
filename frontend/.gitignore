@@ -1,7 +1,5 @@
 <<<<<<< HEAD
-
-
-/frontend/node_modules
+node_modules
 =======
 # =========================================
 # React + TypeScript Project .gitignore
@@ -76,7 +74,7 @@ debug.log
 # Misc
 *.orig
 *.rej
-frontend 13,11.zip
+
 # =========================================
 # End of File
 # =========================================
