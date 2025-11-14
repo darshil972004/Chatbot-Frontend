@@ -41,10 +41,10 @@ const componentPalette: ComponentPaletteItem[] = [
   { id: 'dropdown', type: 'dropdown', label: 'Dropdown', icon: '▼' },
   { id: 'message', type: 'message', label: 'Message', icon: '💬' },
   { id: 'form', type: 'form', label: 'Get User Details', icon: '👤' },
-  { id: 'set-data', type: 'set-data', label: 'Set Data', icon: '📊' },
-  { id: 'actions', type: 'actions', label: 'Actions', icon: '⚡' },
-  { id: 'conditions', type: 'conditions', label: 'Conditions', icon: '🔀' },
-  { id: 'rest-api', type: 'rest-api', label: 'Rest API', icon: '🔗' },
+  // { id: 'set-data', type: 'set-data', label: 'Set Data', icon: '📊' },
+  // { id: 'actions', type: 'actions', label: 'Actions', icon: '⚡' },
+  // { id: 'conditions', type: 'conditions', label: 'Conditions', icon: '🔀' },
+  // { id: 'rest-api', type: 'rest-api', label: 'Rest API', icon: '🔗' },
 ];
 
 export default function WorkflowManagement() {

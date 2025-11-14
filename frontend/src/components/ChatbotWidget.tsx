@@ -108,20 +108,40 @@ export default function ChatbotWidget() {
         setLoading(true);
         try {
           const res = await sendMessageToBot(userId, 'init');
-          if (res.success && res.data?.result) {
+          if (res.success && res.data) {
+            const rType = res.data.response_type;
+            const optsRaw = res.data.options || [];
+            let opts: any[] = [];
+            let formHeading = '';
+            // If options_json is a string, parse it
+            try {
+              if (typeof optsRaw === 'string') opts = JSON.parse(optsRaw);
+              else opts = optsRaw;
+            } catch { opts = optsRaw; }
+            formHeading = (res.data && (res.data as any).label) || (res.data && (res.data as any).question_text) || 'User Details';
+
+            // If initial message includes options for form, dropdown, or button-list
+            if ((rType === 'form' || rType === 'Get User Details' || (Array.isArray(opts) && opts.length > 0 && typeof opts[0] === 'object'))) {
+              setPendingOptions(opts);
+              setPendingMode('form');
+              (window as any).cpFormHeading = formHeading;
+            } else if ((rType === 'button-list' || rType === 'dropdown') && Array.isArray(opts) && opts.length > 0) {
+              setPendingOptions(opts);
+              setPendingMode(rType);
+            }
+
+            // Always show initial message text
             const initialMsg: ChatMessage = { 
               id: uid(), 
               role: 'bot', 
-              text: res.data.result 
+              text: res.data.result || ''
             };
             setMessages([initialMsg]);
             localStorage.setItem(LOCAL_KEY, JSON.stringify([initialMsg]));
-            
-            // Check if initial response requires auto-send
-            const rType = (res.data as any)?.response_type;
+
+            // Auto-send "defult" for initial message if needed
             if (rType === 'message') {
               setLoading(false);
-              // Auto-send "defult" for initial message
               await handleSend('defult', true);
               return;
             }
