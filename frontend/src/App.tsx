@@ -1,49 +1,94 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
-import { RecoilRoot } from 'recoil';
-import ChatbotWidget from './components/ChatbotWidget';
-import AdminLayout from './components/AdminPanel/AdminLayout';
-import ChatbotConfig from './components/AdminPanel/ChatbotConfig';
-import WorkflowManagement from './components/WorkflowManagement';
-import WorkflowList from './components/WorkflowList';
-import './components/chatbot.css';
+import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom'
+import { RecoilRoot } from 'recoil'
+import ChatbotWidget from './components/ChatbotWidget'
+import AdminLayout from './components/AdminPanel/AdminLayout'
+import ChatbotConfig from './components/AdminPanel/ChatbotConfig'
+import WorkflowManagement from './components/WorkflowManagement'
+import WorkflowList from './components/WorkflowList'
+import AdminPanel from './components/AdminPanel'
+import './components/chatbot.css'
 
-function Home() {
+const ADMIN_USERNAME = (window as any).VITE_ADMIN_USERNAME || 'admin'
+const ADMIN_PASSWORD = (window as any).VITE_ADMIN_PASSWORD || 'admin123'
+
+function PublicHome() {
   return (
-    <div style={{ padding: 20 }}>
-      <div style={{ marginBottom: 20, display: 'flex', gap: '12px' }}>
-        <Link to="/workflows" style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', textDecoration: 'none', borderRadius: '6px' }}>
-          View Workflows
-        </Link>
-        <Link to="/workflow" style={{ padding: '10px 20px', backgroundColor: '#10b981', color: 'white', textDecoration: 'none', borderRadius: '6px' }}>
-          Create New Workflow
-        </Link>
-      </div>
+    <div>
       <ChatbotWidget />
     </div>
-  );
+  )
 }
 
 function WorkflowPage() {
   return <WorkflowManagement />;
 }
-
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+    return window.localStorage.getItem('adminLoggedIn') === 'true'
+  })
+
+  const handleAdminLogin = (username: string, password: string) => {
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('adminLoggedIn', 'true')
+      }
+      setIsAdmin(true)
+      return { success: true as const }
+    }
+
+    return {
+      success: false as const,
+      message: 'Invalid username or password.',
+    }
+  }
+
+  const handleAdminLogout = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('adminLoggedIn')
+    }
+    setIsAdmin(false)
+  }
+
   return (
     <RecoilRoot>
       <Router>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/workflows" element={<WorkflowList />} />
-          <Route path="/workflow" element={<WorkflowPage />} />
-          <Route path="/workflow/:workflowId" element={<WorkflowPage />} />
+          <Route path="/" element={<PublicHome />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminPanel
+                isAdmin={isAdmin}
+                onLogin={handleAdminLogin}
+                onLogout={handleAdminLogout}
+              />
+            }
+          />
+          <Route
+            path="/workflows"
+            element={isAdmin ? <WorkflowList /> : <Navigate to="/admin" replace />}
+          />
+          <Route
+            path="/workflow"
+            element={isAdmin ? <WorkflowManagement /> : <Navigate to="/admin" replace />}
+          />
+          <Route
+            path="/workflow/:workflowId"
+            element={isAdmin ? <WorkflowManagement /> : <Navigate to="/admin" replace />}
+          />
           {/* Admin routes */}
-          <Route path="/admin-panel" element={<AdminLayout />}>
+          <Route path="/admin-panel" element={isAdmin ? <AdminLayout /> : <Navigate to="/admin" replace />}>
             <Route index element={<Navigate to="chatbot" replace />} />
             <Route path="chatbot" element={<ChatbotConfig />} />
             {/* Add more admin routes here as needed */}
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </RecoilRoot>
-  );
+  )
 }

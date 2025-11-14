@@ -1,10 +1,10 @@
 # =========================================
 # React + TypeScript + Fullstack Project .gitignore
 # =========================================
-
+ 
 # Node (ignore ALL node_modules, even in subfolders)
 **/node_modules/
-
+ 
 # Package managers
 **/npm-debug.log*
 **/yarn-debug.log*
@@ -13,20 +13,20 @@
 **/yarn.lock
 **/package-lock.json
 **/.pnpm-store/
-
+ 
 # Build output (in any subdir)
 **/dist/
 **/build/
 **/out/
 **/*.log
-
+ 
 # # Local environment
 # **/.env
 # **/.env.local
 # **/.env.development.local
 # **/.env.test.local
 # **/.env.production.local
-
+ 
 # Editor / IDE
 **/.vscode/
 **/.idea/
@@ -34,24 +34,24 @@
 **/*.swo
 **/*.swn
 **/*.swp
-
+ 
 # OS files
 **/.DS_Store
 **/Thumbs.db
-
+ 
 # Testing
 **/coverage/
 **/*.lcov
-
+ 
 # TypeScript
 **/*.tsbuildinfo
-
+ 
 # Temporary files
 **/tmp/
 **/temp/
 **/*.tmp
 **/*.bak
-
+ 
 # Cache
 **/.cache/
 **/.vite/
@@ -60,20 +60,23 @@
 **/.cypress_cache/
 **/playwright-report/
 **/allure-results/
-
+ 
 # Logs and debug
 **/logs/
 **/debug.log
-
+ 
 # Optional build configs
 # (Uncomment if you don't want to commit)
 # **/tsconfig.tsbuildinfo
 # **/.eslintcache
-
+ 
 # Misc
 **/*.orig
 **/*.rej
-
+ 
 # =========================================
 # End of File
 # =========================================
+/frontend/node_modules
+/frontend/node_modules
+frontend 13,11.zip
