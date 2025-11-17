@@ -135,6 +135,7 @@
   border-bottom: 1px solid #e5e7eb;
   overflow-x: auto;
   flex-wrap: nowrap;
+  justify-content: center;
 }
 
 .palette-item {

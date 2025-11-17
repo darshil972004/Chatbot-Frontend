@@ -1,7 +1,7 @@
-import { FormEvent, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ChatbotWidget from './ChatbotWidget';
+import './admin-panel.css';
 
 type AdminPanelProps = {
   isAdmin: boolean;
@@ -9,11 +9,62 @@ type AdminPanelProps = {
   onLogout: () => void;
 };
 
+// Types for Admin Panel UI
+type Agent = {
+  id: number;
+  username: string;
+  password: string;
+  name: string;
+  role: string;
+  status: 'online' | 'offline' | 'busy';
+  currentSessionId: number | null;
+  metrics: {
+    chatsToday: number;
+    avgResponse: number;
+  };
+};
+
+type Session = {
+  id: number;
+  userId: string;
+  topic: string;
+  status: 'waiting' | 'assigned' | 'closed';
+  assignedAgentId: number | null;
+  messages: Array<{ sender: string; text: string }>;
+  duration: number;
+  waitTime: number;
+};
+
+type Template = {
+  id: number;
+  type: string;
+  content: string;
+};
+
+type RoutingRule = {
+  id: number;
+  topic: string;
+  allowedRoles: string[];
+  priority: number;
+  autoAssign: boolean;
+};
+
 export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Admin Panel UI state
+  const [route, setRoute] = useState('dashboard');
+  const [agents, setAgents] = useState<Agent[]>(mockAgents());
+  const [sessions, setSessions] = useState<Session[]>(mockSessions());
+  const [templates, setTemplates] = useState<Template[]>(mockTemplates());
+  const [routingRules, setRoutingRules] = useState<RoutingRule[]>(mockRoutingRules());
+
+  useEffect(() => {
+    // Placeholder for initial data load (fetch from API)
+  }, []);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -36,39 +87,39 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
 
   if (!isAdmin) {
     return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <h1 style={styles.heading}>Admin Panel Login</h1>
-          <p style={styles.subtitle}>
+      <div className="admin-login-container">
+        <div className="admin-login-card">
+          <h1 className="admin-login-heading">Admin Panel Login</h1>
+          <p className="admin-login-subtitle">
             Enter your credentials to access workflow management tools.
           </p>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <label style={styles.label}>
+          <form onSubmit={handleSubmit} className="admin-login-form">
+            <label className="admin-login-label">
               Username
               <input
                 type="text"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                style={styles.input}
+                className="admin-login-input"
                 placeholder="admin"
                 autoComplete="username"
                 required
               />
             </label>
-            <label style={styles.label}>
+            <label className="admin-login-label">
               Password
               <input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                style={styles.input}
+                className="admin-login-input"
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
               />
             </label>
-            {error && <div style={styles.error}>{error}</div>}
-            <button type="submit" style={styles.primaryButton} disabled={isSubmitting}>
+            {error && <div className="admin-login-error">{error}</div>}
+            <button type="submit" className="admin-login-button" disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
@@ -78,159 +129,1067 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
   }
 
   return (
-    <div style={styles.container}>
-      <div style={{ ...styles.card, width: '100%', maxWidth: '960px' }}>
-        <header style={styles.header}>
-          <div>
-            <h1 style={styles.heading}>Admin Panel</h1>
-            <p style={styles.subtitle}>
-              Manage chatbot workflows and preview the user experience.
-            </p>
-          </div>
-          <button style={styles.secondaryButton} onClick={onLogout}>
-            Log out
-          </button>
-        </header>
+    <div className="admin-panel-container">
+      <div className="admin-panel-wrapper">
+        <div className="admin-panel-grid">
+          <aside className="admin-panel-sidebar">
+            <Sidebar route={route} setRoute={setRoute} agents={agents} sessions={sessions} onLogout={onLogout} />
+          </aside>
 
-        <div style={styles.actions}>
-          <Link to="/workflows" style={styles.linkButton}>
+          <main className="admin-panel-main">
+            <Header onLogout={onLogout} setRoute={setRoute} />
+
+            <div style={{ marginTop: '16px' }}>
+              {route === 'dashboard' && <Dashboard agents={agents} sessions={sessions} />}
+              {route === 'agents' && (
+                <AgentsPage agents={agents} setAgents={setAgents} />
+              )}
+              {route === 'live' && (
+                <LiveChatsPage sessions={sessions} setSessions={setSessions} agents={agents} setAgents={setAgents} />
+              )}
+              {route === 'routing' && (
+                <RoutingPage rules={routingRules} setRules={setRoutingRules} agents={agents} />
+              )}
+              {route === 'templates' && (
+                <TemplatesPage templates={templates} setTemplates={setTemplates} />
+              )}
+              {route === 'history' && <ChatHistoryPage sessions={sessions} />}
+              {route === 'analytics' && <AnalyticsPage sessions={sessions} agents={agents} />}
+              {route === 'settings' && <SettingsPage />}
+              {route === 'workflows' && (
+                <WorkflowSection />
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+          </div>
+  );
+}
+
+// Workflow Section Component (from original AdminPanel)
+function WorkflowSection() {
+  return (
+    <div className="admin-workflow-section">
+      <div className="admin-workflow-actions">
+        <Link to="/workflows" className="admin-workflow-link">
             View Saved Workflows
           </Link>
-          <Link to="/workflow" style={styles.linkButtonSecondary}>
+        <Link to="/workflow" className="admin-workflow-link admin-workflow-link-secondary">
             Create New Workflow
           </Link>
         </div>
 
-        <section style={styles.chatbotPanel}>
-          <h2 style={styles.subheading}>Chatbot Preview</h2>
+      <section className="admin-chatbot-panel">
+        <h2>Chatbot Preview</h2>
           <ChatbotWidget />
         </section>
+    </div>
+  );
+}
+
+// Header Component
+import { useRef } from 'react';
+type HeaderProps = { onLogout: () => void; setRoute: (route: string) => void };
+function Header({ onLogout, setRoute }: HeaderProps) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
+  return (
+    <div className="admin-header">
+      <div>
+        <h1>Support Admin Panel</h1>
+        <p>Manage agents, routing, and live chats</p>
+      </div>
+      <div className="admin-header-user" style={{ position: 'relative' }}>
+        <div className="admin-header-avatar" onClick={() => setShowMenu((v) => !v)} style={{ cursor: 'pointer' }}>A</div>
+        {showMenu && (
+          <div ref={menuRef} className="admin-header-dropdown" style={{ position: 'absolute', right: 0, top: '48px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', borderRadius: '8px', minWidth: '180px', zIndex: 100 }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '16px 16px 8px 16px', borderBottom: '1px solid #e5e7eb' }}>
+              <div className="admin-header-avatar" style={{ marginRight: '12px', width: '32px', height: '32px', fontSize: '18px' }}>A</div>
+              <div style={{ fontWeight: 600, fontSize: '16px' }}>Admin</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 16px' }}>
+              <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px' }} onClick={() => { setShowMenu(false); setRoute('settings'); }}>Settings</button>
+              <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px', color: '#ef4444' }} onClick={() => { setShowMenu(false); onLogout(); }}>Log out</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-const styles: Record<string, CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    padding: '32px 16px',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '420px',
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 20px 45px rgba(15, 23, 42, 0.12)',
-    padding: '32px',
-  },
-  heading: {
-    margin: 0,
-    fontSize: '28px',
-    fontWeight: 700,
-    color: '#0f172a',
-  },
-  subheading: {
-    margin: '0 0 16px 0',
-    fontSize: '20px',
-    fontWeight: 600,
-    color: '#1f2937',
-  },
-  subtitle: {
-    margin: '12px 0 24px',
-    fontSize: '16px',
-    color: '#475569',
-    lineHeight: 1.5,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-  },
-  label: {
-    fontSize: '14px',
-    color: '#1f2937',
-    fontWeight: 600,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  input: {
-    padding: '12px 14px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '15px',
-    color: '#0f172a',
-    outline: 'none',
-  },
-  primaryButton: {
-    marginTop: '12px',
-    padding: '12px 18px',
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  secondaryButton: {
-    padding: '10px 16px',
-    backgroundColor: '#e2e8f0',
-    color: '#0f172a',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '15px',
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  linkButton: {
-    padding: '12px 20px',
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    textDecoration: 'none',
-    borderRadius: '8px',
-    fontSize: '15px',
-    fontWeight: 600,
-  },
-  linkButtonSecondary: {
-    padding: '12px 20px',
-    backgroundColor: '#10b981',
-    color: '#ffffff',
-    textDecoration: 'none',
-    borderRadius: '8px',
-    fontSize: '15px',
-    fontWeight: 600,
-  },
-  error: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    color: '#b91c1c',
-    borderRadius: '8px',
-    padding: '10px 12px',
-    fontSize: '14px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '16px',
-    marginBottom: '24px',
-  },
-  actions: {
-    display: 'flex',
-    gap: '12px',
-    flexWrap: 'wrap',
-    marginBottom: '28px',
-  },
-  chatbotPanel: {
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    padding: '24px',
-    border: '1px solid #e2e8f0',
-  },
+// Sidebar Component
+type SidebarProps = {
+  route: string;
+  setRoute: (route: string) => void;
+  agents: Agent[];
+  sessions: Session[];
+  onLogout: () => void;
 };
+
+function Sidebar({ route, setRoute, agents, sessions, onLogout }: SidebarProps) {
+  const waitingCount = sessions.filter((s) => s.status === 'waiting').length;
+  const onlineCount = agents.filter((a) => a.status === 'online').length;
+
+  const item = (id: string, label: string, subtitle: string | null) => (
+    <li
+      key={id}
+      onClick={() => setRoute(id)}
+      className={`admin-sidebar-item ${route === id ? 'active' : ''}`}
+    >
+      <div>
+        <div className="admin-sidebar-item-label">{label}</div>
+        {subtitle && <div className="admin-sidebar-item-subtitle">{subtitle}</div>}
+      </div>
+    </li>
+  );
+
+  const handleAddAgent = () => {
+    setRoute('agents');
+    // Trigger create modal - this will be handled by AgentsPage component
+    setTimeout(() => {
+      const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
+      if (createButton) createButton.click();
+    }, 100);
+  };
+
+  return (
+    <div className="admin-sidebar">
+      <div className="admin-sidebar-card">
+        <div style={{ marginBottom: '16px' }}>
+          <h2 className="admin-sidebar-title">Overview</h2>
+          <div className="admin-sidebar-subtitle">Realtime control center</div>
+        </div>
+
+        <ul className="admin-sidebar-list">
+          {item('dashboard', 'Dashboard', null)}
+          {item('agents', `Agents (${onlineCount} online)`, null)}
+          {item('live', 'Live Chats', `Waiting: ${waitingCount}`)}
+          {item('routing', 'Routing Rules', null)}
+          {item('templates', 'Message Templates', null)}
+          {item('history', 'Chat History', null)}
+          {item('analytics', 'Analytics', null)}
+          {/* Settings button removed, now only accessible from header dropdown */}
+          {item('workflows', 'Workflows', null)}
+        </ul>
+      </div>
+
+      <div className="admin-sidebar-card admin-quick-actions">
+        <h3>Quick Actions</h3>
+        <div className="admin-quick-actions-buttons">
+          <button className="admin-button admin-button-primary" onClick={handleAddAgent}>Add Agent</button>
+          <button className="admin-button admin-button-success" onClick={() => setRoute('live')}>View Waiting</button>
+          {/* Log out button removed, now handled in header dropdown */}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Dashboard Component
+type DashboardProps = {
+  agents: Agent[];
+  sessions: Session[];
+};
+
+function Dashboard({ agents, sessions }: DashboardProps) {
+  const totalChats = sessions.length;
+  const avgWait = Math.round((sessions.reduce((s, it) => s + (it.waitTime || 0), 0) / Math.max(1, sessions.length)) * 10) / 10;
+
+  const topicCounts = sessions.reduce((acc, s) => {
+    acc[s.topic] = (acc[s.topic] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="admin-dashboard">
+      <div className="admin-stats-grid">
+        <StatCard title="Total Chats" value={totalChats} />
+        <StatCard title="Active Agents" value={agents.filter((a) => a.status !== 'offline').length} />
+        <StatCard title="Avg Wait (s)" value={avgWait || 0} />
+      </div>
+
+      <div className="admin-content-grid">
+        <div className="admin-content-card admin-content-card-wide">
+          <h3>Topics distribution</h3>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="admin-topic-list">
+              {Object.entries(topicCounts).length === 0 && <div className="admin-empty-state">No data</div>}
+              {Object.entries(topicCounts).map(([k, v]) => (
+                <div key={k} className="admin-topic-item">
+                  <div>{k}</div>
+                  <div className="admin-topic-value">{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ flex: 1, fontSize: '14px', color: '#64748b' }}>
+              Use analytics to dig deeper into topics and agent performance.
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-content-card">
+          <h3>Top Agents</h3>
+          <ul className="admin-agents-list">
+            {agents.slice(0, 5).map((a) => (
+              <li key={a.id} className="admin-agent-item">
+                <div>
+                  <div className="admin-agent-name">{a.name}</div>
+                  <div className="admin-agent-role">{a.role}</div>
+                </div>
+                <div style={{ fontSize: '14px' }}>{a.metrics.chatsToday}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// StatCard Component
+type StatCardProps = {
+  title: string;
+  value: number | string;
+};
+
+function StatCard({ title, value }: StatCardProps) {
+  return (
+    <div className="admin-stat-card">
+      <div className="admin-stat-title">{title}</div>
+      <div className="admin-stat-value">{value}</div>
+    </div>
+  );
+}
+
+// AgentsPage Component
+type AgentsPageProps = {
+  agents: Agent[];
+  setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
+};
+
+function AgentsPage({ agents, setAgents }: AgentsPageProps) {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [formData, setFormData] = useState<{
+    username: string;
+    password: string;
+    name: string;
+    role: string;
+    status: Agent['status'];
+  }>({
+    username: '',
+    password: '',
+    name: '',
+    role: 'support',
+    status: 'online',
+  });
+
+  function toggleStatus(id: number) {
+    setAgents((prev: Agent[]) => prev.map((a: Agent) => (a.id === id ? { ...a, status: a.status === 'online' ? 'offline' : 'online' } : a)));
+  }
+
+  function handleCreateAgent() {
+    const newAgent: Agent = {
+      id: Date.now(),
+      username: formData.username,
+      password: formData.password,
+      name: formData.name,
+      role: formData.role,
+      status: formData.status,
+      currentSessionId: null,
+      metrics: { chatsToday: 0, avgResponse: 0 }
+    };
+    setAgents((prev: Agent[]) => [...prev, newAgent]);
+    setShowCreateModal(false);
+    setFormData({ username: '', password: '', name: '', role: 'support', status: 'online' });
+  }
+
+  function handleEditAgent(agent: Agent) {
+    setEditingAgent(agent);
+    setFormData({
+      username: agent.username,
+      password: agent.password,
+      name: agent.name,
+      role: agent.role,
+      status: agent.status,
+    });
+    setShowCreateModal(true);
+  }
+
+  function handleUpdateAgent() {
+    if (editingAgent) {
+      setAgents((prev: Agent[]) => prev.map((a: Agent) => 
+        a.id === editingAgent.id 
+          ? { ...a, username: formData.username, password: formData.password, name: formData.name, role: formData.role, status: formData.status }
+          : a
+      ));
+      setEditingAgent(null);
+      setShowCreateModal(false);
+      setFormData({ username: '', password: '', name: '', role: 'support', status: 'online' });
+    }
+  }
+
+  function handleDeleteAgent(id: number) {
+    if (window.confirm('Are you sure you want to delete this agent?')) {
+      setAgents((prev: Agent[]) => prev.filter((a: Agent) => a.id !== id));
+    }
+  }
+
+  return (
+    <div className="admin-agents-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Agents</h2>
+        <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', role: 'support', status: 'online' }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
+      </div>
+
+      {showCreateModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ marginTop: 0 }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              <label>
+                Username
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Username"
+                  required
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Password"
+                  required
+                />
+              </label>
+              <label>
+                Name
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Agent name"
+                />
+              </label>
+              <label>
+                Role
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="admin-login-input"
+                >
+                  <option value="support">Support</option>
+                  <option value="technical">Technical</option>
+                  <option value="sales">Sales</option>
+                </select>
+              </label>
+              <label>
+                Status
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Agent['status'] })}
+                  className="admin-login-input"
+                >
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                  <option value="busy">Busy</option>
+                  <option value="away">Away</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
+                {editingAgent ? 'Update' : 'Create'}
+              </button>
+              <button onClick={() => { setShowCreateModal(false); setEditingAgent(null); }} className="admin-button">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Chats Today</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {agents.map((a: Agent) => (
+            <tr key={a.id}>
+              <td>{a.username}</td>
+              <td>{a.name}</td>
+              <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
+              <td>{a.status}</td>
+              <td>{a.metrics.chatsToday}</td>
+              <td>
+                <div className="admin-table-actions">
+                  <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
+                  <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
+                  <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// LiveChatsPage Component
+type LiveChatsPageProps = {
+  sessions: Session[];
+  setSessions: React.Dispatch<React.SetStateAction<Session[]>>;
+  agents: Agent[];
+  setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
+};
+
+function LiveChatsPage({ sessions, setSessions, agents, setAgents }: LiveChatsPageProps) {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  function takeSession(sessionId: number, agentId: number) {
+    setSessions((s) => s.map((x) => (x.id === sessionId ? { ...x, status: 'assigned', assignedAgentId: agentId } : x)));
+    setAgents((a) => a.map((ag) => (ag.id === agentId ? { ...ag, status: 'busy', currentSessionId: sessionId } : ag)));
+  }
+
+  function endSession(sessionId: number) {
+    setSessions((s) => s.map((x) => (x.id === sessionId ? { ...x, status: 'closed' } : x)));
+    setSelected(null);
+  }
+
+  const waiting = sessions.filter((s) => s.status === 'waiting');
+  const active = sessions.filter((s) => s.status === 'assigned');
+
+  return (
+    <div className="admin-live-chats-grid">
+      <div className="admin-live-chats-col admin-live-chats-col-3">
+        <h3 className="admin-page-title">Waiting</h3>
+        {waiting.length === 0 && <div className="admin-empty-state">No waiting users</div>}
+        <ul className="admin-live-chats-list">
+          {waiting.map((w) => (
+            <li key={w.id} className="admin-live-chats-item" onClick={() => setSelected(w.id)}>
+              <div className="admin-live-chats-item-title">Session {w.id}</div>
+              <div className="admin-live-chats-item-subtitle">{w.topic}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="admin-live-chats-col admin-live-chats-col-4">
+        <h3 className="admin-page-title">Active Sessions</h3>
+        {active.length === 0 && <div className="admin-empty-state">No active sessions</div>}
+        <ul className="admin-live-chats-list">
+          {active.map((a) => (
+            <li key={a.id} className="admin-live-chats-item" onClick={() => setSelected(a.id)}>
+              <div className="admin-live-chats-item-row">
+                <div>
+                  <div className="admin-live-chats-item-title">Session {a.id}</div>
+                  <div className="admin-live-chats-item-subtitle">Agent {a.assignedAgentId}</div>
+                </div>
+                <div style={{ fontSize: '14px' }}>{a.duration}s</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="admin-live-chats-col admin-live-chats-col-5">
+        <h3 className="admin-page-title">Chat Window</h3>
+        {!selected && <div className="admin-empty-state">Select a session to view chat</div>}
+        {selected && (
+          <div>
+            <ChatWindow session={sessions.find((s) => s.id === selected)} onEnd={() => endSession(selected)} agents={agents} onAssign={takeSession} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ChatWindow Component
+type ChatWindowProps = {
+  session: Session | undefined;
+  onEnd: () => void;
+  agents: Agent[];
+  onAssign: (sessionId: number, agentId: number) => void;
+};
+
+function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
+  const [messageText, setMessageText] = useState('');
+  const [localMessages, setLocalMessages] = useState<Array<{ sender: string; text: string }>>([]);
+
+  if (!session) return null;
+  const availableAgents = agents.filter((a) => a.status === 'online');
+  const allMessages = [...session.messages, ...localMessages];
+
+  const handleSendMessage = () => {
+    if (messageText.trim()) {
+      const newMessage = { sender: 'agent', text: messageText.trim() };
+      setLocalMessages((prev) => [...prev, newMessage]);
+      setMessageText('');
+      // In a real app, this would send to the API
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  return (
+    <div className="admin-chat-window">
+      <div className="admin-chat-window-header">
+        <div>
+          <div className="admin-live-chats-item-title">Session {session.id}</div>
+          <div className="admin-live-chats-item-subtitle">Topic: {session.topic}</div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={onEnd} className="admin-button admin-button-danger">End</button>
+        </div>
+      </div>
+
+      <div className="admin-chat-window-messages">
+        {allMessages.map((m, i) => (
+          <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
+            <div className="admin-chat-message-sender">{m.sender}</div>
+            <div>{m.text}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="admin-chat-window-controls">
+        <select defaultValue="" onChange={(e) => { if (e.target.value) onAssign(session.id, Number(e.target.value)); }}>
+          <option value="">Assign to agent...</option>
+          {availableAgents.map((a) => (
+            <option key={a.id} value={a.id}>{a.name} — {a.role}</option>
+          ))}
+        </select>
+        <input 
+          placeholder="Type a message to user" 
+          value={messageText}
+          onChange={(e) => setMessageText(e.target.value)}
+          onKeyPress={handleKeyPress}
+        />
+        <button onClick={handleSendMessage} className="admin-button admin-button-primary">Send</button>
+      </div>
+    </div>
+  );
+}
+
+// RoutingPage Component
+type RoutingPageProps = {
+  rules: RoutingRule[];
+  setRules: React.Dispatch<React.SetStateAction<RoutingRule[]>>;
+  agents: Agent[];
+};
+
+function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
+  const [editing, setEditing] = useState<number | null>(null);
+  const [editingData, setEditingData] = useState<{ topic: string; priority: number; allowedRoles: string[] } | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
+
+  const availableRoles = ['technical', 'sales', 'support'];
+
+  function addRule() {
+    if (newRuleData.topic.trim()) {
+      const newRule: RoutingRule = { 
+        id: Date.now(), 
+        topic: newRuleData.topic.trim(), 
+        allowedRoles: newRuleData.allowedRoles, 
+        priority: newRuleData.priority, 
+        autoAssign: true 
+      };
+      setRules((r) => [newRule, ...r]);
+      setShowCreateModal(false);
+      setNewRuleData({ topic: '', priority: 5, allowedRoles: ['technical'] });
+    }
+  }
+
+  function startEdit(rule: RoutingRule) {
+    setEditing(rule.id);
+    setEditingData({ topic: rule.topic, priority: rule.priority, allowedRoles: [...rule.allowedRoles] });
+  }
+
+  function saveEdit(ruleId: number) {
+    if (editingData) {
+      setRules((prev) => prev.map((r) => 
+        r.id === ruleId 
+          ? { ...r, topic: editingData.topic, priority: editingData.priority, allowedRoles: editingData.allowedRoles }
+          : r
+      ));
+      setEditing(null);
+      setEditingData(null);
+    }
+  }
+
+  function toggleRole(role: string) {
+    if (editingData) {
+      const newRoles = editingData.allowedRoles.includes(role)
+        ? editingData.allowedRoles.filter((r) => r !== role)
+        : [...editingData.allowedRoles, role];
+      setEditingData({ ...editingData, allowedRoles: newRoles });
+    }
+  }
+
+  return (
+    <div className="admin-routing-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Routing Rules</h2>
+        <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-success">Add Rule</button>
+      </div>
+
+      {showCreateModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ marginTop: 0 }}>Create New Routing Rule</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              <label>
+                Topic
+                <input
+                  type="text"
+                  value={newRuleData.topic}
+                  onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="e.g., technical, sales"
+                />
+              </label>
+              <label>
+                Priority
+                <input
+                  type="number"
+                  value={newRuleData.priority}
+                  onChange={(e) => setNewRuleData({ ...newRuleData, priority: Number(e.target.value) })}
+                  className="admin-login-input"
+                />
+              </label>
+              <label>
+                Allowed Roles
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  {availableRoles.map((role) => (
+                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={newRuleData.allowedRoles.includes(role)}
+                        onChange={() => {
+                          setNewRuleData({
+                            ...newRuleData,
+                            allowedRoles: newRuleData.allowedRoles.includes(role)
+                              ? newRuleData.allowedRoles.filter((r) => r !== role)
+                              : [...newRuleData.allowedRoles, role]
+                          });
+                        }}
+                      />
+                      {role}
+                    </label>
+                  ))}
+                </div>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={addRule} className="admin-button admin-button-primary">Create</button>
+              <button onClick={() => setShowCreateModal(false)} className="admin-button">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="admin-routing-rules">
+        {rules.map((r) => (
+          <div key={r.id} className="admin-routing-rule">
+            <div className="admin-routing-rule-header">
+              <div>
+                {editing === r.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={editingData?.topic || ''}
+                      onChange={(e) => setEditingData({ ...editingData!, topic: e.target.value })}
+                      className="admin-login-input"
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {availableRoles.map((role) => (
+                        <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                          <input
+                            type="checkbox"
+                            checked={editingData?.allowedRoles.includes(role) || false}
+                            onChange={() => toggleRole(role)}
+                          />
+                          {role}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="admin-routing-rule-topic">{r.topic}</div>
+                    <div className="admin-routing-rule-roles">Roles: {r.allowedRoles.join(', ')}</div>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {editing === r.id ? (
+                  <>
+                    <button className="admin-button admin-button-primary" onClick={() => saveEdit(r.id)}>Save</button>
+                    <button className="admin-button" onClick={() => { setEditing(null); setEditingData(null); }}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="admin-button" onClick={() => startEdit(r)}>Edit</button>
+                    <button className="admin-button admin-button-danger" onClick={() => {
+                      if (window.confirm('Are you sure you want to delete this rule?')) {
+                        setRules((prev) => prev.filter((x) => x.id !== r.id));
+                      }
+                    }}>Delete</button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {editing === r.id && editingData && (
+              <div className="admin-routing-rule-edit">
+                <label>Priority</label>
+                <input 
+                  type="number" 
+                  value={editingData.priority}
+                  onChange={(e) => setEditingData({ ...editingData, priority: Number(e.target.value) })}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// TemplatesPage Component
+type TemplatesPageProps = {
+  templates: Template[];
+  setTemplates: React.Dispatch<React.SetStateAction<Template[]>>;
+};
+
+function TemplatesPage({ templates, setTemplates }: TemplatesPageProps) {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({ type: '', content: '' });
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+
+  function updateTemplate(id: number, content: string) {
+    setTemplates((t) => t.map((x) => (x.id === id ? { ...x, content } : x)));
+  }
+
+  function handleCreateTemplate() {
+    if (newTemplate.type.trim() && newTemplate.content.trim()) {
+      const template: Template = {
+        id: Date.now(),
+        type: newTemplate.type.trim(),
+        content: newTemplate.content.trim()
+      };
+      setTemplates((prev) => [...prev, template]);
+      setShowCreateModal(false);
+      setNewTemplate({ type: '', content: '' });
+    }
+  }
+
+  function handleEditTemplate(template: Template) {
+    setEditingTemplate(template);
+    setNewTemplate({ type: template.type, content: template.content });
+    setShowCreateModal(true);
+  }
+
+  function handleUpdateTemplate() {
+    if (editingTemplate && newTemplate.type.trim() && newTemplate.content.trim()) {
+      setTemplates((prev) => prev.map((t) => 
+        t.id === editingTemplate.id 
+          ? { ...t, type: newTemplate.type.trim(), content: newTemplate.content.trim() }
+          : t
+      ));
+      setEditingTemplate(null);
+      setShowCreateModal(false);
+      setNewTemplate({ type: '', content: '' });
+    }
+  }
+
+  function handleDeleteTemplate(id: number) {
+    if (window.confirm('Are you sure you want to delete this template?')) {
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    }
+  }
+
+  return (
+    <div className="admin-templates-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Message Templates</h2>
+        <button onClick={() => { setEditingTemplate(null); setNewTemplate({ type: '', content: '' }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Template</button>
+      </div>
+
+      {showCreateModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '90%' }}>
+            <h3 style={{ marginTop: 0 }}>{editingTemplate ? 'Edit Template' : 'Create New Template'}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              <label>
+                Type
+                <input
+                  type="text"
+                  value={newTemplate.type}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, type: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="e.g., greeting, waiting, fallback"
+                />
+              </label>
+              <label>
+                Content
+                <textarea
+                  value={newTemplate.content}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+                  className="admin-login-input"
+                  rows={4}
+                  placeholder="Template content..."
+                />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate} className="admin-button admin-button-primary">
+                {editingTemplate ? 'Update' : 'Create'}
+              </button>
+              <button onClick={() => { setShowCreateModal(false); setEditingTemplate(null); setNewTemplate({ type: '', content: '' }); }} className="admin-button">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="admin-templates-list">
+        {templates.map((tpl) => (
+          <div key={tpl.id} className="admin-template-item">
+            <div className="admin-template-item-header">
+              <div>
+                <div className="admin-template-item-type">{tpl.type}</div>
+                <div className="admin-template-item-preview">Preview</div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => handleEditTemplate(tpl)} className="admin-button">Edit</button>
+                <button onClick={() => handleDeleteTemplate(tpl.id)} className="admin-button admin-button-danger">Delete</button>
+              </div>
+            </div>
+            <textarea 
+              value={tpl.content} 
+              onChange={(e) => updateTemplate(tpl.id, e.target.value)} 
+              rows={3} 
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ChatHistoryPage Component
+type ChatHistoryPageProps = {
+  sessions: Session[];
+};
+
+function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+
+  return (
+    <div className="admin-history-page">
+      <h2 className="admin-page-title">Chat History</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div>
+          <div className="admin-history-list">
+            {sessions.map((s) => (
+              <div 
+                key={s.id} 
+                className={`admin-history-item ${selectedSession?.id === s.id ? 'admin-sidebar-item active' : ''}`}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedSession(s)}
+              >
+                <div className="admin-history-item-header">
+                  <div>
+                    <div className="admin-history-item-title">Session {s.id}</div>
+                    <div className="admin-history-item-topic">Topic: {s.topic} • Status: {s.status}</div>
+                  </div>
+                  <div style={{ fontSize: '14px' }}>Messages: {s.messages.length}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          {selectedSession ? (
+            <div className="admin-content-card">
+              <h3>Session {selectedSession.id} Details</h3>
+              <div style={{ marginBottom: '16px' }}>
+                <div><strong>Topic:</strong> {selectedSession.topic}</div>
+                <div><strong>Status:</strong> {selectedSession.status}</div>
+                <div><strong>Duration:</strong> {selectedSession.duration}s</div>
+                <div><strong>Wait Time:</strong> {selectedSession.waitTime}s</div>
+                {selectedSession.assignedAgentId && <div><strong>Assigned Agent:</strong> {selectedSession.assignedAgentId}</div>}
+              </div>
+              <h4>Messages:</h4>
+              <div className="admin-chat-window-messages" style={{ height: '300px' }}>
+                {selectedSession.messages.map((m, i) => (
+                  <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
+                    <div className="admin-chat-message-sender">{m.sender}</div>
+                    <div>{m.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="admin-content-card">
+              <div className="admin-empty-state">Select a session to view details</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// AnalyticsPage Component
+type AnalyticsPageProps = {
+  sessions: Session[];
+  agents: Agent[];
+};
+
+function AnalyticsPage({ sessions, agents }: AnalyticsPageProps) {
+  const total = sessions.length;
+  const closed = sessions.filter((s) => s.status === 'closed').length;
+  const avgDuration = Math.round((sessions.reduce((s, it) => s + (it.duration || 0), 0) / Math.max(1, sessions.length)) * 10) / 10;
+
+  return (
+    <div className="admin-analytics-page">
+      <div className="admin-analytics-stats">
+        <StatCard title="Total Sessions" value={total} />
+        <StatCard title="Closed" value={closed} />
+        <StatCard title="Avg Duration (s)" value={avgDuration} />
+      </div>
+
+      <div className="admin-content-card">
+        <h3>Agent Response Times (sample)</h3>
+        <ul className="admin-analytics-list">
+          {agents.map((a) => (
+            <li key={a.id} className="admin-analytics-item">
+              <div>{a.name}</div>
+              <div>{a.metrics.avgResponse}s</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// SettingsPage Component
+function SettingsPage() {
+  const [settings, setSettings] = useState({
+    businessHours: 'Mon-Fri 9:00-18:00',
+    fallbackOption: 'Continue with bot'
+  });
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    // In a real app, this would save to API
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  return (
+    <div className="admin-settings-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Settings</h2>
+        <button onClick={handleSave} className="admin-button admin-button-primary">Save Settings</button>
+      </div>
+      {saved && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>Settings saved successfully!</div>}
+      <div className="admin-settings-form">
+        <div className="admin-settings-field">
+          <label>Business Hours</label>
+          <input 
+            value={settings.businessHours}
+            onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
+          />
+        </div>
+        <div className="admin-settings-field">
+          <label>Fallback Option</label>
+          <select 
+            value={settings.fallbackOption}
+            onChange={(e) => setSettings({ ...settings, fallbackOption: e.target.value })}
+          >
+            <option>Continue with bot</option>
+            <option>Request callback</option>
+            <option>Send email</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Mock Data Functions
+function mockAgents(): Agent[] {
+  return [
+    { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 } },
+    { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 } },
+    { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 } },
+  ];
+}
+
+function mockSessions(): Session[] {
+  return [
+    { id: 101, userId: 'u101', topic: 'booking', status: 'assigned', assignedAgentId: 2, messages: [{ sender: 'user', text: 'Hi, I need help booking' }, { sender: 'agent', text: 'Sure — I can help' }], duration: 120, waitTime: 5 },
+    { id: 102, userId: 'u102', topic: 'technical', status: 'waiting', assignedAgentId: null, messages: [{ sender: 'user', text: 'App crashes when I upload' }], duration: 0, waitTime: 20 },
+    { id: 103, userId: 'u103', topic: 'pricing', status: 'closed', assignedAgentId: null, messages: [{ sender: 'user', text: 'What are your fees?' }, { sender: 'bot', text: 'Here is our pricing' }], duration: 60, waitTime: 2 },
+  ];
+}
+
+function mockTemplates(): Template[] {
+  return [
+    { id: 1, type: 'greeting', content: 'Welcome! How can I help today?' },
+    { id: 2, type: 'waiting', content: "All agents are busy. We'll connect you shortly." },
+    { id: 3, type: 'fallback', content: 'Your agent is unavailable. Please try again later or leave a message.' },
+  ];
+}
+
+function mockRoutingRules(): RoutingRule[] {
+  return [
+    { id: 1, topic: 'technical', allowedRoles: ['technical'], priority: 1, autoAssign: true },
+    { id: 2, topic: 'sales', allowedRoles: ['sales'], priority: 5, autoAssign: true },
+  ];
+}
 
 

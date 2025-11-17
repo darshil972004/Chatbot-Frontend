@@ -7,6 +7,8 @@ import ChatbotConfig from './components/AdminPanel/ChatbotConfig'
 import WorkflowManagement from './components/WorkflowManagement'
 import WorkflowList from './components/WorkflowList'
 import AdminPanel from './components/AdminPanel'
+import AgentLogin from './components/AgentLogin'
+import AgentPanelApp from './components/AgentPanel'
 import './components/chatbot.css'
 
 const ADMIN_USERNAME = (window as any).VITE_ADMIN_USERNAME || 'admin'
@@ -53,6 +55,29 @@ export default function App() {
     setIsAdmin(false)
   }
 
+  // Simple agent login handler using mockAgents from AdminPanel
+  const [agentLoggedIn, setAgentLoggedIn] = useState(false);
+  const [agentId, setAgentId] = useState<number | null>(null);
+  const handleAgentLogin = async (username: string, password: string) => {
+    let agents: any[] = [];
+    if ((window as any).mockAgents) {
+      agents = (window as any).mockAgents();
+    } else {
+      agents = [
+        { username: 'rakesh', password: 'pass123', id: 1 },
+        { username: 'maya', password: 'pass456', id: 2 },
+        { username: 'arjun', password: 'pass789', id: 3 },
+      ];
+    }
+    const found = agents.find(a => a.username === username && a.password === password);
+    if (found) {
+      setAgentLoggedIn(true);
+      setAgentId(found.id ?? 1);
+      return { success: true };
+    }
+    return { success: false, message: 'Invalid agent credentials.' };
+  };
+
   return (
     <RecoilRoot>
       <Router>
@@ -67,6 +92,10 @@ export default function App() {
                 onLogout={handleAdminLogout}
               />
             }
+          />
+          <Route
+            path="/agent"
+            element={agentLoggedIn ? <AgentPanelApp agentId={agentId ?? 1} /> : <AgentLogin onLogin={handleAgentLogin} />}
           />
           <Route
             path="/workflows"
