@@ -1,0 +1,295 @@
+import React, {useEffect, useRef, useState} from 'react'
+import './agent_panel_styles.css'
+import AgentLogin from './AgentLogin'
+
+export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
+  const [status, setStatus] = useState<string>('online') // online, away, busy, offline
+  const [sessions, setSessions] = useState<any[]>(mockSessions())
+  const [activeSessionId, setActiveSessionId] = useState<number|null>(null)
+  const [quickReplies] = useState<string[]>(mockQuickReplies())
+  const wsRef = useRef<any>(null)
+  const [loggedOut, setLoggedOut] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [agentName, setAgentName] = useState<string>('Agent')
+
+  useEffect(()=>{
+    // TODO: connect to WebSocket here
+    // wsRef.current = new WebSocket(`${process.env.REACT_APP_WS_URL}/ws/agent/${agentId}`)
+    // wsRef.current.onmessage = (e) => handleWS(JSON.parse(e.data))
+
+    return ()=>{
+      // if(wsRef.current) wsRef.current.close()
+    }
+  },[agentId])
+
+  function handleWS(msg: any){
+    // handle incoming messages: new assignment, user msg, system
+    // example:
+    // if(msg.type === 'assignment') setSessions(prev => [msg.session,...prev])
+  }
+
+  function setAgentStatus(s: string){
+    setStatus(s)
+    // TODO: call API to update status
+  }
+
+  function openSession(id: number){
+    setActiveSessionId(id)
+    // mark read, fetch history if necessary
+  }
+
+  function sendMessageToSession(sessionId: number, text: string){
+    // send via websocket or REST
+    setSessions(prev => prev.map(s => s.id === sessionId ? {...s, messages: [...s.messages, {sender:'agent', text, ts: Date.now()}]} : s))
+  }
+
+  function quickReply(sessionId: number, tpl: string){
+    sendMessageToSession(sessionId, tpl)
+  }
+
+    function handleOpenNext() {
+    if (!activeSessionId || sessions.length === 0) return;
+
+    // Find index of current active session
+    const currentIndex = sessions.findIndex(
+        (s) => s.id === activeSessionId
+    );
+
+    // If found and there is a next one
+    if (currentIndex !== -1 && currentIndex < sessions.length - 1) {
+        const nextSession = sessions[currentIndex + 1];
+        setActiveSessionId(nextSession.id);
+    } else {
+        alert("No more chats in the queue.");
+    }
+    }
+
+  function handleMarkAway() {
+    setAgentStatus('away');
+  }
+
+//   function handleViewReports() {
+//     // Placeholder: show alert, replace with modal if needed
+//     alert('Reports feature coming soon!');
+//   }
+
+  function handleLogout() {
+    setLoggedOut(true)
+    setStatus('offline')
+    setSessions([])
+    setActiveSessionId(null)
+  }
+
+  const activeSession = sessions.find(s => s.id === activeSessionId)
+  const waitingCount = sessions.filter((s: any)=>s.status==='waiting').length
+
+  if (loggedOut) {
+    return <AgentLogin onLogin={async (loginData: any) => {
+      setLoggedOut(false)
+      setStatus('online')
+      setSessions(mockSessions())
+      setActiveSessionId(null)
+      setAgentName(loginData?.username || 'Agent')
+      return { success: true }
+    }} />
+  }
+
+  return (
+    <div className="agent-panel">
+      <div className="agent-grid">
+        {/* Agent avatar/name header, click to open dropdown */}
+        <div className="agent-header-profile" onClick={()=>setShowProfile(true)}>
+          <div className="profile-avatar header-avatar">
+            {agentName.charAt(0).toUpperCase()}
+          </div>
+          <span className="profile-name header-name">{agentName}</span>
+        </div>
+        {/* Dropdown/modal for profile details */}
+        {showProfile && (
+          <div className="profile-dropdown-modal" onClick={()=>setShowProfile(false)}>
+            <div className="profile-dropdown-content" onClick={e=>e.stopPropagation()}>
+              <div className="profile-avatar modal-avatar" style={{margin:'0 auto 10px'}}>
+                {agentName.charAt(0).toUpperCase()}
+              </div>
+              <div className="profile-name modal-name">{agentName}</div>
+              <div className="profile-role modal-role">Technical Agent</div>
+              <div className="profile-status modal-status">Status: <span className={`status-pill ${status}`}>{status}</span></div>
+              <select
+                className="profile-select modal-select"
+                value={status}
+                onChange={e => setAgentStatus(e.target.value)}
+                style={{margin:'10px 0'}}
+              >
+                <option value="online">Online</option>
+                <option value="away">Away</option>
+                <option value="busy">Busy</option>
+                <option value="offline">Offline</option>
+              </select>
+              <button className="profile-btn modal-btn" style={{margin:'8px 0'}} onClick={()=>setShowProfile(false)}>
+                View Profile
+              </button>
+              <button className="logout-button modal-logout-btn" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
+
+        <section className="agent-card grid-workspace workspace-card">
+          <div className="workspace-header">
+            <div>
+              <p className="workspace-title">Agent Workspace</p>
+              <p className="workspace-meta">Logged in as Agent #{agentId} — Role: Technical</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="agent-card grid-customer">
+          <div className="card-heading">Customer Info</div>
+          {activeSession ? (
+            <CustomerInfoPanel user={activeSession.user} />
+          ) : (
+            <p className="card-placeholder">No customer selected</p>
+          )}
+        </section>
+
+        <section className="agent-card grid-shortcuts shortcuts-card">
+          <div className="card-heading">Shortcuts</div>
+          <div className="shortcut-buttons">
+            <button className="shortcut-btn primary" onClick={handleOpenNext}>Open Next</button>
+            <button className="shortcut-btn success" onClick={handleMarkAway}>Mark Away</button>
+            {/* <button className="shortcut-btn muted" onClick={handleViewReports}>View Reports</button> */}
+          </div>
+        </section>
+
+        <section className="agent-card grid-conversations">
+          <div className="card-heading">Conversations</div>
+          <div className="conversation-list">
+            {sessions.map(s => (
+              <ConversationListItem key={s.id} session={s} onOpen={() => openSession(s.id)} active={s.id===activeSessionId} />
+            ))}
+          </div>
+        </section>
+
+        <section className="agent-card grid-preview">
+          {activeSession ? (
+            <ChatWindow session={activeSession} onSend={sendMessageToSession} quickReplies={quickReplies} />
+          ) : (
+            <div className="preview-placeholder">Select a conversation to begin</div>
+          )}
+        </section>
+
+      </div>
+    </div>
+  )
+}
+
+interface ConversationListItemProps {
+  session: any;
+  onOpen: () => void;
+  active: boolean;
+}
+function ConversationListItem({session, onOpen, active}: ConversationListItemProps){
+  return (
+    <div onClick={onOpen} className={`conversation-item${active ? ' active' : ''}`}> 
+      <div className="conversation-item-text">
+        <div className="conversation-name">
+          {session.user.name} <span className="conversation-id">#{session.id}</span>
+        </div>
+        <div className="conversation-meta">{session.topic} • {session.unread} new</div>
+      </div>
+      <div className="conversation-time">{session.lastMsgTime}</div>
+    </div>
+  )
+}
+
+interface ChatWindowProps {
+  session: any;
+  onSend: (sessionId: number, text: string) => void;
+  quickReplies: string[];
+}
+function ChatWindow({session, onSend, quickReplies}: ChatWindowProps){
+  const [input, setInput] = useState('')
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  useEffect(()=>{
+    if(boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
+  }, [session.messages.length])
+
+  function send(){
+    if(!input.trim()) return
+    onSend(session.id, input.trim())
+    setInput('')
+  }
+
+  return (
+    <div className="chat-window">
+      <div className="chat-window-header">
+        <div>
+          <div className="chat-title">{session.user.name}</div>
+          <div className="chat-subtitle">{session.user.email} • {session.user.country}</div>
+        </div>
+        <div className="chat-subtitle">Since {session.startedAgo}</div>
+      </div>
+
+      <div ref={boxRef} className="chat-messages">
+        {session.messages.map((m: any,i: number)=> (
+          <div key={i} className={`chat-message ${m.sender === 'agent' ? 'agent' : 'user'}`}> 
+            <div className="chat-message-sender">{m.sender === 'agent' ? 'Agent' : 'User'}</div>
+            <div>{m.text}</div>
+            <div className="chat-message-time">{new Date(m.ts).toLocaleTimeString()}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="chat-input-row">
+        <select onChange={e=>setInput(e.target.value)} value={input} className="chat-select">
+          <option value="">Quick reply…</option>
+          {quickReplies.map((q: string,i: number)=> (
+            <option key={i} value={q}>{q}</option>
+          ))}
+        </select>
+        <input
+          className="chat-input"
+          value={input}
+          onChange={e=>setInput(e.target.value)}
+          placeholder="Type a reply..."
+          onKeyDown={(e)=> e.key==='Enter' && send()}
+        />
+        <button onClick={send} className="send-button">Send</button>
+      </div>
+    </div>
+  )
+}
+
+interface CustomerInfoPanelProps {
+  user: any;
+}
+function CustomerInfoPanel({user}: CustomerInfoPanelProps){
+  if(!user) return null
+  return (
+    <div className="customer-info">
+      <div className="customer-name">{user.name}</div>
+      <div className="customer-subtitle">{user.email}</div>
+      <div className="customer-detail">Last seen: {user.lastSeen}</div>
+      <div className="customer-detail">Past issues: {user.pastIssues}</div>
+      {/* <button className="profile-button">Open Customer Profile</button> */}
+    </div>
+  )
+}
+
+// ---------------- Mock Data ----------------
+function mockSessions(){
+  return [
+    { id: 201, user:{name:'Asha', email:'asha@example.com', country:'India', lastSeen:'2m ago', pastIssues:2}, topic:'technical', status:'assigned', unread:1, lastMsgTime:'2m', startedAgo:'5m', messages:[{sender:'user', text:'App crashed while uploading', ts: Date.now()-60000}, {sender:'agent', text:'Can you share the screenshot?', ts: Date.now()-30000}]},
+    { id: 202, user:{name:'Rahul', email:'rahul@example.com', country:'India', lastSeen:'10m ago', pastIssues:1}, topic:'billing', status:'waiting', unread:2, lastMsgTime:'10m', startedAgo:'10m', messages:[{sender:'user', text:'I was charged twice', ts: Date.now()-600000}]},
+    { id: 203, user:{name:'Nina', email:'nina@example.com', country:'USA', lastSeen:'1h ago', pastIssues:0}, topic:'general', status:'assigned', unread:0, lastMsgTime:'1h', startedAgo:'15m', messages:[{sender:'user', text:'How do I change my password?', ts: Date.now()-900000}]},
+  ]
+}
+
+function mockQuickReplies(){
+  return ['Hello — I can help with that.', 'Can you share a screenshot?', 'I am escalating this to tech team.', 'Please try clearing cache and retry.', 'I have updated your request.']
+}
+
+
+// ---------------- End ----------------

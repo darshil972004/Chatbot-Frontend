@@ -177,7 +177,7 @@ export default function WorkflowList() {
             + Create New Workflow
           </button>
         </div>
-        <button className="back-to-home-btn" onClick={() => navigate('/')}>
+        <button className="back-to-home-btn" onClick={() => navigate('/admin')}>
           ← Back to Home
         </button>
       </div>
