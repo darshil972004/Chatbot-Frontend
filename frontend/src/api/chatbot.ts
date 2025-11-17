@@ -14,6 +14,7 @@ export type ChatbotResponse =
         options?: string[];
         properties?: any[];
         follow_up?: string;
+        ticket_id?: string;
       };
     }
   | {
