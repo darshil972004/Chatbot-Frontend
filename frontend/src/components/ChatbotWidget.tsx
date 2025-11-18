@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
+import { v4 as uuidv4 } from 'uuid';
 
 // Extend ChatMessage to support optional blog property (array)
 type BlogInfo = { blog_id: string; title: string; blog_url: string };
 type ChatMessage = BaseChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] }, blog?: BlogInfo[] };
 
 function uid() {
-  return Math.random().toString(36).slice(2)
+  return uuidv4();
 }
 
 export default function ChatbotWidget() {

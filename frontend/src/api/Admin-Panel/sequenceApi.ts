@@ -6,6 +6,7 @@ const adminPanelClient = axios.create({
   baseURL: ADMIN_PANEL_API_BASE,
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer chatbot-api-token-2024`,
   },
 });
 
