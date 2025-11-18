@@ -1,4 +1,5 @@
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { Link } from 'react-router-dom';
 import ChatbotWidget from './ChatbotWidget';
 import './admin-panel.css';
@@ -10,18 +11,27 @@ type AdminPanelProps = {
 };
 
 // Types for Admin Panel UI
+type Skill = {
+  id: number;
+  name: string;
+  proficiency?: number;
+};
+
 type Agent = {
   id: number;
   username: string;
   password: string;
   name: string;
+  email?: string;
   role: string;
-  status: 'online' | 'offline' | 'busy';
+  status: 'online' | 'offline' | 'busy' | 'away';
   currentSessionId: number | null;
   metrics: {
     chatsToday: number;
     avgResponse: number;
   };
+  skills: Skill[];
+  max_concurrent_chats?: number;
 };
 
 type Session = {
@@ -49,6 +59,34 @@ type RoutingRule = {
   autoAssign: boolean;
 };
 
+const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
+const CHATBOT_TOKEN = (window as any).VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
+
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${CHATBOT_TOKEN}`,
+  },
+});
+
+const normalizeAgent = (agent: any, index: number): Agent => ({
+  id: agent.id ?? index + 1,
+  username: agent.username ?? `agent-${index + 1}`,
+  password: '',
+  name: agent.display_name ?? agent.name ?? agent.username ?? `Agent ${index + 1}`,
+  email: agent.email ?? '',
+  role: agent.role ?? 'support',
+  status: agent.is_active === false ? 'offline' : 'online',
+  currentSessionId: null,
+  metrics: {
+    chatsToday: agent.metrics?.chatsToday ?? agent.chatsToday ?? 0,
+    avgResponse: agent.metrics?.avgResponse ?? agent.avgResponse ?? 0,
+  },
+  skills: [],
+  max_concurrent_chats: agent.max_concurrent_chats ?? 2,
+});
+
 export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -57,13 +95,119 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
 
   // Admin Panel UI state
   const [route, setRoute] = useState('dashboard');
-  const [agents, setAgents] = useState<Agent[]>(mockAgents());
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [sessions, setSessions] = useState<Session[]>(mockSessions());
   const [templates, setTemplates] = useState<Template[]>(mockTemplates());
   const [routingRules, setRoutingRules] = useState<RoutingRule[]>(mockRoutingRules());
+  const [skills, setSkills] = useState<Skill[]>([]);
+
+  const loadSkills = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/api/skills');
+      const payload = res.data?.data;
+      if (res.data?.success && Array.isArray(payload)) {
+        setSkills(
+          payload.map((skill: any) => ({
+            id: skill.id,
+            name: skill.name,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching skills:', err);
+    }
+  }, []);
+
+  const attachAgentSkills = useCallback(async (agent: Agent): Promise<Agent> => {
+    if (!agent.id) {
+      return agent;
+    }
+    try {
+      const res = await apiClient.get(`/api/agents/${agent.id}/skills`);
+      const skillList = Array.isArray(res.data?.data)
+        ? res.data.data.map((skill: any) => ({
+            id: skill.id,
+            name: skill.name,
+            proficiency: skill.proficiency,
+          }))
+        : [];
+      return { ...agent, skills: skillList };
+    } catch (err) {
+      console.error(`Error fetching skills for agent ${agent.id}`, err);
+      return { ...agent, skills: [] };
+    }
+  }, []);
+
+  const attachAgentStatus = useCallback(async (agent: Agent): Promise<Agent> => {
+    if (!agent.id) {
+      return agent;
+    }
+    try {
+      const res = await apiClient.get(`/api/agents/${agent.id}/current-status`);
+      if (res.data?.success && res.data?.data?.status) {
+        return { ...agent, status: res.data.data.status as Agent['status'] };
+      }
+      // Fallback to is_active if no status event exists
+      return agent;
+    } catch (err: any) {
+      // If 404, it means no status events exist, so use is_active from agent
+      if (err?.response?.status === 404) {
+        // Status will be set from normalizeAgent based on is_active
+        return agent;
+      }
+      console.error(`Error fetching status for agent ${agent.id}`, err);
+      // Fallback to is_active if status fetch fails
+      return agent;
+    }
+  }, []);
+
+  const loadAgents = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/api/agents');
+      const payload = res.data?.data;
+      if (res.data?.success && Array.isArray(payload)) {
+        const normalized = payload.map((agent: any, idx: number) => normalizeAgent(agent, idx));
+        const withSkills = await Promise.all(normalized.map((agent) => attachAgentSkills(agent)));
+        const withStatus = await Promise.all(withSkills.map((agent) => attachAgentStatus(agent)));
+        setAgents(withStatus);
+      }
+    } catch (err) {
+      console.error('Error fetching agents:', err);
+    }
+  }, [attachAgentSkills, attachAgentStatus]);
 
   useEffect(() => {
-    // Placeholder for initial data load (fetch from API)
+    loadAgents();
+  }, [loadAgents]);
+
+  useEffect(() => {
+    loadSkills();
+  }, [loadSkills]);
+
+  const syncAgentSkills = useCallback(async (agentId: number, selectedSkillIds: number[]) => {
+    try {
+      const res = await apiClient.get(`/api/agents/${agentId}/skills`);
+      const existingIds: number[] = Array.isArray(res.data?.data)
+        ? res.data.data.map((skill: any) => Number(skill.id))
+        : [];
+
+      const toAdd = selectedSkillIds.filter((skillId: number) => !existingIds.includes(skillId));
+      const toRemove = existingIds.filter((skillId: number) => !selectedSkillIds.includes(skillId));
+
+      await Promise.all([
+        ...toAdd.map((skillId) =>
+          apiClient.post('/api/agent-skills', {
+            agent_id: agentId,
+            skill_id: skillId,
+            proficiency: 5,
+          })
+        ),
+        ...toRemove.map((skillId) => apiClient.delete(`/api/agent-skills/${agentId}/${skillId}`)),
+      ]);
+    } catch (err) {
+      console.error(`Error syncing skills for agent ${agentId}`, err);
+      throw err;
+    }
   }, []);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -142,7 +286,13 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
             <div style={{ marginTop: '16px' }}>
               {route === 'dashboard' && <Dashboard agents={agents} sessions={sessions} />}
               {route === 'agents' && (
-                <AgentsPage agents={agents} setAgents={setAgents} />
+                <AgentsPage
+                  agents={agents}
+                  setAgents={setAgents}
+                  skills={skills}
+                  reloadAgents={loadAgents}
+                  syncAgentSkills={syncAgentSkills}
+                />
               )}
               {route === 'live' && (
                 <LiveChatsPage sessions={sessions} setSessions={setSessions} agents={agents} setAgents={setAgents} />
@@ -189,7 +339,6 @@ function WorkflowSection() {
 }
 
 // Header Component
-import { useRef } from 'react';
 type HeaderProps = { onLogout: () => void; setRoute: (route: string) => void };
 function Header({ onLogout, setRoute }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
@@ -382,43 +531,125 @@ function StatCard({ title, value }: StatCardProps) {
 type AgentsPageProps = {
   agents: Agent[];
   setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
+  skills: Skill[];
+  reloadAgents: () => Promise<void>;
+  syncAgentSkills: (agentId: number, skillIds: number[]) => Promise<void>;
 };
 
-function AgentsPage({ agents, setAgents }: AgentsPageProps) {
+function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }: AgentsPageProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [formData, setFormData] = useState<{
     username: string;
     password: string;
     name: string;
+    email: string;
     role: string;
     status: Agent['status'];
+    skillIds: number[];
+    max_concurrent_chats: number;
   }>({
     username: '',
     password: '',
     name: '',
-    role: 'support',
+    email: '',
+    role: '',
     status: 'online',
+    skillIds: [],
+    max_concurrent_chats: 2,
   });
 
-  function toggleStatus(id: number) {
-    setAgents((prev: Agent[]) => prev.map((a: Agent) => (a.id === id ? { ...a, status: a.status === 'online' ? 'offline' : 'online' } : a)));
+  const [roles, setRoles] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await apiClient.get('/api/agents');
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const uniqueRoles = Array.from(new Set(res.data.data.map((a: any) => a.role).filter(Boolean))) as string[];
+          setRoles(uniqueRoles);
+        }
+      } catch (err) {
+        setRoles([]);
+      }
+    }
+    fetchRoles();
+  }, []);
+
+  const toggleSkillSelection = (skillId: number) => {
+    setFormData((prev) => {
+      const exists = prev.skillIds.includes(skillId);
+      return {
+        ...prev,
+        skillIds: exists ? prev.skillIds.filter((id) => id !== skillId) : [...prev.skillIds, skillId],
+      };
+    });
+  };
+
+  async function toggleStatus(id: number) {
+    const agent = agents.find((a) => a.id === id);
+    if (!agent) return;
+    const newStatus = agent.status === 'online' ? 'offline' : 'online';
+    try {
+      // Optimistically update UI
+      setAgents((prevAgents) =>
+        prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+      );
+
+      // Create status event to track the status change
+      await apiClient.post('/api/agent-status-events', {
+        agent_id: id,
+        status: newStatus,
+        concurrent_load: 0,
+        details: { source: 'admin_panel_toggle' }
+      });
+
+      // Reload to get the latest status from backend
+      await reloadAgents();
+    } catch (err) {
+      // Revert optimistic update on error
+      setAgents((prevAgents) =>
+        prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
+      );
+      alert('Error updating agent status');
+    }
   }
 
-  function handleCreateAgent() {
-    const newAgent: Agent = {
-      id: Date.now(),
-      username: formData.username,
-      password: formData.password,
-      name: formData.name,
-      role: formData.role,
-      status: formData.status,
-      currentSessionId: null,
-      metrics: { chatsToday: 0, avgResponse: 0 }
-    };
-    setAgents((prev: Agent[]) => [...prev, newAgent]);
-    setShowCreateModal(false);
-    setFormData({ username: '', password: '', name: '', role: 'support', status: 'online' });
+  async function handleCreateAgent() {
+    try {
+      const res = await apiClient.post('/api/agents', {
+        username: formData.username,
+        password: formData.password,
+        email: formData.email,
+        display_name: formData.name,
+        role: formData.role,
+        max_concurrent_chats: formData.max_concurrent_chats
+      });
+      if (res.data.success) {
+        const newAgentId = res.data?.data?.id;
+        if (newAgentId) {
+          await syncAgentSkills(newAgentId, formData.skillIds);
+          // Create initial status event for the new agent
+          try {
+            await apiClient.post('/api/agent-status-events', {
+              agent_id: newAgentId,
+              status: formData.status,
+              concurrent_load: 0,
+              details: { source: 'admin_panel_create' }
+            });
+          } catch (statusErr) {
+            console.error('Error creating initial status event:', statusErr);
+            // Don't fail the whole operation if status event creation fails
+          }
+        }
+        await reloadAgents();
+        setShowCreateModal(false);
+        setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 });
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Error creating agent';
+      alert(msg);
+    }
   }
 
   function handleEditAgent(agent: Agent) {
@@ -427,36 +658,75 @@ function AgentsPage({ agents, setAgents }: AgentsPageProps) {
       username: agent.username,
       password: agent.password,
       name: agent.name,
+      email: agent.email || '',
       role: agent.role,
       status: agent.status,
+      skillIds: agent.skills?.map((skill) => skill.id) ?? [],
+      max_concurrent_chats: agent.max_concurrent_chats ?? 2,
     });
     setShowCreateModal(true);
   }
 
-  function handleUpdateAgent() {
+  async function handleUpdateAgent() {
     if (editingAgent) {
-      setAgents((prev: Agent[]) => prev.map((a: Agent) => 
-        a.id === editingAgent.id 
-          ? { ...a, username: formData.username, password: formData.password, name: formData.name, role: formData.role, status: formData.status }
-          : a
-      ));
-      setEditingAgent(null);
-      setShowCreateModal(false);
-      setFormData({ username: '', password: '', name: '', role: 'support', status: 'online' });
+      try {
+        const res = await apiClient.put('/api/agents', {
+          id: editingAgent.id,
+          username: formData.username,
+          password: formData.password,
+          email: formData.email,
+          display_name: formData.name,
+          role: formData.role,
+          max_concurrent_chats: formData.max_concurrent_chats
+        });
+        if (res.data.success) {
+          await syncAgentSkills(editingAgent.id, formData.skillIds);
+          // Always log a status event so backend history reflects the change time
+          try {
+            await apiClient.post('/api/agent-status-events', {
+              agent_id: editingAgent.id,
+              status: formData.status,
+              concurrent_load: 0,
+              details: {
+                source: 'admin_panel_update',
+                previous_status: editingAgent.status,
+              },
+            });
+          } catch (statusErr) {
+            console.error('Error creating status event:', statusErr);
+            // Don't fail the whole operation if status event creation fails
+          }
+          await reloadAgents();
+          setEditingAgent(null);
+          setShowCreateModal(false);
+          setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 });
+        }
+      } catch (err: any) {
+        const msg = err?.response?.data?.error?.message || err?.message || 'Error updating agent';
+        alert(msg);
+      }
     }
   }
 
-  function handleDeleteAgent(id: number) {
+  async function handleDeleteAgent(id: number) {
     if (window.confirm('Are you sure you want to delete this agent?')) {
-      setAgents((prev: Agent[]) => prev.filter((a: Agent) => a.id !== id));
+      try {
+        const res = await apiClient.delete(`/api/agents/${id}`);
+        if (res.data.success) {
+          await reloadAgents();
+        }
+      } catch (err) {
+        alert('Error deleting agent');
+      }
     }
   }
 
+  // ...existing code...
   return (
     <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Agents</h2>
-        <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', role: 'support', status: 'online' }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
+  <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [],max_concurrent_chats:2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
       </div>
 
       {showCreateModal && (
@@ -480,14 +750,20 @@ function AgentsPage({ agents, setAgents }: AgentsPageProps) {
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value.slice(0, 72) })}
                   className="admin-login-input"
-                  placeholder="Password"
+                  placeholder="Password (max 72 chars)"
+                  maxLength={72}
                   required
                 />
+                {formData.password.length > 72 && (
+                  <div style={{ color: 'red', fontSize: '12px' }}>
+                    Password must be 72 characters or less.
+                  </div>
+                )}
               </label>
               <label>
-                Name
+                Display Name
                 <input
                   type="text"
                   value={formData.name}
@@ -497,16 +773,44 @@ function AgentsPage({ agents, setAgents }: AgentsPageProps) {
                 />
               </label>
               <label>
+                Email
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Email address"
+                  required
+                />
+              </label>
+              <label>
                 Role
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="admin-login-input"
                 >
-                  <option value="support">Support</option>
-                  <option value="technical">Technical</option>
-                  <option value="sales">Sales</option>
+                  <option value="">Select role</option>
+                  {roles.map((role) => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
                 </select>
+              </label>
+              <label>
+                Skills
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px' }}>
+                  {skills.length === 0 && <div style={{ fontSize: '14px', color: '#94a3b8' }}>No skills available.</div>}
+                  {skills.map((skill) => (
+                    <label key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.skillIds.includes(skill.id)}
+                        onChange={() => toggleSkillSelection(skill.id)}
+                      />
+                      {skill.name}
+                    </label>
+                  ))}
+                </div>
               </label>
               <label>
                 Status
@@ -521,12 +825,23 @@ function AgentsPage({ agents, setAgents }: AgentsPageProps) {
                   <option value="away">Away</option>
                 </select>
               </label>
+              <label>
+                Max Concurrent Chats
+                <input
+                  type="number"
+                  value={formData.max_concurrent_chats}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, max_concurrent_chats: Number(e.target.value) })}
+                  className="admin-login-input"
+                  placeholder="Max Concurrent Chats"
+                  min={1}
+                />
+              </label>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
               <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
                 {editingAgent ? 'Update' : 'Create'}
               </button>
-              <button onClick={() => { setShowCreateModal(false); setEditingAgent(null); }} className="admin-button">Cancel</button>
+              <button onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }} className="admin-button">Cancel</button>
             </div>
           </div>
         </div>
@@ -538,6 +853,7 @@ function AgentsPage({ agents, setAgents }: AgentsPageProps) {
             <th>Username</th>
             <th>Name</th>
             <th>Role</th>
+            <th>Skills</th>
             <th>Status</th>
             <th>Chats Today</th>
             <th>Actions</th>
@@ -549,7 +865,12 @@ function AgentsPage({ agents, setAgents }: AgentsPageProps) {
               <td>{a.username}</td>
               <td>{a.name}</td>
               <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
-              <td>{a.status}</td>
+              <td style={{ fontSize: '14px', color: '#1f2937' }}>
+                {a.skills && a.skills.length > 0 ? a.skills.map((skill) => skill.name).join(', ') : '—'}
+              </td>
+              <td style={{ textTransform: 'capitalize', fontWeight: a.status === 'online' ? 600 : 400 }}>
+                {a.status}
+              </td>
               <td>{a.metrics.chatsToday}</td>
               <td>
                 <div className="admin-table-actions">
@@ -768,12 +1089,12 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
     <div className="admin-routing-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Routing Rules</h2>
-        <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-success">Add Rule</button>
+        <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-primary">Create Rule</button>
       </div>
 
       {showCreateModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '90%' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '90%' }}>
             <h3 style={{ marginTop: 0 }}>Create New Routing Rule</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
               <label>
@@ -783,7 +1104,7 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
                   value={newRuleData.topic}
                   onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
                   className="admin-login-input"
-                  placeholder="e.g., technical, sales"
+                  placeholder="e.g., technical, sales, support"
                 />
               </label>
               <label>
@@ -797,19 +1118,18 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
               </label>
               <label>
                 Allowed Roles
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px' }}>
                   {availableRoles.map((role) => (
-                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937' }}>
                       <input
                         type="checkbox"
                         checked={newRuleData.allowedRoles.includes(role)}
-                        onChange={() => {
-                          setNewRuleData({
-                            ...newRuleData,
-                            allowedRoles: newRuleData.allowedRoles.includes(role)
-                              ? newRuleData.allowedRoles.filter((r) => r !== role)
-                              : [...newRuleData.allowedRoles, role]
-                          });
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewRuleData({ ...newRuleData, allowedRoles: [...newRuleData.allowedRoles, role] });
+                          } else {
+                            setNewRuleData({ ...newRuleData, allowedRoles: newRuleData.allowedRoles.filter((r) => r !== role) });
+                          }
                         }}
                       />
                       {role}
@@ -1163,9 +1483,9 @@ function SettingsPage() {
 // Mock Data Functions
 function mockAgents(): Agent[] {
   return [
-    { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 } },
-    { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 } },
-    { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 } },
+    { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
+    { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
+    { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
   ];
 }
 
