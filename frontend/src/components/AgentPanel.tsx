@@ -284,7 +284,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                 <option value="busy">Busy</option>
                 <option value="offline">Offline</option>
               </select>
-              <button className="profile-btn modal-btn">View Profile</button>
+              {/* <button className="profile-btn modal-btn">View Profile</button> */}
               {activeChatTicketId && (
                 <button
                   className="profile-btn modal-btn"
