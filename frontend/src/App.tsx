@@ -6,6 +6,7 @@ import WorkflowList from './components/WorkflowList'
 import AdminPanel from './components/AdminPanel'
 import AgentLogin from './components/AgentLogin'
 import AgentPanelApp from './components/AgentPanel'
+import { agentLogin, storeAgentInfo, clearAgentInfo } from './api/agent'
 import './components/chatbot.css'
 
 const ADMIN_USERNAME = (window as any).VITE_ADMIN_USERNAME || 'admin'
@@ -47,29 +48,40 @@ export default function App() {
     setIsAdmin(false)
   }
 
-  // Simple agent login handler using mockAgents from AdminPanel
-  const [agentLoggedIn, setAgentLoggedIn] = useState(false);
-  const [agentId, setAgentId] = useState<number | null>(null);
-  const handleAgentLogin = async (username: string, password: string) => {
-    let agents: any[] = [];
-    if ((window as any).mockAgents) {
-      agents = (window as any).mockAgents();
-    } else {
-      agents = [
-        { username: 'rakesh', password: 'pass123', id: 1 },
-        { username: 'maya', password: 'pass456', id: 2 },
-        { username: 'arjun', password: 'pass789', id: 3 },
-      ];
+  // Agent login state (persisted in localStorage)
+  const [agentLoggedIn, setAgentLoggedIn] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return !!window.localStorage.getItem('agent')
+  })
+  const [agentId, setAgentId] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.localStorage.getItem('agent')
+      return raw ? (JSON.parse(raw).id ?? null) : null
+    } catch (e) {
+      return null
     }
-    const found = agents.find(a => a.username === username && a.password === password);
-    if (found) {
+  })
+  const handleAgentLogin = async (username: string, password: string) => {
+    const result = await agentLogin(username, password);
+    if (result.success && result.data) {
       setAgentLoggedIn(true);
-      setAgentId(found.id ?? 1);
+      setAgentId(result.data.id ?? 1);
+      storeAgentInfo(result.data);
       return { success: true };
     }
-    return { success: false, message: 'Invalid agent credentials.' };
+    return {
+      success: false,
+      message: result.error?.message || 'Invalid agent credentials.',
+    };
   };
 
+  const handleAgentLogout = () => {
+    setAgentLoggedIn(false);
+    setAgentId(null);
+    clearAgentInfo();
+  };
+  
   return (
     <Router>
       <Routes>
@@ -86,7 +98,7 @@ export default function App() {
         />
         <Route
           path="/agent"
-          element={agentLoggedIn ? <AgentPanelApp agentId={agentId ?? 1} /> : <AgentLogin onLogin={handleAgentLogin} />}
+          element={agentLoggedIn ? <AgentPanelApp agentId={agentId ?? 1} onLogout={handleAgentLogout} /> : <AgentLogin onLogin={handleAgentLogin} />}
         />
         <Route
           path="/workflows"

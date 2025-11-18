@@ -1,8 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
+import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo } from '../api/agent'
 
-export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
+export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number, onLogout?: () => void}){
   const [status, setStatus] = useState<string>('online') // online, away, busy, offline
   const [sessions, setSessions] = useState<any[]>(mockSessions())
   const [activeSessionId, setActiveSessionId] = useState<number|null>(null)
@@ -11,14 +12,47 @@ export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
   const [loggedOut, setLoggedOut] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [agentName, setAgentName] = useState<string>('Agent')
+  const chatWsRef = useRef<WebSocket | null>(null)
+  const [activeChatTicketId, setActiveChatTicketId] = useState<string | number | null>(null)
 
   useEffect(()=>{
-    // TODO: connect to WebSocket here
-    // wsRef.current = new WebSocket(`${process.env.REACT_APP_WS_URL}/ws/agent/${agentId}`)
-    // wsRef.current.onmessage = (e) => handleWS(JSON.parse(e.data))
+    // Read agent info from localStorage and set display name
+    const agent = retrieveAgentInfo()
+    if (agent && agent.display_name) {
+      setAgentName(agent.display_name || agent.username || 'Agent')
+    }
+
+    // Connect notifier websocket for agent notifications (new tickets, claims)
+    if (agent && agent.id) {
+      wsRef.current = openAgentNotifierWS(
+        agent.id,
+        (msg) => {
+          console.log('Notifier message received:', msg)
+          // Handle new ticket notifications
+          if (msg.type === 'new_ticket') {
+            setSessions(prev => [{ 
+              id: msg.ticket_id, 
+              user: { name: msg.user_name || 'User', email: msg.user_email || '' }, 
+              topic: msg.category || 'tech', 
+              status: 'waiting', 
+              unread: 1, 
+              lastMsgTime: 'now', 
+              startedAgo: 'just now', 
+              messages: [] 
+            }, ...prev])
+          }
+          // Handle ticket claimed notifications
+          if (msg.type === 'ticket_claimed') {
+            setSessions(prev => prev.map(s => s.id === msg.ticket_id ? { ...s, status: 'assigned' } : s))
+          }
+        },
+        (err) => console.error('Notifier error:', err)
+      )
+    }
 
     return ()=>{
-      // if(wsRef.current) wsRef.current.close()
+      if(wsRef.current) wsRef.current.close()
+      if(chatWsRef.current) chatWsRef.current.close()
     }
   },[agentId])
 
@@ -39,7 +73,11 @@ export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
   }
 
   function sendMessageToSession(sessionId: number, text: string){
-    // send via websocket or REST
+    // Send via chat websocket if connected
+    if(activeChatTicketId === sessionId && chatWsRef.current){
+      sendChatMessage(chatWsRef.current, text)
+    }
+    // Add to local session messages for display
     setSessions(prev => prev.map(s => s.id === sessionId ? {...s, messages: [...s.messages, {sender:'agent', text, ts: Date.now()}]} : s))
   }
 
@@ -78,6 +116,59 @@ export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
     setStatus('offline')
     setSessions([])
     setActiveSessionId(null)
+    clearAgentInfo()
+    if (onLogout) onLogout()
+  }
+
+  interface ConversationListItemProps {
+    session: any;
+    onOpen: () => void;
+    onClaim?: () => void;
+    active: boolean;
+  }
+
+  function claimSession(sessionId: number){
+    if(wsRef.current && wsRef.current.readyState === WebSocket.OPEN){
+      try{
+        sendClaimAction(wsRef.current, sessionId)
+        openChatForSession(sessionId)
+        setSessions((prev: any[]) => prev.map(s => s.id === sessionId ? { ...s, status: 'assigned' } : s))
+      }catch(e){
+        console.error('Failed to claim session', e)
+      }
+    } else {
+      alert('Not connected to agent notifier websocket')
+    }
+  }
+
+  function openChatForSession(sessionId: number){
+    const agent = retrieveAgentInfo()
+    if (!agent) return
+    if(chatWsRef.current) chatWsRef.current.close()
+    chatWsRef.current = openAgentChatWS(
+      sessionId,
+      agent.id,
+      agent.display_name || agent.username || 'Agent',
+      (msg) => {
+        console.log('Chat message:', msg)
+        if(msg.type === 'agent_joined' || msg.type === 'agent_claimed') return
+        setSessions(prev => prev.map(s => s.id === sessionId ? {
+          ...s,
+          messages: [...s.messages, { sender: msg.type === 'text' || !msg.type ? 'user' : 'system', text: msg.text || JSON.stringify(msg), ts: Date.now() }]
+        } : s))
+      },
+      (err) => console.error('Chat error:', err)
+    )
+    setActiveChatTicketId(sessionId)
+  }
+
+  function releaseChatSession(){
+    if(activeChatTicketId && chatWsRef.current){
+      sendReleaseAction(chatWsRef.current, activeChatTicketId)
+      chatWsRef.current.close()
+      chatWsRef.current = null
+      setActiveChatTicketId(null)
+    }
   }
 
   const activeSession = sessions.find(s => s.id === activeSessionId)
@@ -128,6 +219,11 @@ export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
               <button className="profile-btn modal-btn" style={{margin:'8px 0'}} onClick={()=>setShowProfile(false)}>
                 View Profile
               </button>
+              {activeChatTicketId && (
+                <button className="profile-btn modal-btn" style={{margin:'8px 0', backgroundColor: '#ff9800'}} onClick={releaseChatSession}>
+                  Release Chat
+                </button>
+              )}
               <button className="logout-button modal-logout-btn" onClick={handleLogout}>
                 Logout
               </button>
@@ -166,7 +262,7 @@ export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
           <div className="card-heading">Conversations</div>
           <div className="conversation-list">
             {sessions.map(s => (
-              <ConversationListItem key={s.id} session={s} onOpen={() => openSession(s.id)} active={s.id===activeSessionId} />
+              <ConversationListItem key={s.id} session={s} onOpen={() => openSession(s.id)} onClaim={() => claimSession(s.id)} active={s.id===activeSessionId} />
             ))}
           </div>
         </section>
@@ -187,18 +283,22 @@ export default function AgentPanelApp({agentId = 1}:{agentId?: number}){
 interface ConversationListItemProps {
   session: any;
   onOpen: () => void;
+  onClaim?: () => void;
   active: boolean;
 }
-function ConversationListItem({session, onOpen, active}: ConversationListItemProps){
+function ConversationListItem({session, onOpen, onClaim, active}: ConversationListItemProps){
   return (
-    <div onClick={onOpen} className={`conversation-item${active ? ' active' : ''}`}> 
-      <div className="conversation-item-text">
+    <div className={`conversation-item${active ? ' active' : ''}`}> 
+      <div className="conversation-item-text" onClick={onOpen}>
         <div className="conversation-name">
           {session.user.name} <span className="conversation-id">#{session.id}</span>
         </div>
         <div className="conversation-meta">{session.topic} • {session.unread} new</div>
       </div>
       <div className="conversation-time">{session.lastMsgTime}</div>
+      {session.status === 'waiting' && (
+        <button className="claim-button" onClick={() => onClaim && onClaim()}>Claim</button>
+      )}
     </div>
   )
 }
