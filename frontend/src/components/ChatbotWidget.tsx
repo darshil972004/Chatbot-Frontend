@@ -1,14 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
 
-// Extend ChatMessage to support optional blog property (array) and live-agent roles
+// Extend ChatMessage to support optional blog property (array)
 type BlogInfo = { blog_id: string; title: string; blog_url: string };
-type ChatRole = 'user' | 'bot' | 'system' | 'agent';
-type ChatMessage = Omit<BaseChatMessage, 'role'> & {
-  role: ChatRole;
-  propertyGroup?: { id: string; header?: string; items: any[] };
-  blog?: BlogInfo[];
-};
+type ChatMessage = BaseChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] }, blog?: BlogInfo[] };
 
 function uid() {
   return Math.random().toString(36).slice(2)
@@ -18,8 +13,6 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(true)
   // Persist chat history in localStorage
   const LOCAL_KEY = 'cp_chatbot_history';
-  const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
-  const WS_BASE = (window as any).VITE_CHATBOT_WS_BASE || API_BASE.replace(/^http/i, 'ws');
   const [messages, setMessages] = useState<(ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } })[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_KEY);
@@ -31,73 +24,10 @@ export default function ChatbotWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const pendingLiveQueue = useRef<string[]>([]);
   const [pendingOptions, setPendingOptions] = useState<string[]>([]);
   const [pendingMode, setPendingMode] = useState<'button-list' | 'dropdown' | 'form' | null>(null);
   const [selectedOption, setSelectedOption] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-  const [ticketId, setTicketId] = useState<string | null>(null);
-  const [agentStatus, setAgentStatus] = useState<'waiting' | 'connected' | 'released' | null>(null);
-  const [agentName, setAgentName] = useState<string | null>(null);
-  const [liveChatError, setLiveChatError] = useState<string | null>(null);
-
-  const addMessage = useCallback(
-    (msg: ChatMessage) => {
-      setMessages((prev) => {
-        const updated = [...prev, msg];
-        try {
-          localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-    },
-    [LOCAL_KEY]
-  );
-
-  const addSystemMessage = useCallback(
-    (text: string) => {
-      if (!text) return;
-      addMessage({ id: uid(), role: 'system', text });
-    },
-    [addMessage]
-  );
-
-  const resetLiveAgentSession = useCallback(
-    (options?: { keepTicket?: boolean }) => {
-      if (wsRef.current) {
-        try {
-          wsRef.current.close();
-        } catch {}
-      }
-      wsRef.current = null;
-      if (!options?.keepTicket) {
-        setTicketId(null);
-      }
-      pendingLiveQueue.current = [];
-      setAgentStatus(null);
-      setAgentName(null);
-      setLiveChatError(null);
-    },
-    []
-  );
-
-  const emitLiveMessage = useCallback((text: string) => {
-    const payload = JSON.stringify({ type: 'message', text, sender: 'user', ts: Date.now() });
-    const socket = wsRef.current;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      try {
-        socket.send(payload);
-        return true;
-      } catch (err) {
-        console.error('Live agent socket send failed', err);
-        pendingLiveQueue.current.push(text);
-        return false;
-      }
-    }
-    pendingLiveQueue.current.push(text);
-    return false;
-  }, []);
 
   // Save messages to localStorage whenever they change
   useEffect(() => {
@@ -105,13 +35,6 @@ export default function ChatbotWidget() {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(messages));
     } catch {}
   }, [messages]);
-
-  // Cleanup live agent session on unmount
-  useEffect(() => {
-    return () => {
-      resetLiveAgentSession();
-    };
-  }, [resetLiveAgentSession]);
 
   // Manage multiple conversations
   const CONVOS_KEY = 'cp_chatbot_convos';
@@ -134,7 +57,6 @@ export default function ChatbotWidget() {
   }
 
   function handleSelectConvo(convo: { id: string; userId: string; messages: any[]; created: number }) {
-    resetLiveAgentSession();
     setActiveConvoId(convo.id);
     setUserId(convo.userId);
     setMessages(convo.messages);
@@ -241,151 +163,27 @@ export default function ChatbotWidget() {
     }
   }, [userId, isInitialized]);
 
-  // Connect to live agent websocket when a ticket is active
-  useEffect(() => {
-    if (!ticketId) return;
-
-    const base = WS_BASE.replace(/\/$/, '');
-    const wsUrl = `${base}/ws/chat/${ticketId}/user`;
-    let isActive = true;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      try {
-        ws.send(JSON.stringify({ type: 'init', user_id: userId }));
-      } catch {}
-      setAgentStatus((prev) => prev || 'waiting');
-      setLiveChatError(null);
-      if (pendingLiveQueue.current.length > 0) {
-        const queued = [...pendingLiveQueue.current];
-        pendingLiveQueue.current = [];
-        queued.forEach((messageText) => {
-          try {
-            ws.send(JSON.stringify({ type: 'message', text: messageText, sender: 'user', ts: Date.now() }));
-          } catch (err) {
-            console.error('Failed to flush queued live agent message', err);
-            pendingLiveQueue.current.unshift(messageText);
-          }
-        });
-      }
-    };
-
-    ws.onmessage = (event) => {
-      if (!isActive) return;
-      const raw = event.data;
-      let payload: any = null;
-      if (typeof raw === 'string') {
-        try {
-          payload = JSON.parse(raw);
-        } catch {
-          payload = null;
-        }
-      }
-
-      const handleIncomingText = (text: string, role: ChatRole = 'agent') => {
-        if (!text) return;
-        addMessage({ id: uid(), role, text });
-      };
-
-      if (payload && typeof payload === 'object') {
-        if (payload.type === 'message' && typeof payload.text === 'string') {
-          const role = payload.sender === 'user' ? 'user' : 'agent';
-          handleIncomingText(payload.text, role as ChatRole);
-          return;
-        }
-
-        if (!payload.type && typeof payload.text === 'string') {
-          handleIncomingText(payload.text);
-          return;
-        }
-
-        switch (payload.type) {
-          case 'init_ack':
-            return;
-          case 'agent_claimed':
-            setAgentStatus('waiting');
-            addSystemMessage('A live agent has claimed your ticket. They will join shortly.');
-            return;
-          case 'agent_joined':
-            setAgentStatus('connected');
-            setAgentName(payload.agent_name || 'Live Agent');
-            addSystemMessage(`${payload.agent_name || 'A live agent'} joined the conversation.`);
-            return;
-          case 'agent_released':
-            addSystemMessage('The live agent wrapped up the session. Switching back to the AI assistant.');
-            resetLiveAgentSession();
-            return;
-          case 'agent_disconnected':
-            addSystemMessage('The live agent connection was lost. You can continue with the AI assistant.');
-            resetLiveAgentSession();
-            return;
-          case 'agent_claim_failed':
-          case 'error':
-            setLiveChatError(payload.message || 'Live agent channel error.');
-            return;
-          default:
-            if (typeof payload.text === 'string') {
-              handleIncomingText(payload.text);
-            }
-            return;
-        }
-      }
-
-      if (typeof raw === 'string') {
-        handleIncomingText(raw);
-      }
-    };
-
-    ws.onerror = () => {
-      if (!isActive) return;
-      setLiveChatError('Live agent channel encountered a connection issue.');
-    };
-
-    ws.onclose = () => {
-      wsRef.current = null;
-    };
-
-    return () => {
-      isActive = false;
-      try {
-        ws.close();
-      } catch {}
-      wsRef.current = null;
-    };
-  }, [WS_BASE, ticketId, userId, addMessage, addSystemMessage, resetLiveAgentSession]);
-
   async function handleSend(customText?: string, skipAutoRespond: boolean = false) {
     const trimmed = (customText ?? input).trim();
     if (!trimmed) return;
+    
+    // Allow auto-respond to bypass loading check
+    if (!skipAutoRespond && loading) return;
 
-    const shouldRouteToLiveAgent = Boolean(ticketId) && !skipAutoRespond;
-
-    // Allow auto-respond to bypass loading check for bot mode
-    if (!skipAutoRespond && !shouldRouteToLiveAgent && loading) return;
+    // Only add user message if it's not an auto-response
+    if (!skipAutoRespond) {
+      const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
+      setMessages((m) => {
+        const updated = [...m, userMsg];
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }
 
     setInput('');
     setPendingOptions([]);
     setPendingMode(null);
     setSelectedOption('');
-
-    if (shouldRouteToLiveAgent) {
-      const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
-      addMessage(userMsg);
-      const sent = emitLiveMessage(trimmed);
-      if (sent) {
-        setLiveChatError(null);
-      } else {
-        setLiveChatError('Waiting for live agent connection. We will deliver your message once connected.');
-      }
-      return;
-    }
-
-    if (!skipAutoRespond) {
-      const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
-      addMessage(userMsg);
-    }
-
     setLoading(true);
 
     const res = await sendMessageToBot(userId, trimmed);
@@ -468,13 +266,6 @@ export default function ChatbotWidget() {
       setPendingOptions(optsRaw);
       setPendingMode(rType);
     }
-
-    const ticketIdFromRes = (res.data as any)?.ticket_id;
-    if (rType === 'tech_support' && ticketIdFromRes) {
-      setTicketId(ticketIdFromRes);
-      setAgentStatus('waiting');
-      addSystemMessage('Connecting you with a live agent. We will let you know as soon as they join.');
-    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -495,7 +286,6 @@ export default function ChatbotWidget() {
       localStorage.setItem(CONVOS_KEY, JSON.stringify(all));
     }
     // Generate new user id and reset chat
-    resetLiveAgentSession();
     const newUserId = uid();
     setUserId(newUserId);
     localStorage.setItem('cp_chat_user_id', newUserId);
@@ -508,13 +298,6 @@ export default function ChatbotWidget() {
     setExpandedGroups([]);
     setInput('');
   }
-
-  const getMessageClass = (role: ChatRole) => {
-    if (role === 'user') return 'cp-msg--user';
-    if (role === 'agent') return 'cp-msg--agent';
-    if (role === 'system') return 'cp-msg--system';
-    return 'cp-msg--bot';
-  };
 
   return (
     <>
@@ -535,20 +318,6 @@ export default function ChatbotWidget() {
             </div>
 
             <div className="cp-chatbot__body" ref={listRef}>
-        {ticketId && (
-          <div className="cp-live-banner">
-            <div className={`cp-live-dot ${agentStatus === 'connected' ? 'is-online' : 'is-waiting'}`} />
-            <div className="cp-live-banner-text">
-              <div className="cp-live-banner-title">
-                {agentStatus === 'connected'
-                  ? `Live agent${agentName ? ` · ${agentName}` : ''}`
-                  : 'Waiting for a live agent'}
-              </div>
-              <div className="cp-live-banner-subtitle">Ticket #{ticketId.slice(0, 8)}</div>
-              {liveChatError ? <div className="cp-live-banner-error">{liveChatError}</div> : null}
-            </div>
-          </div>
-        )}
         {messages.map((m) => {
           // Show form summary for user message
           if (m.role === 'user' && m.text.includes(':')) {
@@ -605,7 +374,7 @@ export default function ChatbotWidget() {
           // ...existing code...
           return (
             <div key={m.id}>
-              <div className={`cp-msg ${getMessageClass(m.role)}`}>{m.text}</div>
+              <div className={`cp-msg ${m.role === 'user' ? 'cp-msg--user' : 'cp-msg--bot'}`}>{m.text}</div>
               {/* ...existing code... */}
               {m.role === 'bot' && m.propertyGroup && (
                 (() => {

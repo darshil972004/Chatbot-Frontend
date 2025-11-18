@@ -96,9 +96,9 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
   // Admin Panel UI state
   const [route, setRoute] = useState('dashboard');
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [sessions, setSessions] = useState<Session[]>(mockSessions());
-  const [templates, setTemplates] = useState<Template[]>(mockTemplates());
-  const [routingRules, setRoutingRules] = useState<RoutingRule[]>(mockRoutingRules());
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [routingRules, setRoutingRules] = useState<RoutingRule[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
 
   const loadSkills = useCallback(async () => {
@@ -429,10 +429,10 @@ function Sidebar({ route, setRoute, agents, sessions, onLogout }: SidebarProps) 
         <ul className="admin-sidebar-list">
           {item('dashboard', 'Dashboard', null)}
           {item('agents', `Agents (${onlineCount} online)`, null)}
-          {item('live', 'Live Chats', `Waiting: ${waitingCount}`)}
+          {/* {item('live', 'Live Chats', `Waiting: ${waitingCount}`)} */}
           {item('routing', 'Routing Rules', null)}
-          {item('templates', 'Message Templates', null)}
-          {item('history', 'Chat History', null)}
+          {/* {item('templates', 'Message Templates', null)} */}
+          {/* {item('history', 'Chat History', null)} */}
           {item('analytics', 'Analytics', null)}
           {/* Settings button removed, now only accessible from header dropdown */}
           {item('workflows', 'Workflows', null)}
@@ -1042,7 +1042,21 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
 
-  const availableRoles = ['technical', 'sales', 'support'];
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await apiClient.get('/api/skills');
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setAvailableRoles(res.data.data.map((skill: any) => skill.name));
+        }
+      } catch (err) {
+        setAvailableRoles([]);
+      }
+    }
+    fetchRoles();
+  }, []);
 
   function addRule() {
     if (newRuleData.topic.trim()) {
@@ -1104,7 +1118,6 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
                   value={newRuleData.topic}
                   onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
                   className="admin-login-input"
-                  placeholder="e.g., technical, sales, support"
                 />
               </label>
               <label>
@@ -1421,7 +1434,7 @@ function AnalyticsPage({ sessions, agents }: AnalyticsPageProps) {
       </div>
 
       <div className="admin-content-card">
-        <h3>Agent Response Times (sample)</h3>
+        <h3>Agent Response Times)</h3>
         <ul className="admin-analytics-list">
           {agents.map((a) => (
             <li key={a.id} className="admin-analytics-item">
@@ -1481,35 +1494,35 @@ function SettingsPage() {
 }
 
 // Mock Data Functions
-function mockAgents(): Agent[] {
-  return [
-    { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
-    { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
-    { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
-  ];
-}
+// function mockAgents(): Agent[] {
+//   return [
+//     { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
+//     { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
+//     { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
+//   ];
+// }
 
-function mockSessions(): Session[] {
-  return [
-    { id: 101, userId: 'u101', topic: 'booking', status: 'assigned', assignedAgentId: 2, messages: [{ sender: 'user', text: 'Hi, I need help booking' }, { sender: 'agent', text: 'Sure — I can help' }], duration: 120, waitTime: 5 },
-    { id: 102, userId: 'u102', topic: 'technical', status: 'waiting', assignedAgentId: null, messages: [{ sender: 'user', text: 'App crashes when I upload' }], duration: 0, waitTime: 20 },
-    { id: 103, userId: 'u103', topic: 'pricing', status: 'closed', assignedAgentId: null, messages: [{ sender: 'user', text: 'What are your fees?' }, { sender: 'bot', text: 'Here is our pricing' }], duration: 60, waitTime: 2 },
-  ];
-}
+// function mockSessions(): Session[] {
+//   return [
+//     { id: 101, userId: 'u101', topic: 'booking', status: 'assigned', assignedAgentId: 2, messages: [{ sender: 'user', text: 'Hi, I need help booking' }, { sender: 'agent', text: 'Sure — I can help' }], duration: 120, waitTime: 5 },
+//     { id: 102, userId: 'u102', topic: 'technical', status: 'waiting', assignedAgentId: null, messages: [{ sender: 'user', text: 'App crashes when I upload' }], duration: 0, waitTime: 20 },
+//     { id: 103, userId: 'u103', topic: 'pricing', status: 'closed', assignedAgentId: null, messages: [{ sender: 'user', text: 'What are your fees?' }, { sender: 'bot', text: 'Here is our pricing' }], duration: 60, waitTime: 2 },
+//   ];
+// }
 
-function mockTemplates(): Template[] {
-  return [
-    { id: 1, type: 'greeting', content: 'Welcome! How can I help today?' },
-    { id: 2, type: 'waiting', content: "All agents are busy. We'll connect you shortly." },
-    { id: 3, type: 'fallback', content: 'Your agent is unavailable. Please try again later or leave a message.' },
-  ];
-}
+// function mockTemplates(): Template[] {
+//   return [
+//     { id: 1, type: 'greeting', content: 'Welcome! How can I help today?' },
+//     { id: 2, type: 'waiting', content: "All agents are busy. We'll connect you shortly." },
+//     { id: 3, type: 'fallback', content: 'Your agent is unavailable. Please try again later or leave a message.' },
+//   ];
+// }
 
-function mockRoutingRules(): RoutingRule[] {
-  return [
-    { id: 1, topic: 'technical', allowedRoles: ['technical'], priority: 1, autoAssign: true },
-    { id: 2, topic: 'sales', allowedRoles: ['sales'], priority: 5, autoAssign: true },
-  ];
-}
+// function mockRoutingRules(): RoutingRule[] {
+//   return [
+//     { id: 1, topic: 'technical', allowedRoles: ['technical'], priority: 1, autoAssign: true },
+//     { id: 2, topic: 'sales', allowedRoles: ['sales'], priority: 5, autoAssign: true },
+//   ];
+// }
 
 
