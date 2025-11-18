@@ -1,3 +1,21 @@
+/* Live Support button style (matches other footer buttons) */
+.cp-chatbot__livesupport-btn {
+  font-size: 15px;
+  padding: 10px 0;
+  border-radius: 6px;
+  background: #2b7cffe6;
+  border: 1px solid #1e8bff;
+  cursor: pointer;
+  width: 100%;
+  color: #ffffff;
+  font-weight: 500;
+  font-family: 'Segoe UI';
+  margin: 0 0 8px 0;
+  transition: background 0.2s;
+}
+.cp-chatbot__livesupport-btn:hover {
+  background: #1e8bff;
+}
 /* Blog info styles */
 .cp-blog-title {
   display: inline-block;
@@ -582,4 +600,18 @@
   font-size: 22px;
 }
 
+.cp-footer-btn {
+  width: 130px;
+  margin: 5px;
+}
 
+.cp-chatbot__showconvos {
+  margin-right: 20px;
+}
+
+/* Force 3rd button to new row */
+.cp-chatbot__footer-buttons button:nth-child(3) {
+  display: block;
+  margin-top: 10px;
+  width: 100%;
+}

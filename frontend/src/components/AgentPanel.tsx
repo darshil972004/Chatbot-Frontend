@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
-import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo } from '../api/agent'
+import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus } from '../api/agent'
 
 export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number, onLogout?: () => void}){
   const [status, setStatus] = useState<string>('online') // online, away, busy, offline
@@ -48,6 +48,10 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         },
         (err) => console.error('Notifier error:', err)
       )
+
+      // Ensure backend reflects the agent is online when panel loads
+      updateAgentStatus(agent.id, 'online', { source: 'agent_panel_mount' })
+        .catch(err => console.error('Failed to sync agent online status on mount', err))
     }
 
     return ()=>{
@@ -62,9 +66,24 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     // if(msg.type === 'assignment') setSessions(prev => [msg.session,...prev])
   }
 
-  function setAgentStatus(s: string){
-    setStatus(s)
-    // TODO: call API to update status
+  async function setAgentStatus(nextStatus: string){
+    const previousStatus = status
+    setStatus(nextStatus)
+
+    const agent = retrieveAgentInfo()
+    if (!agent?.id) {
+      console.warn('No agent info available to sync status')
+      return
+    }
+
+    try {
+      await updateAgentStatus(agent.id, nextStatus, { previous_status: previousStatus })
+    } catch (err) {
+      console.error('Failed to persist agent status', err)
+      // revert UI if backend update fails
+      setStatus(previousStatus)
+      alert('Unable to update your status right now. Please try again.')
+    }
   }
 
   function openSession(id: number){
@@ -111,7 +130,15 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 //     alert('Reports feature coming soon!');
 //   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    const agent = retrieveAgentInfo()
+    if (agent?.id) {
+      try {
+        await updateAgentStatus(agent.id, 'offline', { source: 'agent_panel_logout', previous_status: status })
+      } catch (err) {
+        console.error('Failed to mark agent offline on logout', err)
+      }
+    }
     setLoggedOut(true)
     setStatus('offline')
     setSessions([])
@@ -181,6 +208,15 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       setSessions(mockSessions())
       setActiveSessionId(null)
       setAgentName(loginData?.username || 'Agent')
+
+      if (loginData?.id) {
+        try {
+          await updateAgentStatus(loginData.id, 'online', { source: 'agent_panel_login' })
+        } catch (err) {
+          console.error('Failed to sync agent status on login', err)
+        }
+      }
+
       return { success: true }
     }} />
   }
@@ -288,8 +324,8 @@ interface ConversationListItemProps {
 }
 function ConversationListItem({session, onOpen, onClaim, active}: ConversationListItemProps){
   return (
-    <div className={`conversation-item${active ? ' active' : ''}`}> 
-      <div className="conversation-item-text" onClick={onOpen}>
+    <div className={`conversation-item${active ? ' active' : ''}`} onClick={onOpen} style={{cursor: 'pointer'}}>
+      <div className="conversation-item-text">
         <div className="conversation-name">
           {session.user.name} <span className="conversation-id">#{session.id}</span>
         </div>
@@ -371,7 +407,7 @@ function CustomerInfoPanel({user}: CustomerInfoPanelProps){
     <div className="customer-info">
       <div className="customer-name">{user.name}</div>
       <div className="customer-subtitle">{user.email}</div>
-      <div className="customer-detail">Last seen: {user.lastSeen}</div>
+      {/* <div className="customer-detail">Last seen: {user.lastSeen}</div> */}
       <div className="customer-detail">Past issues: {user.pastIssues}</div>
       {/* <button className="profile-button">Open Customer Profile</button> */}
     </div>
@@ -381,9 +417,9 @@ function CustomerInfoPanel({user}: CustomerInfoPanelProps){
 // ---------------- Mock Data ----------------
 function mockSessions(){
   return [
-    { id: 201, user:{name:'Asha', email:'asha@example.com', country:'India', lastSeen:'2m ago', pastIssues:2}, topic:'technical', status:'assigned', unread:1, lastMsgTime:'2m', startedAgo:'5m', messages:[{sender:'user', text:'App crashed while uploading', ts: Date.now()-60000}, {sender:'agent', text:'Can you share the screenshot?', ts: Date.now()-30000}]},
-    { id: 202, user:{name:'Rahul', email:'rahul@example.com', country:'India', lastSeen:'10m ago', pastIssues:1}, topic:'billing', status:'waiting', unread:2, lastMsgTime:'10m', startedAgo:'10m', messages:[{sender:'user', text:'I was charged twice', ts: Date.now()-600000}]},
-    { id: 203, user:{name:'Nina', email:'nina@example.com', country:'USA', lastSeen:'1h ago', pastIssues:0}, topic:'general', status:'assigned', unread:0, lastMsgTime:'1h', startedAgo:'15m', messages:[{sender:'user', text:'How do I change my password?', ts: Date.now()-900000}]},
+    { id: 201, user:{name:'Asha', email:'asha@example.com', country:'India', pastIssues:2}, topic:'technical', status:'assigned', unread:1, lastMsgTime:'2m', startedAgo:'5m', messages:[{sender:'user', text:'App crashed while uploading', ts: Date.now()-60000}, {sender:'agent', text:'Can you share the screenshot?', ts: Date.now()-30000}]},
+    { id: 202, user:{name:'Rahul', email:'rahul@example.com', country:'India', pastIssues:1}, topic:'billing', status:'waiting', unread:2, lastMsgTime:'10m', startedAgo:'10m', messages:[{sender:'user', text:'I was charged twice', ts: Date.now()-600000}]},
+    { id: 203, user:{name:'Nina', email:'nina@example.com', country:'USA', pastIssues:0}, topic:'general', status:'assigned', unread:0, lastMsgTime:'1h', startedAgo:'15m', messages:[{sender:'user', text:'How do I change my password?', ts: Date.now()-900000}]},
   ]
 }
 

@@ -299,6 +299,13 @@ export default function ChatbotWidget() {
     setInput('');
   }
 
+  // Add a stub for handleLiveSupport
+  function handleLiveSupport() {
+    // Send a message to tech support via the chatbot
+    const techSupportMsg = 'tech support';
+    handleSend(techSupportMsg);
+  }
+
   return (
     <>
       {!isOpen && (
@@ -537,6 +544,16 @@ export default function ChatbotWidget() {
                   type="button"
                 >
                   Chat History
+                </button>
+              </div>
+              <div className="cp-footer-row">
+                <button
+                  className="cp-chatbot__livesupport-btn "
+                  onClick={handleLiveSupport}
+                  aria-label = "Live Support"
+                  type="button"
+                  >
+                    Connect To Live Support
                 </button>
               </div>
             </div>

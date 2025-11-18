@@ -308,3 +308,38 @@ export function clearAgentInfo(): void {
     window.localStorage.removeItem('agent');
   }
 }
+
+/**
+ * Create a status event for the agent so backend reflects UI status
+ */
+export async function updateAgentStatus(
+  agentId: number | string,
+  status: string,
+  details: Record<string, any> = {}
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/api/agent-status-events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${CHATBOT_TOKEN}`,
+      },
+      body: JSON.stringify({
+        agent_id: agentId,
+        status,
+        concurrent_load: 0,
+        details: { source: 'agent_panel', ...details },
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `Failed to update agent status (${res.status}): ${text || res.statusText}`
+      );
+    }
+  } catch (err) {
+    console.error('Error updating agent status', err);
+    throw err;
+  }
+}
