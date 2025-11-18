@@ -185,6 +185,55 @@
   overflow: auto;
 }
 
+.cp-live-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(32, 56, 108, 0.12);
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(12, 27, 51, 0.08);
+}
+
+.cp-live-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f7b731;
+  box-shadow: 0 0 0 6px rgba(247, 183, 49, 0.2);
+}
+
+.cp-live-dot.is-online {
+  background: #34c759;
+  box-shadow: 0 0 0 6px rgba(52, 199, 89, 0.25);
+}
+
+.cp-live-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cp-live-banner-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0c1b33;
+}
+
+.cp-live-banner-subtitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #6b7790;
+}
+
+.cp-live-banner-error {
+  font-size: 12px;
+  color: #b42318;
+}
+
 .cp-msg {
   max-width: 85%;
   margin: 8px 0;
@@ -203,6 +252,22 @@
 .cp-msg--bot {
   margin-right: auto;
   background: #e6edf5;
+}
+
+.cp-msg--agent {
+  margin-right: auto;
+  background: #fff6e6;
+  border: 1px solid rgba(255, 173, 31, 0.4);
+  box-shadow: 0 4px 12px rgba(255, 173, 31, 0.15);
+}
+
+.cp-msg--system {
+  margin: 12px auto;
+  background: #f0f4ff;
+  color: #405089;
+  font-size: 13px;
+  border: 1px dashed rgba(64, 80, 137, 0.4);
+  text-align: center;
 }
 
 .cp-chatbot__footer {
