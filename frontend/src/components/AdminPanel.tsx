@@ -653,7 +653,20 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     }
   }
 
-  // Remove handleEditAgent click logic, show agent details directly
+  function handleEditAgent(agent: Agent) {
+    setEditingAgent(agent);
+    setFormData({
+      username: agent.username,
+      password: agent.password,
+      name: agent.name,
+      email: agent.email || '',
+      role: agent.role,
+      status: agent.status,
+      skillIds: agent.skills?.map((skill) => skill.id) ?? [],
+      max_concurrent_chats: agent.max_concurrent_chats ?? 2,
+    });
+    setShowCreateModal(true);
+  }
 
   async function handleUpdateAgent() {
     if (editingAgent) {
@@ -709,39 +722,168 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     }
   }
 
-  // Always show agent details directly, no click needed
+  // ...existing code...
   return (
     <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Agents</h2>
-        <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [],max_concurrent_chats:2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
+  <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [],max_concurrent_chats:2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
       </div>
 
-      <div className="admin-agents-list">
-        {agents.map((a: Agent) => (
-          <div key={a.id} className="admin-profile-card">
-            <div className="admin-profile-header">
-              <div className="profile-avatar">{a.name[0]}</div>
-              <div>
-                <div className="profile-name">{a.name}</div>
-                <div className="profile-role">{a.role}</div>
-                <div className="profile-status">Status: {a.status}</div>
-                <div>Email: {a.email}</div>
-                <div>Username: {a.username}</div>
-                <div>Max Chats: {a.max_concurrent_chats}</div>
-                <div>Chats Today: {a.metrics.chatsToday}</div>
-                <div>Avg Response: {a.metrics.avgResponse}</div>
-                <div>Skills: {a.skills && a.skills.length > 0 ? a.skills.map((skill) => skill.name).join(', ') : '—'}</div>
-              </div>
+      {showCreateModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ marginTop: 0 }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              <label>
+                Username
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Username"
+                  required
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value.slice(0, 72) })}
+                  className="admin-login-input"
+                  placeholder="Password (max 72 chars)"
+                  maxLength={72}
+                  required
+                />
+                {formData.password.length > 72 && (
+                  <div style={{ color: 'red', fontSize: '12px' }}>
+                    Password must be 72 characters or less.
+                  </div>
+                )}
+              </label>
+              <label>
+                Display Name
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Agent name"
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Email address"
+                  required
+                />
+              </label>
+              <label>
+                Role
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="admin-login-input"
+                >
+                  <option value="">Select role</option>
+                  {roles.map((role) => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Skills
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px' }}>
+                  {skills.length === 0 && <div style={{ fontSize: '14px', color: '#94a3b8' }}>No skills available.</div>}
+                  {skills.map((skill) => (
+                    <label key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.skillIds.includes(skill.id)}
+                        onChange={() => toggleSkillSelection(skill.id)}
+                      />
+                      {skill.name}
+                    </label>
+                  ))}
+                </div>
+              </label>
+              <label>
+                Status
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Agent['status'] })}
+                  className="admin-login-input"
+                >
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                  <option value="busy">Busy</option>
+                  <option value="away">Away</option>
+                </select>
+              </label>
+              <label>
+                Max Concurrent Chats
+                <input
+                  type="number"
+                  value={formData.max_concurrent_chats}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, max_concurrent_chats: Number(e.target.value) })}
+                  className="admin-login-input"
+                  placeholder="Max Concurrent Chats"
+                  min={1}
+                />
+              </label>
             </div>
-            <div className="admin-profile-actions">
-              <button onClick={() => toggleStatus(a.id)} className="admin-profile-btn">Toggle Status</button>
-              <button onClick={() => handleDeleteAgent(a.id)} className="admin-logout-btn">Delete</button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
+                {editingAgent ? 'Update' : 'Create'}
+              </button>
+              <button onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }} className="admin-button">Cancel</button>
             </div>
           </div>
-        ))}
-      </div>
-      {/* ...existing code for create modal and table can be removed or kept for admin use... */}
+        </div>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Skills</th>
+            <th>Status</th>
+            <th>Chats Today</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {agents.map((a: Agent) => (
+            <tr key={a.id}>
+              <td>{a.username}</td>
+              <td>{a.name}</td>
+              <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
+              <td style={{ fontSize: '14px', color: '#1f2937' }}>
+                {a.skills && a.skills.length > 0 ? a.skills.map((skill) => skill.name).join(', ') : '—'}
+              </td>
+              <td style={{ textTransform: 'capitalize', fontWeight: a.status === 'online' ? 600 : 400 }}>
+                {a.status}
+              </td>
+              <td>{a.metrics.chatsToday}</td>
+              <td>
+                <div className="admin-table-actions">
+                  <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
+                  <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
+                  <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
