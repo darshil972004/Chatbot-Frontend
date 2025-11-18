@@ -1,16 +1,17 @@
 import React, {useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
-import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus } from '../api/agent'
+import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms } from '../api/agent'
 
 export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number, onLogout?: () => void}){
   const [status, setStatus] = useState<string>('online') // online, away, busy, offline
-  const [sessions, setSessions] = useState<any[]>(mockSessions())
-  const [activeSessionId, setActiveSessionId] = useState<number|null>(null)
+  // Initialize with empty list so queue comes from backend active rooms + notifier
+  const [sessions, setSessions] = useState<any[]>([])
+  const [activeSessionId, setActiveSessionId] = useState<string|number|null>(null)
   const [quickReplies] = useState<string[]>(mockQuickReplies())
   const wsRef = useRef<any>(null)
   const [loggedOut, setLoggedOut] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
+  
   const [agentName, setAgentName] = useState<string>('Agent')
   const chatWsRef = useRef<WebSocket | null>(null)
   const [activeChatTicketId, setActiveChatTicketId] = useState<string | number | null>(null)
@@ -40,6 +41,10 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               startedAgo: 'just now', 
               messages: [] 
             }, ...prev])
+            // Set active session id from backend ACTIVE_ROOMS via notifier (if agent has no active session)
+            if (!activeSessionId && msg.ticket_id) {
+              setActiveSessionId(msg.ticket_id)
+            }
           }
           // Handle ticket claimed notifications
           if (msg.type === 'ticket_claimed') {
@@ -48,11 +53,41 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         },
         (err) => console.error('Notifier error:', err)
       )
-
       // Ensure backend reflects the agent is online when panel loads
       updateAgentStatus(agent.id, 'online', { source: 'agent_panel_mount' })
         .catch(err => console.error('Failed to sync agent online status on mount', err))
     }
+
+    // Fetch current active rooms from backend to initialize session list
+    (async () => {
+      try {
+        const resp = await fetchActiveRooms()
+        if (resp && resp.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((r: any) => ({
+            id: r.ticket_id,
+            user: { name: r.user_id || 'User', email: '' },
+            topic: 'tech',
+            status: r.status || 'waiting',
+            unread: 0,
+            lastMsgTime: r.created_at || 'now',
+            startedAgo: r.created_at || 'just now',
+            messages: r.history || []
+          }))
+          // Merge with any existing sessions, dedupe by id
+          setSessions(prev => {
+            const existingIds = new Set(prev.map(p => p.id))
+            const merged = [...mapped, ...prev.filter(p=>!existingIds.has(p.id))]
+            return merged
+          })
+          // If no active session, pick the most recent backend room
+          if (!activeSessionId && mapped.length > 0) {
+            setActiveSessionId(mapped[0].id)
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch active rooms', e)
+      }
+    })()
 
     return ()=>{
       if(wsRef.current) wsRef.current.close()
@@ -86,21 +121,21 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
-  function openSession(id: number){
+  function openSession(id: string|number){
     setActiveSessionId(id)
     // mark read, fetch history if necessary
   }
 
-  function sendMessageToSession(sessionId: number, text: string){
+  function sendMessageToSession(sessionId: string|number, text: string){
     // Send via chat websocket if connected
-    if(activeChatTicketId === sessionId && chatWsRef.current){
+    if(activeChatTicketId == sessionId && chatWsRef.current){
       sendChatMessage(chatWsRef.current, text)
     }
     // Add to local session messages for display
-    setSessions(prev => prev.map(s => s.id === sessionId ? {...s, messages: [...s.messages, {sender:'agent', text, ts: Date.now()}]} : s))
+    setSessions(prev => prev.map(s => s.id == sessionId ? {...s, messages: [...s.messages, {sender:'agent', text, ts: Date.now()}]} : s))
   }
 
-  function quickReply(sessionId: number, tpl: string){
+  function quickReply(sessionId: string|number, tpl: string){
     sendMessageToSession(sessionId, tpl)
   }
 
@@ -109,7 +144,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
     // Find index of current active session
     const currentIndex = sessions.findIndex(
-        (s) => s.id === activeSessionId
+      (s) => s.id == activeSessionId
     );
 
     // If found and there is a next one
@@ -154,12 +189,12 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     active: boolean;
   }
 
-  function claimSession(sessionId: number){
+  function claimSession(sessionId: string|number){
     if(wsRef.current && wsRef.current.readyState === WebSocket.OPEN){
       try{
         sendClaimAction(wsRef.current, sessionId)
         openChatForSession(sessionId)
-        setSessions((prev: any[]) => prev.map(s => s.id === sessionId ? { ...s, status: 'assigned' } : s))
+        setSessions((prev: any[]) => prev.map(s => s.id == sessionId ? { ...s, status: 'assigned' } : s))
       }catch(e){
         console.error('Failed to claim session', e)
       }
@@ -168,7 +203,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
-  function openChatForSession(sessionId: number){
+  function openChatForSession(sessionId: string|number){
     const agent = retrieveAgentInfo()
     if (!agent) return
     if(chatWsRef.current) chatWsRef.current.close()
@@ -179,7 +214,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       (msg) => {
         console.log('Chat message:', msg)
         if(msg.type === 'agent_joined' || msg.type === 'agent_claimed') return
-        setSessions(prev => prev.map(s => s.id === sessionId ? {
+        setSessions(prev => prev.map(s => s.id == sessionId ? {
           ...s,
           messages: [...s.messages, { sender: msg.type === 'text' || !msg.type ? 'user' : 'system', text: msg.text || JSON.stringify(msg), ts: Date.now() }]
         } : s))
@@ -196,16 +231,19 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       chatWsRef.current = null
       setActiveChatTicketId(null)
     }
+    // Clear active session when releasing
+    setActiveSessionId(null)
   }
 
-  const activeSession = sessions.find(s => s.id === activeSessionId)
+  const activeSession = sessions.find(s => s.id == activeSessionId)
   const waitingCount = sessions.filter((s: any)=>s.status==='waiting').length
 
   if (loggedOut) {
     return <AgentLogin onLogin={async (loginData: any) => {
       setLoggedOut(false)
       setStatus('online')
-      setSessions(mockSessions())
+      // Clear current sessions; they will be populated from backend (active rooms + notifier)
+      setSessions([])
       setActiveSessionId(null)
       setAgentName(loginData?.username || 'Agent')
 
@@ -224,48 +262,42 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   return (
     <div className="agent-panel">
       <div className="agent-grid">
-        {/* Agent avatar/name header, click to open dropdown */}
-        <div className="agent-header-profile" onClick={()=>setShowProfile(true)}>
-          <div className="profile-avatar header-avatar">
+        {/* Agent profile header with full profile content inline */}
+        <div className="agent-header-profile">
+          <div className="profile-avatar modal-avatar" style={{ margin: '0 12px 0 0' }}>
             {agentName.charAt(0).toUpperCase()}
           </div>
-          <span className="profile-name header-name">{agentName}</span>
-        </div>
-        {/* Dropdown/modal for profile details */}
-        {showProfile && (
-          <div className="profile-dropdown-modal" onClick={()=>setShowProfile(false)}>
-            <div className="profile-dropdown-content" onClick={e=>e.stopPropagation()}>
-              <div className="profile-avatar modal-avatar" style={{margin:'0 auto 10px'}}>
-                {agentName.charAt(0).toUpperCase()}
-              </div>
-              <div className="profile-name modal-name">{agentName}</div>
-              <div className="profile-role modal-role">Technical Agent</div>
-              <div className="profile-status modal-status">Status: <span className={`status-pill ${status}`}>{status}</span></div>
+          <div style={{ flex: 1 }}>
+            <div className="profile-name modal-name">{agentName}</div>
+            <div className="profile-role modal-role">Technical Agent</div>
+            <div className="profile-status modal-status">
+              Status: <span className={`status-pill ${status}`}>{status}</span>
+            </div>
+            <div className="profile-actions" style={{ marginTop: 10 }}>
               <select
                 className="profile-select modal-select"
                 value={status}
                 onChange={e => setAgentStatus(e.target.value)}
-                style={{margin:'10px 0'}}
               >
                 <option value="online">Online</option>
                 <option value="away">Away</option>
                 <option value="busy">Busy</option>
                 <option value="offline">Offline</option>
               </select>
-              <button className="profile-btn modal-btn" style={{margin:'8px 0'}} onClick={()=>setShowProfile(false)}>
-                View Profile
-              </button>
+              <button className="profile-btn modal-btn">View Profile</button>
               {activeChatTicketId && (
-                <button className="profile-btn modal-btn" style={{margin:'8px 0', backgroundColor: '#ff9800'}} onClick={releaseChatSession}>
+                <button
+                  className="profile-btn modal-btn"
+                  style={{ backgroundColor: '#ff9800' }}
+                  onClick={releaseChatSession}
+                >
                   Release Chat
                 </button>
               )}
-              <button className="logout-button modal-logout-btn" onClick={handleLogout}>
-                Logout
-              </button>
+              <button className="logout-button modal-logout-btn" onClick={handleLogout}>Logout</button>
             </div>
           </div>
-        )}
+        </div>
 
         <section className="agent-card grid-workspace workspace-card">
           <div className="workspace-header">

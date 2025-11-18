@@ -310,6 +310,25 @@ export function clearAgentInfo(): void {
 }
 
 /**
+ * Fetch a snapshot of active rooms from backend
+ */
+export async function fetchActiveRooms(): Promise<{success: boolean; data?: any[]; error?: any}> {
+  try {
+    const res = await fetch(`${API_BASE}/api/active-rooms`, {
+      headers: { Authorization: `Bearer ${CHATBOT_TOKEN}` },
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      return { success: false, error: text }
+    }
+    const j = await res.json()
+    return j
+  } catch (e) {
+    return { success: false, error: e }
+  }
+}
+
+/**
  * Create a status event for the agent so backend reflects UI status
  */
 export async function updateAgentStatus(
