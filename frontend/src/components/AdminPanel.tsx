@@ -1106,7 +1106,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
       </div>
 
       <div className="admin-agents-container">
-        <div className="admin-agents-table-wrapper">
+        <div className="admin-agents-table-wrapper admin-table-scroll">
           <table className="admin-table">
             <thead>
               <tr>
@@ -2005,8 +2005,8 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
         </div>
       </div>
 
-      <div className="admin-tickets-container">
-        <div className="admin-tickets-table-wrapper">
+      <div className="admin-tickets-container admin-tab-card">
+        <div className="admin-tickets-table-wrapper admin-table-scroll">
           <table className="admin-table">
             <thead>
               <tr>
@@ -2212,43 +2212,47 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
         </div>
       </div>
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Session ID</th>
-            <th>User ID</th>
-            <th>Status</th>
-            <th>Messages</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredConversations.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="admin-empty-state">No conversations found</div>
-              </td>
-            </tr>
-          ) : (
-            filteredConversations.map((conv) => (
-              <tr key={conv.id}>
-                <td>{conv.session_id}</td>
-                <td>{conv.user_id || 'N/A'}</td>
-                <td style={{ textTransform: 'capitalize' }}>{conv.status || 'N/A'}</td>
-                <td>{conversationMessages.length || 0}</td>
-                <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
-                <td>
-                  <div className="admin-table-actions">
-                    <button onClick={() => handleViewConversation(conv)} className="admin-button">View</button>
-                    <button onClick={() => handleChangeAgent(conv.id)} className="admin-button">Change Agent</button>
-                  </div>
-                </td>
+      <div className="admin-tab-card">
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Session ID</th>
+                <th>User ID</th>
+                <th>Status</th>
+                <th>Messages</th>
+                <th>Created</th>
+                <th>Actions</th>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {filteredConversations.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
+                    <div className="admin-empty-state">No conversations found</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredConversations.map((conv) => (
+                  <tr key={conv.id}>
+                    <td>{conv.session_id}</td>
+                    <td>{conv.user_id || 'N/A'}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{conv.status || 'N/A'}</td>
+                    <td>{conversationMessages.length || 0}</td>
+                    <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button onClick={() => handleViewConversation(conv)} className="admin-button">View</button>
+                        <button onClick={() => handleChangeAgent(conv.id)} className="admin-button">Change Agent</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2267,25 +2271,27 @@ function AlertsPage({ analytics }: AlertsPageProps) {
         <h2 className="admin-page-title">Alerts</h2>
       </div>
 
-      <div className="admin-content-grid">
-        {alerts.length === 0 ? (
-          <div className="admin-content-card" style={{ gridColumn: 'span 3' }}>
-            <div className="admin-empty-state">No alerts at this time</div>
-          </div>
-        ) : (
-          alerts.map((alert: any) => (
-            <div key={alert.agent_id} className="admin-content-card">
-              <h3 style={{ color: '#ef4444' }}>⚠️ Low Rating Alert</h3>
-              <div style={{ marginTop: '8px' }}>
-                <div><strong>Agent:</strong> {alert.agent_name}</div>
-                <div><strong>Average Rating:</strong> {alert.avg_rating}/5</div>
-                <div style={{ marginTop: '12px' }}>
-                  <button className="admin-button admin-button-primary">Contact Agent</button>
+      <div className="admin-tab-card admin-tab-card--padded">
+        <div className="admin-content-grid">
+          {alerts.length === 0 ? (
+            <div className="admin-content-card" style={{ gridColumn: '1 / -1' }}>
+              <div className="admin-empty-state">No alerts at this time</div>
+            </div>
+          ) : (
+            alerts.map((alert: any) => (
+              <div key={alert.agent_id} className="admin-content-card">
+                <h3 style={{ color: '#ef4444' }}>⚠️ Low Rating Alert</h3>
+                <div style={{ marginTop: '8px' }}>
+                  <div><strong>Agent:</strong> {alert.agent_name}</div>
+                  <div><strong>Average Rating:</strong> {alert.avg_rating}/5</div>
+                  <div style={{ marginTop: '12px' }}>
+                    <button className="admin-button admin-button-primary">Contact Agent</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
@@ -2426,46 +2432,48 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
         </div>
       )}
 
-      <div className="admin-skills-table-wrapper">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>Skill Name</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {skills
-              .sort((a, b) => a.id - b.id)
-              .map((skill, index) => (
-              <tr key={skill.id}>
-                <td>{index + 1}</td>
-                <td>{skill.name}</td>
-                <td>
-                  <div className="admin-table-actions">
-                    <button
-                      onClick={() => {
-                        setEditingSkill(skill);
-                        setFormData({ name: skill.name });
-                        setShowCreateModal(true);
-                      }}
-                      className="admin-button"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSkill(skill.id)}
-                      className="admin-button admin-button-danger"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+      <div className="admin-tab-card">
+        <div className="admin-skills-table-wrapper admin-table-scroll">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Skill Name</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {skills
+                .sort((a, b) => a.id - b.id)
+                .map((skill, index) => (
+                <tr key={skill.id}>
+                  <td>{index + 1}</td>
+                  <td>{skill.name}</td>
+                  <td>
+                    <div className="admin-table-actions">
+                      <button
+                        onClick={() => {
+                          setEditingSkill(skill);
+                          setFormData({ name: skill.name });
+                          setShowCreateModal(true);
+                        }}
+                        className="admin-button"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSkill(skill.id)}
+                        className="admin-button admin-button-danger"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
