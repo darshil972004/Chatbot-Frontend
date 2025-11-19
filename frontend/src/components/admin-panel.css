@@ -415,23 +415,51 @@
   gap: 16px;
 }
 
+/* Enhanced Stat Cards */
 .admin-stat-card {
-  background-color: #ffffff;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  padding: var(--admin-space-4);
+  box-shadow: var(--admin-shadow);
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 80px;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--admin-shadow-lg);
+}
+
+.admin-stat-icon {
+  font-size: 28px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.admin-stat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .admin-stat-title {
-  font-size: 14px;
-  color: #64748b;
-  margin-bottom: 4px;
+  font-size: var(--admin-font-size-sm);
+  color: var(--admin-text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 .admin-stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  margin-top: 4px;
+  font-size: var(--admin-font-size-3xl);
+  font-weight: 700;
+  color: var(--admin-text);
+  line-height: 1;
 }
 
 .admin-content-grid {
@@ -1077,53 +1105,84 @@
   background-color: #cbd5e1;
 }
 
-/* Compact Dashboard Layout - Fits within screen */
+/* Compact Dashboard Layout - Better structure with proper scrolling */
 .admin-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 420px; /* Left side flexible, right side fixed width with more space */
+  gap: var(--admin-space-6); /* Increased gap for better spacing */
+  min-height: calc(100vh - 140px); /* Minimum height to ensure proper layout */
+  padding-bottom: var(--admin-space-6); /* Bottom margin for the entire dashboard */
+}
+
+/* Dashboard Left Section */
+.dashboard-left-section {
   display: flex;
   flex-direction: column;
   gap: var(--admin-space-4);
-  max-height: calc(100vh - 120px); /* Account for navbar and padding */
-  overflow: hidden; /* No scrolling for dashboard */
+  min-height: 0;
+}
+
+/* Dashboard Right Section */
+.dashboard-right-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-4);
 }
 
 /* Compact Stats Row */
 .dashboard-stats-compact {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--admin-space-4);
   margin-bottom: var(--admin-space-2);
 }
 
-/* Compact Status Overview */
-.dashboard-status-overview {
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-lg);
-  padding: var(--admin-space-4);
-  box-shadow: var(--admin-shadow);
-}
-
+/* Enhanced Status Overview */
 .dashboard-status-overview h3 {
   font-size: var(--admin-font-size-lg);
   font-weight: 600;
   color: var(--admin-text);
   margin: 0 0 var(--admin-space-3) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-2);
 }
 
 .status-overview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--admin-space-3);
 }
 
 .status-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
   padding: var(--admin-space-3);
   background: var(--admin-background);
   border-radius: var(--admin-radius);
   border: 1px solid var(--admin-border-light);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 60px;
+}
+
+.status-item:hover {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  box-shadow: var(--admin-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.status-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-right: var(--admin-space-2);
+}
+
+.status-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .status-label {
@@ -1132,13 +1191,13 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.025em;
-  margin-bottom: var(--admin-space-1);
 }
 
 .status-value {
-  font-size: var(--admin-font-size-2xl);
+  font-size: var(--admin-font-size-xl);
   font-weight: 700;
   color: var(--admin-text);
+  line-height: 1;
 }
 
 /* Compact Top Agents */
@@ -1148,9 +1207,10 @@
   border-radius: var(--admin-radius-lg);
   padding: var(--admin-space-4);
   box-shadow: var(--admin-shadow);
-  flex: 1;
-  min-height: 0; /* Allow flex shrinking */
-  max-height: 400px; /* Prevent it from taking too much space */
+  display: flex;
+  flex-direction: column;
+  height: fit-content; /* Let it size naturally */
+  max-height: calc(100vh - 200px); /* Reasonable max height */
 }
 
 .dashboard-top-agents h3 {
@@ -1161,16 +1221,18 @@
   display: flex;
   align-items: center;
   gap: var(--admin-space-2);
+  flex-shrink: 0; /* Don't shrink the header */
 }
 
 .top-agents-compact {
   display: flex;
   flex-direction: column;
   gap: var(--admin-space-2);
-  max-height: 320px;
-  overflow-y: auto;
+  overflow-y: auto; /* Only this section scrolls */
   scrollbar-width: thin;
   scrollbar-color: var(--admin-border) transparent;
+  max-height: 500px; /* Reasonable max height for scrolling */
+  padding-bottom: var(--admin-space-2); /* Bottom padding for better spacing */
 }
 
 .top-agents-compact::-webkit-scrollbar {
@@ -1431,14 +1493,13 @@
 .admin-panel-sidebar {
   grid-column: span 3;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden; /* Remove sidebar scrollbar */
 }
 
 .admin-panel-main {
   grid-column: span 9;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* Remove main scrollbar, only top agents should scroll */
 }
 
 /* Remove page scroll, add internal scrolls */

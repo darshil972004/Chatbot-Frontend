@@ -522,60 +522,78 @@ function Dashboard({ agents }: DashboardProps) {
 
   return (
     <div className="admin-dashboard">
-      {/* Compact Stats Row */}
-      <div className="dashboard-stats-compact">
-        <StatCard title="Total Agents" value={totalAgents} />
-        <StatCard title="Active Agents" value={activeAgents} />
-        <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} />
-      </div>
+      {/* Left Side - Stats and Status Overview */}
+      <div className="dashboard-left-section">
+        {/* Compact Stats Row */}
+        <div className="dashboard-stats-compact">
+          <StatCard title="Total Agents" value={totalAgents} icon="👥" />
+          <StatCard title="Active Agents" value={activeAgents} icon="⚡" />
+          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} icon="🟢" />
+        </div>
 
-      {/* Compact Status Overview */}
-      <div className="dashboard-status-overview">
-        <h3>Agent Status Overview</h3>
-        <div className="status-overview-grid">
-          <div className="status-item">
-            <div className="status-label">Online</div>
-            <div className="status-value">{agents.filter(a => a.status === 'online').length}</div>
-          </div>
-          <div className="status-item">
-            <div className="status-label">Offline</div>
-            <div className="status-value">{agents.filter(a => a.status === 'offline').length}</div>
-          </div>
-          <div className="status-item">
-            <div className="status-label">Busy</div>
-            <div className="status-value">{agents.filter(a => a.status === 'busy').length}</div>
-          </div>
-          <div className="status-item">
-            <div className="status-label">Away</div>
-            <div className="status-value">{agents.filter(a => a.status === 'away').length}</div>
+        {/* Compact Status Overview */}
+        <div className="dashboard-status-overview">
+          <h3>📊 Agent Status Overview</h3>
+          <div className="status-overview-grid">
+            <div className="status-item">
+              <div className="status-icon">🟢</div>
+              <div className="status-content">
+                <div className="status-label">Online</div>
+                <div className="status-value">{agents.filter(a => a.status === 'online').length}</div>
+              </div>
+            </div>
+            <div className="status-item">
+              <div className="status-icon">🔴</div>
+              <div className="status-content">
+                <div className="status-label">Offline</div>
+                <div className="status-value">{agents.filter(a => a.status === 'offline').length}</div>
+              </div>
+            </div>
+            <div className="status-item">
+              <div className="status-icon">🟠</div>
+              <div className="status-content">
+                <div className="status-label">Busy</div>
+                <div className="status-value">{agents.filter(a => a.status === 'busy').length}</div>
+              </div>
+            </div>
+            <div className="status-item">
+              <div className="status-icon">🟣</div>
+              <div className="status-content">
+                <div className="status-label">Away</div>
+                <div className="status-value">{agents.filter(a => a.status === 'away').length}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Top Agents by Performance */}
-      <div className="dashboard-top-agents">
-        <h3>🏆 Top Agents by Chats Today</h3>
-        <div className="top-agents-compact">
-          {topAgents.length === 0 ? (
-            <div className="admin-empty-state">No agent data available</div>
-          ) : (
-            topAgents.map((a, index) => (
-              <div key={a.id} className="top-agent-compact">
-                <div className="agent-compact-rank">#{index + 1}</div>
-                <div className="agent-compact-avatar">{a.name.charAt(0).toUpperCase()}</div>
-                <div className="agent-compact-info">
-                  <div className="agent-compact-name">{a.name}</div>
-                  <div className="agent-compact-role">{a.role}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
-                    {a.metrics.chatsToday} chats today
+      {/* Right Side - Top Agents */}
+      <div className="dashboard-right-section">
+        {/* Top Agents by Performance */}
+        <div className="dashboard-top-agents">
+          <h3>🏆 Top Agents by Chats Today</h3>
+          <div className="top-agents-compact">
+            {topAgents.length === 0 ? (
+              <div className="admin-empty-state">No agent data available</div>
+            ) : (
+              topAgents.map((a, index) => (
+                <div key={a.id} className="top-agent-compact">
+                  <div className="agent-compact-rank">#{index + 1}</div>
+                  <div className="agent-compact-avatar">{a.name.charAt(0).toUpperCase()}</div>
+                  <div className="agent-compact-info">
+                    <div className="agent-compact-name">{a.name}</div>
+                    <div className="agent-compact-role">{a.role}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
+                      {a.metrics.chatsToday} chats today
+                    </div>
+                  </div>
+                  <div className={`agent-compact-status ${a.status}`}>
+                    {a.status}
                   </div>
                 </div>
-                <div className={`agent-compact-status ${a.status}`}>
-                  {a.status}
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -586,13 +604,17 @@ function Dashboard({ agents }: DashboardProps) {
 type StatCardProps = {
   title: string;
   value: number | string;
+  icon?: string;
 };
 
-function StatCard({ title, value }: StatCardProps) {
+function StatCard({ title, value, icon }: StatCardProps) {
   return (
     <div className="admin-stat-card">
-      <div className="admin-stat-title">{title}</div>
-      <div className="admin-stat-value">{value}</div>
+      <div className="admin-stat-icon">{icon}</div>
+      <div className="admin-stat-content">
+        <div className="admin-stat-title">{title}</div>
+        <div className="admin-stat-value">{value}</div>
+      </div>
     </div>
   );
 }
