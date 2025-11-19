@@ -2,7 +2,8 @@ import React, {useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
 import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, type AgentSkill } from '../api/agent'
-
+import { Link } from 'react-router-dom'
+import logo from '../assets/logo.png'
 const DEFAULT_ROLE_LABEL = 'Technical Agent'
 
 function formatRoleLabel(role?: string): string {
@@ -365,7 +366,25 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   return (
+    
     <div className="agent-panel">
+      <div className="admin-navbar agent-navbar">
+        <div className="admin-navbar__inner">
+          <Link to="/agent" className="admin-navbar__brand">
+            <img src={logo} alt="RealEstate CRM" className="admin-navbar__logo" />
+            <span className="admin-navbar__brandName">RealEstate CRM</span>
+          </Link>
+
+          <div className="admin-navbar__title">
+            <h1>Agent Workspace</h1>
+            <p>Handle chats, claim tickets and assist customers</p>
+          </div>
+
+          <div className="admin-navbar__meta">
+            {/* Removed Last reviewed */}
+          </div>
+        </div>
+      </div>
       <div className="agent-grid">
         {/* Agent profile header with full profile content inline */}
         <div className="agent-header-profile">

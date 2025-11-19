@@ -42,6 +42,9 @@ export default function ChatbotWidget() {
   const [agentName, setAgentName] = useState<string | null>(null);
   const [liveChatError, setLiveChatError] = useState<string | null>(null);
 
+  // Track if user is currently chatting with agent
+  const isAgentActive = Boolean(ticketId && agentStatus === 'connected');
+
   const addMessage = useCallback(
     (msg: ChatMessage) => {
       setMessages((prev) => {
@@ -286,6 +289,8 @@ export default function ChatbotWidget() {
       const handleIncomingText = (text: string, role: ChatRole = 'agent') => {
         if (!text) return;
         addMessage({ id: uid(), role, text });
+        // If agent replied, clear typing indicator
+        if (role === 'agent') setLoading(false);
       };
 
       if (payload && typeof payload === 'object') {
@@ -370,7 +375,8 @@ export default function ChatbotWidget() {
     setPendingOptions([]);
     setPendingMode(null);
     setSelectedOption('');
-    setLoading(true);
+    // Only show typing indicator if not chatting with agent
+    if (!shouldRouteToLiveAgent) setLoading(true);
     if (shouldRouteToLiveAgent) {
       const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
       addMessage(userMsg);
@@ -607,24 +613,19 @@ export default function ChatbotWidget() {
               </div>
             );
           }
-          // ...existing code...
           return (
             <div key={m.id}>
               <div className={`cp-msg ${getMessageClass(m.role)}`}>{m.text}</div>
-              {/* ...existing code... */}
               {m.role === 'bot' && m.propertyGroup && (
                 (() => {
-                  // ...existing code...
                   const group = m.propertyGroup;
                   const isExpanded = expandedGroups.includes(group.id);
                   const itemsToShow = isExpanded ? group.items : group.items.slice(0, 5);
                   const hasMore = group.items.length > 5 && !isExpanded;
                   return (
                     <div className="cp-prop-group">
-                      {/* ...existing code... */}
                       <div className="cp-prop-grid">
                         {itemsToShow.map((p, idx) => {
-                          // ...existing code...
                           const currency = p?.varCurrency ;
                           const title = p?.varTitle || p?.title || p?.varName || 'Property';
                           const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
@@ -685,7 +686,8 @@ export default function ChatbotWidget() {
             </div>
           );
         })}
-        {loading && <div className="cp-msg cp-msg--bot">Typing…</div>}
+  {/* Only show typing indicator if not chatting with agent */}
+  {loading && !isAgentActive && <div className="cp-msg cp-msg--bot">Typing…</div>}
         {!loading && pendingOptions.length > 0 && pendingMode === 'button-list' && (
           <div className="cp-options">
             {pendingOptions.map((opt) => (

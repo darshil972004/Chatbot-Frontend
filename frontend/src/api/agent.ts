@@ -19,6 +19,7 @@ export type AgentLoginResponse = {
     max_concurrent_chats?: number;
     role?: string;
     created_at?: string;
+    skills?: AgentSkill[] | string[];
   };
   error?: {
     message: string;

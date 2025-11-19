@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 type AgentLoginProps = {
-  onLogin: (username: string, email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  onLogin: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
 };
 
 export default function AgentLogin({ onLogin }: AgentLoginProps) {
@@ -14,19 +14,13 @@ export default function AgentLogin({ onLogin }: AgentLoginProps) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    let loginUsername = "";
-    let loginEmail = "";
-    if (username.includes("@")) {
-      loginEmail = username;
-    } else {
-      loginUsername = username;
-    }
-    if (!username.trim() || !password.trim()) {
+    const loginIdentifier = username.trim();
+    if (!loginIdentifier || !password.trim()) {
       setError("Please enter your username/email and password.");
       setIsSubmitting(false);
       return;
     }
-    const result = await onLogin(loginUsername, loginEmail, password);
+    const result = await onLogin(loginIdentifier, password);
     setIsSubmitting(false);
     if (!result.success) {
       setError(result.message || "Invalid credentials");
