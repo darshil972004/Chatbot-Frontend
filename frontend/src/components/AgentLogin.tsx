@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 type AgentLoginProps = {
-  onLogin: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  onLogin: (username: string, email: string, password: string) => Promise<{ success: boolean; message?: string }>;
 };
 
 export default function AgentLogin({ onLogin }: AgentLoginProps) {
@@ -14,7 +14,19 @@ export default function AgentLogin({ onLogin }: AgentLoginProps) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    const result = await onLogin(username, password);
+    let loginUsername = "";
+    let loginEmail = "";
+    if (username.includes("@")) {
+      loginEmail = username;
+    } else {
+      loginUsername = username;
+    }
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter your username/email and password.");
+      setIsSubmitting(false);
+      return;
+    }
+    const result = await onLogin(loginUsername, loginEmail, password);
     setIsSubmitting(false);
     if (!result.success) {
       setError(result.message || "Invalid credentials");
@@ -30,13 +42,13 @@ export default function AgentLogin({ onLogin }: AgentLoginProps) {
         </p>
         <form onSubmit={handleSubmit} className="admin-login-form">
           <label className="admin-login-label">
-            Username
+            Username or Email
             <input
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
               className="admin-login-input"
-              placeholder="agent"
+              placeholder="agent or agent@email.com"
               autoComplete="username"
               required
               autoFocus

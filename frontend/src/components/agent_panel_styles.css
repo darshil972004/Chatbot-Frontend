@@ -1,15 +1,18 @@
 .agent-header-profile {
   grid-area: availability;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 18px;
   cursor: pointer;
   background: #fff;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
-  padding: 10px 16px;
+  padding: 32px 24px;
+  min-height: 220px;
   box-shadow: 0 2px 8px rgba(15,23,42,0.05);
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   transition: box-shadow 0.2s, background 0.2s;
 }
 .agent-header-profile:hover {
@@ -162,7 +165,8 @@
 }
 .admin-profile-actions {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 12px;
 }
 .admin-profile-select {
@@ -254,18 +258,22 @@
   font-size: 18px;
   font-weight: 700;
   color: #3730a3;
+  text-align: center;
 }
 .profile-role {
   font-size: 14px;
   color: #64748b;
   margin-bottom: 4px;
+  text-align: center;
 }
 .profile-status {
   font-size: 13px;
   margin-top: 2px;
+  text-align: center;
 }
 .profile-actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-top: 14px;
 }
@@ -363,6 +371,7 @@
 
 .status-button-row {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-top: 8px;
 }
@@ -517,17 +526,35 @@
 .conversation-item {
   padding: 12px;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  background: #f8fafc;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
 .conversation-item.active {
   border-color: #38bdf8;
   background: #e0f2fe;
+  box-shadow: 0 6px 16px rgba(56, 189, 248, 0.2);
+  transform: translateY(-1px);
+}
+
+.conversation-item:hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+  transform: translateY(-2px);
+}
+
+.conversation-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
 }
 
 .conversation-name {
@@ -543,6 +570,24 @@
 .conversation-time {
   font-size: 13px;
   color: #94a3b8;
+}
+
+.claim-button {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.claim-button:hover {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  transform: translateY(-1px);
 }
 
 .preview-placeholder {
@@ -641,15 +686,7 @@
   padding: 8px 16px;
   cursor: pointer;
 }
-.claim-button {
-  border: none;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
-  font-weight: 600;
-  padding: 8px 16px;
-  cursor: pointer;
-}
+
 .chat-suggestions-label {
   font-size: 13px;
   color: #94a3b8;
