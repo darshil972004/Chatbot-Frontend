@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+// @ts-ignore - allow importing image asset without a declaration file
 import logo from '../../assets/logo.png';
 
 const AdminNavbar: React.FC = () => {

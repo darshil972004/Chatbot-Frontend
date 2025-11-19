@@ -1,0 +1,44 @@
+/* Minimal chatbot styles to avoid missing import errors and provide basic layout */
+.chatbot-widget {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 320px;
+  max-width: calc(100% - 40px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(13, 27, 38, 0.12);
+  overflow: hidden;
+  z-index: 9999;
+}
+
+.chatbot-header {
+  background: linear-gradient(90deg, #0ea5e9, #6366f1);
+  color: white;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+.chatbot-body {
+  padding: 12px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.chatbot-toggle {
+  cursor: pointer;
+  padding: 8px;
+}
+
+.chatbot-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+/* Make sure workflow styles still apply */
+@media (max-width: 640px) {
+  .chatbot-widget { right: 12px; left: 12px; width: auto; }
+}
