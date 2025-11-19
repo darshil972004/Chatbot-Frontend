@@ -25,7 +25,11 @@ export type AgentLoginResponse = {
     status_code: number;
   };
 };
-
+export type AgentSkill = {
+  id: number;
+  name: string;
+  proficiency?: number;
+};
 export type AgentNotifierMessage = {
   type: string;
   ticket_id?: string;
@@ -360,5 +364,77 @@ export async function updateAgentStatus(
   } catch (err) {
     console.error('Error updating agent status', err);
     throw err;
+  }
+}
+
+/**
+ * Fetch the most recent status stored for a specific agent
+ */
+export async function fetchAgentCurrentStatus(agentId: number | string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/agents/${agentId}/current-status`, {
+      headers: { Authorization: `Bearer ${CHATBOT_TOKEN}` },
+    })
+
+    if (res.status === 404) {
+      return null
+    }
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Failed to fetch agent status (${res.status}): ${text || res.statusText}`)
+    }
+
+    const payload = await res.json()
+    return payload?.data?.status ?? null
+  } catch (err) {
+    console.error(`Error fetching status for agent ${agentId}`, err)
+    return null
+  }
+}
+
+/**
+ * Fetch the list of skills assigned to an agent
+ */
+export async function fetchAgentSkills(agentId: number | string): Promise<AgentSkill[]> {
+  if (!agentId && agentId !== 0) {
+    return [];
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/agents/${agentId}/skills`, {
+      headers: { Authorization: `Bearer ${CHATBOT_TOKEN}` },
+    });
+
+    if (res.status === 404) {
+      return [];
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to fetch agent skills (${res.status}): ${text || res.statusText}`);
+    }
+
+    const payload = await res.json();
+    const entries = Array.isArray(payload?.data) ? payload.data : [];
+
+    return entries
+      .map((skill: any, index: number) => {
+        if (typeof skill === 'string') {
+          return { id: index, name: skill };
+        }
+        if (skill && typeof skill.name === 'string') {
+          return {
+            id: typeof skill.id === 'number' ? skill.id : index,
+            name: skill.name,
+            proficiency: skill.proficiency,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as AgentSkill[];
+  } catch (err) {
+    console.error(`Error fetching skills for agent ${agentId}`, err);
+    return [];
   }
 }
