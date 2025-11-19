@@ -1,8 +1,14 @@
-import { FormEvent, useState, useEffect, useCallback, useRef } from 'react';
+import { useState } from 'react';
+import { FormEvent, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import AdminNavbar from './AdminPanel/AdminNavbar';
 import ChatbotWidget from './ChatbotWidget';
 import './admin-panel.css';
+import { agentsApi, skillsApi, agentSkillsApi } from '../api/agentsApi';
+import { ticketsApi, ticketAgentsApi, ticketMessagesApi, ticketFeedbackApi, ticketEventsApi } from '../api/ticketsApi';
+import { conversationsApi, conversationDetailsApi } from '../api/conversationsApi';
+import { analyticsApi } from '../api/analyticsApi';
 
 type AdminPanelProps = {
   isAdmin: boolean;
@@ -32,23 +38,6 @@ type Agent = {
   };
   skills: Skill[];
   max_concurrent_chats?: number;
-};
-
-type Session = {
-  id: number;
-  userId: string;
-  topic: string;
-  status: 'waiting' | 'assigned' | 'closed';
-  assignedAgentId: number | null;
-  messages: Array<{ sender: string; text: string }>;
-  duration: number;
-  waitTime: number;
-};
-
-type Template = {
-  id: number;
-  type: string;
-  content: string;
 };
 
 type RoutingRule = {
@@ -96,25 +85,50 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
   // Admin Panel UI state
   const [route, setRoute] = useState('dashboard');
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [sessions, setSessions] = useState<Session[]>(mockSessions());
-  const [templates, setTemplates] = useState<Template[]>(mockTemplates());
-  const [routingRules, setRoutingRules] = useState<RoutingRule[]>(mockRoutingRules());
   const [skills, setSkills] = useState<Skill[]>([]);
+
+  // New state for additional sections
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
 
   const loadSkills = useCallback(async () => {
     try {
-      const res = await apiClient.get('/api/skills');
-      const payload = res.data?.data;
-      if (res.data?.success && Array.isArray(payload)) {
-        setSkills(
-          payload.map((skill: any) => ({
-            id: skill.id,
-            name: skill.name,
-          }))
-        );
-      }
+      const skillsData = await skillsApi.getSkills();
+      setSkills(skillsData.map((skill: any) => ({
+        id: skill.id,
+        name: skill.name,
+      })));
     } catch (err) {
       console.error('Error fetching skills:', err);
+    }
+  }, []);
+
+  const loadTickets = useCallback(async () => {
+    try {
+      const ticketsData = await ticketsApi.getTickets();
+      setTickets(ticketsData);
+    } catch (err) {
+      console.error('Error fetching tickets:', err);
+    }
+  }, []);
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const conversationsData = await conversationsApi.getConversations();
+      setConversations(conversationsData);
+    } catch (err) {
+      console.error('Error fetching conversations:', err);
+    }
+  }, []);
+
+  const loadAnalytics = useCallback(async () => {
+    try {
+      const alertsData = await analyticsApi.getAlerts();
+      setAnalytics({ alerts: alertsData });
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+      setAnalytics({ alerts: [] });
     }
   }, []);
 
@@ -123,15 +137,8 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
       return agent;
     }
     try {
-      const res = await apiClient.get(`/api/agents/${agent.id}/skills`);
-      const skillList = Array.isArray(res.data?.data)
-        ? res.data.data.map((skill: any) => ({
-            id: skill.id,
-            name: skill.name,
-            proficiency: skill.proficiency,
-          }))
-        : [];
-      return { ...agent, skills: skillList };
+      const skillsData = await agentsApi.getAgentSkills(agent.id);
+      return { ...agent, skills: skillsData };
     } catch (err) {
       console.error(`Error fetching skills for agent ${agent.id}`, err);
       return { ...agent, skills: [] };
@@ -143,9 +150,9 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
       return agent;
     }
     try {
-      const res = await apiClient.get(`/api/agents/${agent.id}/current-status`);
-      if (res.data?.success && res.data?.data?.status) {
-        return { ...agent, status: res.data.data.status as Agent['status'] };
+      const statusData = await agentsApi.getCurrentAgentStatus(agent.id);
+      if (statusData?.status) {
+        return { ...agent, status: statusData.status as Agent['status'] };
       }
       // Fallback to is_active if no status event exists
       return agent;
@@ -163,14 +170,11 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
 
   const loadAgents = useCallback(async () => {
     try {
-      const res = await apiClient.get('/api/agents');
-      const payload = res.data?.data;
-      if (res.data?.success && Array.isArray(payload)) {
-        const normalized = payload.map((agent: any, idx: number) => normalizeAgent(agent, idx));
-        const withSkills = await Promise.all(normalized.map((agent) => attachAgentSkills(agent)));
-        const withStatus = await Promise.all(withSkills.map((agent) => attachAgentStatus(agent)));
-        setAgents(withStatus);
-      }
+      const agentsData = await agentsApi.getAgents();
+      const normalized = agentsData.map((agent: any, idx: number) => normalizeAgent(agent, idx));
+      const withSkills = await Promise.all(normalized.map((agent) => attachAgentSkills(agent)));
+      const withStatus = await Promise.all(withSkills.map((agent) => attachAgentStatus(agent)));
+      setAgents(withStatus);
     } catch (err) {
       console.error('Error fetching agents:', err);
     }
@@ -184,25 +188,33 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
     loadSkills();
   }, [loadSkills]);
 
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
+
   const syncAgentSkills = useCallback(async (agentId: number, selectedSkillIds: number[]) => {
     try {
-      const res = await apiClient.get(`/api/agents/${agentId}/skills`);
-      const existingIds: number[] = Array.isArray(res.data?.data)
-        ? res.data.data.map((skill: any) => Number(skill.id))
-        : [];
+      const existingSkills = await agentsApi.getAgentSkills(agentId);
+      const existingIds = existingSkills.map(skill => skill.id);
 
       const toAdd = selectedSkillIds.filter((skillId: number) => !existingIds.includes(skillId));
       const toRemove = existingIds.filter((skillId: number) => !selectedSkillIds.includes(skillId));
 
       await Promise.all([
-        ...toAdd.map((skillId) =>
-          apiClient.post('/api/agent-skills', {
-            agent_id: agentId,
-            skill_id: skillId,
-            proficiency: 5,
-          })
-        ),
-        ...toRemove.map((skillId) => apiClient.delete(`/api/agent-skills/${agentId}/${skillId}`)),
+        ...toAdd.map((skillId) => agentSkillsApi.createAgentSkill({
+          agent_id: agentId,
+          skill_id: skillId,
+          proficiency: 5,
+        })),
+        ...toRemove.map((skillId) => agentSkillsApi.deleteAgentSkill(agentId, skillId)),
       ]);
     } catch (err) {
       console.error(`Error syncing skills for agent ${agentId}`, err);
@@ -277,14 +289,14 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
       <div className="admin-panel-wrapper">
         <div className="admin-panel-grid">
           <aside className="admin-panel-sidebar">
-            <Sidebar route={route} setRoute={setRoute} agents={agents} sessions={sessions} onLogout={onLogout} />
+            <Sidebar route={route} setRoute={setRoute} agents={agents} onLogout={onLogout} />
           </aside>
 
           <main className="admin-panel-main">
-            <Header onLogout={onLogout} setRoute={setRoute} />
+            <AdminNavbar />
 
             <div style={{ marginTop: '16px' }}>
-              {route === 'dashboard' && <Dashboard agents={agents} sessions={sessions} />}
+              {route === 'dashboard' && <Dashboard agents={agents} />}
               {route === 'agents' && (
                 <AgentsPage
                   agents={agents}
@@ -294,18 +306,11 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
                   syncAgentSkills={syncAgentSkills}
                 />
               )}
-              {route === 'live' && (
-                <LiveChatsPage sessions={sessions} setSessions={setSessions} agents={agents} setAgents={setAgents} />
-              )}
-              {route === 'routing' && (
-                <RoutingPage rules={routingRules} setRules={setRoutingRules} agents={agents} />
-              )}
-              {route === 'templates' && (
-                <TemplatesPage templates={templates} setTemplates={setTemplates} />
-              )}
-              {route === 'history' && <ChatHistoryPage sessions={sessions} />}
-              {route === 'analytics' && <AnalyticsPage sessions={sessions} agents={agents} />}
-              {route === 'settings' && <SettingsPage />}
+              {route === 'analysis' && <AnalyticsPage sessions={[]} agents={agents} />}
+              {route === 'tickets' && <TicketsPage tickets={tickets} setTickets={setTickets} />}
+              {route === 'conversations' && <ConversationsPage conversations={conversations} setConversations={setConversations} />}
+              {route === 'alerts' && <AlertsPage analytics={analytics} />}
+              {route === 'skills' && <SkillsPage skills={skills} setSkills={setSkills} />}
               {route === 'workflows' && (
                 <WorkflowSection />
               )}
@@ -313,7 +318,7 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
           </main>
         </div>
       </div>
-          </div>
+    </div>
   );
 }
 
@@ -359,27 +364,65 @@ function Header({ onLogout, setRoute }: HeaderProps) {
   }, [showMenu]);
 
   return (
-    <div className="admin-header">
-      <div>
-        <h1>Support Admin Panel</h1>
-        <p>Manage agents, routing, and live chats</p>
-      </div>
-      <div className="admin-header-user" style={{ position: 'relative' }}>
-        <div className="admin-header-avatar" onClick={() => setShowMenu((v) => !v)} style={{ cursor: 'pointer' }}>A</div>
-        {showMenu && (
-          <div ref={menuRef} className="admin-header-dropdown" style={{ position: 'absolute', right: 0, top: '48px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', borderRadius: '8px', minWidth: '180px', zIndex: 100 }}>
-            <div style={{ display: 'flex', alignItems: 'center', padding: '16px 16px 8px 16px', borderBottom: '1px solid #e5e7eb' }}>
-              <div className="admin-header-avatar" style={{ marginRight: '12px', width: '32px', height: '32px', fontSize: '18px' }}>A</div>
-              <div style={{ fontWeight: 600, fontSize: '16px' }}>Admin</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 16px' }}>
-              <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px' }} onClick={() => { setShowMenu(false); setRoute('settings'); }}>Settings</button>
-              <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px', color: '#ef4444' }} onClick={() => { setShowMenu(false); onLogout(); }}>Log out</button>
-            </div>
+    <header className="crm-header">
+      <div className="crm-header-container">
+        {/* Logo and Brand */}
+        <div className="crm-brand">
+          <div className="crm-logo">
+            🏢
           </div>
-        )}
+          <div className="crm-brand-text">
+            <h1 className="crm-title">Real Estate CRM</h1>
+            <span className="crm-subtitle">Admin Panel</span>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="crm-nav">
+          <button onClick={() => setRoute('dashboard')} className="crm-nav-link">Dashboard</button>
+          <button onClick={() => setRoute('agents')} className="crm-nav-link">Agents</button>
+          <button onClick={() => setRoute('tickets')} className="crm-nav-link">Tickets</button>
+          <button onClick={() => setRoute('analysis')} className="crm-nav-link">Analytics</button>
+        </nav>
+
+        {/* User Menu */}
+        <div className="crm-user-menu" ref={menuRef}>
+          <button className="crm-user-button" onClick={() => setShowMenu(!showMenu)}>
+            <div className="crm-user-avatar">A</div>
+            <span className="crm-user-name">Admin</span>
+            <svg className="crm-dropdown-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+
+          {showMenu && (
+            <div className="crm-dropdown-menu">
+              <div className="crm-dropdown-header">
+                <div className="crm-user-avatar">A</div>
+                <div>
+                  <div className="crm-dropdown-name">Administrator</div>
+                  <div className="crm-dropdown-email">admin@realestate.com</div>
+                </div>
+              </div>
+              <div className="crm-dropdown-divider"></div>
+              <button className="crm-dropdown-item" onClick={() => { setShowMenu(false); setRoute('settings'); }}>
+                <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
+              </button>
+              <button className="crm-dropdown-item crm-dropdown-logout" onClick={() => { setShowMenu(false); onLogout(); }}>
+                <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -388,12 +431,10 @@ type SidebarProps = {
   route: string;
   setRoute: (route: string) => void;
   agents: Agent[];
-  sessions: Session[];
   onLogout: () => void;
 };
 
-function Sidebar({ route, setRoute, agents, sessions, onLogout }: SidebarProps) {
-  const waitingCount = sessions.filter((s) => s.status === 'waiting').length;
+function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
   const onlineCount = agents.filter((a) => a.status === 'online').length;
 
   const item = (id: string, label: string, subtitle: string | null) => (
@@ -421,31 +462,17 @@ function Sidebar({ route, setRoute, agents, sessions, onLogout }: SidebarProps) 
   return (
     <div className="admin-sidebar">
       <div className="admin-sidebar-card">
-        <div style={{ marginBottom: '16px' }}>
-          <h2 className="admin-sidebar-title">Overview</h2>
-          <div className="admin-sidebar-subtitle">Realtime control center</div>
-        </div>
-
         <ul className="admin-sidebar-list">
           {item('dashboard', 'Dashboard', null)}
+          {item('tickets', 'Tickets', null)}
           {item('agents', `Agents (${onlineCount} online)`, null)}
-          {item('live', 'Live Chats', `Waiting: ${waitingCount}`)}
-          {item('routing', 'Routing Rules', null)}
-          {item('templates', 'Message Templates', null)}
-          {item('history', 'Chat History', null)}
-          {item('analytics', 'Analytics', null)}
+          {item('analysis', 'Analysis', null)}
+          {item('conversations', 'Conversations', null)}
+          {item('alerts', 'Alerts', null)}
+          {item('skills', 'Skills', null)}
           {/* Settings button removed, now only accessible from header dropdown */}
           {item('workflows', 'Workflows', null)}
         </ul>
-      </div>
-
-      <div className="admin-sidebar-card admin-quick-actions">
-        <h3>Quick Actions</h3>
-        <div className="admin-quick-actions-buttons">
-          <button className="admin-button admin-button-primary" onClick={handleAddAgent}>Add Agent</button>
-          <button className="admin-button admin-button-success" onClick={() => setRoute('live')}>View Waiting</button>
-          {/* Log out button removed, now handled in header dropdown */}
-        </div>
       </div>
     </div>
   );
@@ -454,58 +481,61 @@ function Sidebar({ route, setRoute, agents, sessions, onLogout }: SidebarProps) 
 // Dashboard Component
 type DashboardProps = {
   agents: Agent[];
-  sessions: Session[];
 };
 
-function Dashboard({ agents, sessions }: DashboardProps) {
-  const totalChats = sessions.length;
-  const avgWait = Math.round((sessions.reduce((s, it) => s + (it.waitTime || 0), 0) / Math.max(1, sessions.length)) * 10) / 10;
-
-  const topicCounts = sessions.reduce((acc, s) => {
-    acc[s.topic] = (acc[s.topic] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+function Dashboard({ agents }: DashboardProps) {
+  const totalAgents = agents.length;
+  const activeAgents = agents.filter((a) => a.status !== 'offline').length;
 
   return (
     <div className="admin-dashboard">
-      <div className="admin-stats-grid">
-        <StatCard title="Total Chats" value={totalChats} />
-        <StatCard title="Active Agents" value={agents.filter((a) => a.status !== 'offline').length} />
-        <StatCard title="Avg Wait (s)" value={avgWait || 0} />
+      {/* Compact Stats Row */}
+      <div className="dashboard-stats-compact">
+        <StatCard title="Total Agents" value={totalAgents} />
+        <StatCard title="Active Agents" value={activeAgents} />
+        <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} />
       </div>
 
-      <div className="admin-content-grid">
-        <div className="admin-content-card admin-content-card-wide">
-          <h3>Topics distribution</h3>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div className="admin-topic-list">
-              {Object.entries(topicCounts).length === 0 && <div className="admin-empty-state">No data</div>}
-              {Object.entries(topicCounts).map(([k, v]) => (
-                <div key={k} className="admin-topic-item">
-                  <div>{k}</div>
-                  <div className="admin-topic-value">{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ flex: 1, fontSize: '14px', color: '#64748b' }}>
-              Use analytics to dig deeper into topics and agent performance.
-            </div>
+      {/* Compact Status Overview */}
+      <div className="dashboard-status-overview">
+        <h3>Agent Status Overview</h3>
+        <div className="status-overview-grid">
+          <div className="status-item">
+            <div className="status-label">Online</div>
+            <div className="status-value">{agents.filter(a => a.status === 'online').length}</div>
+          </div>
+          <div className="status-item">
+            <div className="status-label">Offline</div>
+            <div className="status-value">{agents.filter(a => a.status === 'offline').length}</div>
+          </div>
+          <div className="status-item">
+            <div className="status-label">Busy</div>
+            <div className="status-value">{agents.filter(a => a.status === 'busy').length}</div>
+          </div>
+          <div className="status-item">
+            <div className="status-label">Away</div>
+            <div className="status-value">{agents.filter(a => a.status === 'away').length}</div>
           </div>
         </div>
+      </div>
 
-        <div className="admin-content-card">
-          <h3>Top Agents</h3>
-          <ul className="admin-agents-list">
-            {agents.slice(0, 5).map((a) => (
-              <li key={a.id} className="admin-agent-item">
-                <div>
-                  <div className="admin-agent-name">{a.name}</div>
-                  <div className="admin-agent-role">{a.role}</div>
-                </div>
-                <div style={{ fontSize: '14px' }}>{a.metrics.chatsToday}</div>
-              </li>
-            ))}
-          </ul>
+      {/* Compact Top Agents */}
+      <div className="dashboard-top-agents">
+        <h3>Top Agents</h3>
+        <div className="top-agents-compact">
+          {agents.slice(0, 3).map((a, index) => (
+            <div key={a.id} className="top-agent-compact">
+              <div className="agent-compact-rank">#{index + 1}</div>
+              <div className="agent-compact-avatar">{a.name.charAt(0).toUpperCase()}</div>
+              <div className="agent-compact-info">
+                <div className="agent-compact-name">{a.name}</div>
+                <div className="agent-compact-role">{a.role}</div>
+              </div>
+              <div className={`agent-compact-status ${a.status}`}>
+                {a.status}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -561,6 +591,14 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
 
   const [roles, setRoles] = useState<string[]>([]);
 
+  // Filters and sorting state
+  const [filters, setFilters] = useState({
+    status: '',
+    role: '',
+    skill: '',
+    sort_by: 'name'
+  });
+
   useEffect(() => {
     async function fetchRoles() {
       try {
@@ -597,7 +635,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
       );
 
       // Create status event to track the status change
-      await apiClient.post('/api/agent-status-events', {
+      await agentsApi.updateAgentStatus({
         agent_id: id,
         status: newStatus,
         concurrent_load: 0,
@@ -617,21 +655,25 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
 
   async function handleCreateAgent() {
     try {
-      const res = await apiClient.post('/api/agents', {
+      const agentData = {
         username: formData.username,
-        password: formData.password,
-        email: formData.email,
         display_name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        is_active: formData.status !== 'offline',
+        max_concurrent_chats: formData.max_concurrent_chats,
         role: formData.role,
-        max_concurrent_chats: formData.max_concurrent_chats
-      });
-      if (res.data.success) {
-        const newAgentId = res.data?.data?.id;
+      };
+
+      const newAgent = await agentsApi.createAgent(agentData);
+
+      if (newAgent) {
+        const newAgentId = newAgent.id;
         if (newAgentId) {
           await syncAgentSkills(newAgentId, formData.skillIds);
           // Create initial status event for the new agent
           try {
-            await apiClient.post('/api/agent-status-events', {
+            await agentsApi.updateAgentStatus({
               agent_id: newAgentId,
               status: formData.status,
               concurrent_load: 0,
@@ -647,7 +689,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
         setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 });
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Error creating agent';
+      const msg = err?.response?.data?.detail || err?.message || 'Error creating agent';
       alert(msg);
     }
   }
@@ -670,20 +712,24 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
   async function handleUpdateAgent() {
     if (editingAgent) {
       try {
-        const res = await apiClient.put('/api/agents', {
+        const agentData = {
           id: editingAgent.id,
           username: formData.username,
-          password: formData.password,
-          email: formData.email,
           display_name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          is_active: formData.status !== 'offline',
+          max_concurrent_chats: formData.max_concurrent_chats,
           role: formData.role,
-          max_concurrent_chats: formData.max_concurrent_chats
-        });
-        if (res.data.success) {
+        };
+
+        const updatedAgent = await agentsApi.updateAgent(agentData);
+
+        if (updatedAgent) {
           await syncAgentSkills(editingAgent.id, formData.skillIds);
           // Always log a status event so backend history reflects the change time
           try {
-            await apiClient.post('/api/agent-status-events', {
+            await agentsApi.updateAgentStatus({
               agent_id: editingAgent.id,
               status: formData.status,
               concurrent_load: 0,
@@ -702,7 +748,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
           setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 });
         }
       } catch (err: any) {
-        const msg = err?.response?.data?.error?.message || err?.message || 'Error updating agent';
+        const msg = err?.response?.data?.detail || err?.message || 'Error updating agent';
         alert(msg);
       }
     }
@@ -711,28 +757,100 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
   async function handleDeleteAgent(id: number) {
     if (window.confirm('Are you sure you want to delete this agent?')) {
       try {
-        const res = await apiClient.delete(`/api/agents/${id}`);
-        if (res.data.success) {
-          await reloadAgents();
-        }
+        await agentsApi.deleteAgent(id);
+        await reloadAgents();
       } catch (err) {
         alert('Error deleting agent');
       }
     }
   }
 
+  // Filter and sort agents
+  const filteredAgents = agents
+    .filter((agent) => {
+      if (filters.status && agent.status !== filters.status) return false;
+      if (filters.role && agent.role !== filters.role) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (filters.sort_by) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'role':
+          return a.role.localeCompare(b.role);
+        case 'status':
+          return a.status.localeCompare(b.status);
+        default:
+          return 0;
+      }
+    });
+
   // ...existing code...
   return (
     <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Agents</h2>
-  <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [],max_concurrent_chats:2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Status</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+            <option value="busy">Busy</option>
+            <option value="away">Away</option>
+          </select>
+          <select
+            value={filters.role}
+            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Roles</option>
+            {roles.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '140px' }}
+          >
+            <option value="name">Name A-Z</option>
+            <option value="role">Role</option>
+            <option value="status">Status</option>
+          </select>
+          <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
+        </div>
       </div>
 
       {showCreateModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '90%' }}>
-            <h3 style={{ marginTop: 0 }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button
+              onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#6b7280',
+                padding: '4px',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              ×
+            </button>
+            <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
               <label>
                 Username
@@ -837,11 +955,17 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                 />
               </label>
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
-                {editingAgent ? 'Update' : 'Create'}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
+                className="admin-button"
+                style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
+              >
+                Close
               </button>
-              <button onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }} className="admin-button">Cancel</button>
+              <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
+                {editingAgent ? 'Update Agent' : 'Create Agent'}
+              </button>
             </div>
           </div>
         </div>
@@ -850,6 +974,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
       <table className="admin-table">
         <thead>
           <tr>
+            <th>No.</th>
             <th>Username</th>
             <th>Name</th>
             <th>Role</th>
@@ -860,13 +985,18 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
           </tr>
         </thead>
         <tbody>
-          {agents.map((a: Agent) => (
+          {filteredAgents.map((a: Agent, index: number) => (
             <tr key={a.id}>
+              <td>{index + 1}</td>
               <td>{a.username}</td>
               <td>{a.name}</td>
               <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
               <td style={{ fontSize: '14px', color: '#1f2937' }}>
-                {a.skills && a.skills.length > 0 ? a.skills.map((skill) => skill.name).join(', ') : '—'}
+                {a.skills && a.skills.length > 0 ? (
+                  a.skills.length <= 3
+                    ? a.skills.map((skill) => skill.name).join(', ')
+                    : `${a.skills.slice(0, 3).map((skill) => skill.name).join(', ')}...`
+                ) : '—'}
               </td>
               <td style={{ textTransform: 'capitalize', fontWeight: a.status === 'online' ? 600 : 400 }}>
                 {a.status}
@@ -1094,8 +1224,27 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
 
       {showCreateModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '90%' }}>
-            <h3 style={{ marginTop: 0 }}>Create New Routing Rule</h3>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button
+              onClick={() => setShowCreateModal(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#6b7280',
+                padding: '4px',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              ×
+            </button>
+            <h3 style={{ marginTop: 0, marginRight: '40px' }}>Create New Routing Rule</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
               <label>
                 Topic
@@ -1138,9 +1287,13 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
                 </div>
               </label>
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button onClick={addRule} className="admin-button admin-button-primary">Create</button>
-              <button onClick={() => setShowCreateModal(false)} className="admin-button">Cancel</button>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowCreateModal(false)} className="admin-button" style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>
+                Close
+              </button>
+              <button onClick={addRule} className="admin-button admin-button-primary">
+                Create Rule
+              </button>
             </div>
           </div>
         </div>
@@ -1480,35 +1633,648 @@ function SettingsPage() {
   );
 }
 
+// TicketsPage Component
+type TicketsPageProps = {
+  tickets: any[];
+  setTickets: React.Dispatch<React.SetStateAction<any[]>>;
+};
+
+function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
+  const [filters, setFilters] = useState({
+    status: '',
+    priority: '',
+    agent_id: '',
+    sort_by: 'newest'
+  });
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [ticketEvents, setTicketEvents] = useState<any[]>([]);
+  const [ticketFeedback, setTicketFeedback] = useState<any[]>([]);
+
+  // Filter and sort tickets
+  const filteredTickets = tickets
+    .filter((ticket) => {
+      if (filters.status && ticket.status !== filters.status) return false;
+      if (filters.priority && ticket.priority !== filters.priority) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (filters.sort_by) {
+        case 'newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'longest_open':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); // Assuming open means created_at is older
+        default:
+          return 0;
+      }
+    });
+
+  const handleViewTicket = async (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    try {
+      // Load ticket messages, events, and feedback
+      const [messages, events, feedback] = await Promise.all([
+        ticketMessagesApi.getTicketMessages(ticket.id),
+        ticketEventsApi.getTicketEvents(ticket.id),
+        ticketFeedbackApi.getTicketFeedbackByTicket(ticket.id)
+      ]);
+      setTicketMessages(messages);
+      setTicketEvents(events);
+      setTicketFeedback(feedback);
+    } catch (err) {
+      console.error('Error loading ticket details:', err);
+    }
+  };
+
+  const handleAssignTicket = async (ticketId: string) => {
+    // This would typically open a modal to select an agent
+    // For now, just show an alert
+    alert('Assign ticket functionality - would open agent selection modal');
+  };
+
+  if (selectedTicket) {
+    return (
+      <div className="admin-agents-page">
+        <div className="admin-page-header">
+          <button onClick={() => setSelectedTicket(null)} className="admin-button">← Back to Tickets</button>
+          <h2 className="admin-page-title">Ticket #{selectedTicket.id}</h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {/* Ticket Details */}
+          <div className="admin-content-card">
+            <h3>Ticket Details</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div><strong>Title:</strong> {selectedTicket.title}</div>
+              <div><strong>Description:</strong> {selectedTicket.description || 'N/A'}</div>
+              <div><strong>Status:</strong> {selectedTicket.status}</div>
+              <div><strong>Priority:</strong> {selectedTicket.priority}</div>
+              <div><strong>Category:</strong> {selectedTicket.category || 'N/A'}</div>
+              <div><strong>Created:</strong> {new Date(selectedTicket.created_at).toLocaleString()}</div>
+              <div><strong>Updated:</strong> {new Date(selectedTicket.updated_at).toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Ticket Feedback */}
+          <div className="admin-content-card">
+            <h3>Feedback & Rating</h3>
+            {ticketFeedback.length === 0 ? (
+              <div className="admin-empty-state">No feedback available</div>
+            ) : (
+              ticketFeedback.map((feedback: any) => (
+                <div key={feedback.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                  <div><strong>Rating:</strong> {feedback.rating}/5</div>
+                  <div><strong>Comment:</strong> {feedback.comment || 'No comment'}</div>
+                  <div><strong>Date:</strong> {new Date(feedback.created_at).toLocaleString()}</div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Ticket Messages */}
+          <div className="admin-content-card" style={{ gridColumn: 'span 2' }}>
+            <h3>Messages</h3>
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {ticketMessages.length === 0 ? (
+                <div className="admin-empty-state">No messages</div>
+              ) : (
+                ticketMessages.map((message: any) => (
+                  <div key={message.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                      <strong>{message.sender_type} {message.sender_id}</strong> - {new Date(message.created_at).toLocaleString()}
+                    </div>
+                    <div>{message.content}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Ticket Events */}
+          <div className="admin-content-card" style={{ gridColumn: 'span 2' }}>
+            <h3>Events</h3>
+            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              {ticketEvents.length === 0 ? (
+                <div className="admin-empty-state">No events</div>
+              ) : (
+                ticketEvents.map((event: any) => (
+                  <div key={event.id} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                      <strong>{event.event_type}</strong> by {event.actor_id} - {new Date(event.created_at).toLocaleString()}
+                    </div>
+                    {event.details && (
+                      <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                        {JSON.stringify(event.details)}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-agents-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Tickets</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="waiting">Waiting</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select
+            value={filters.priority}
+            onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Priority</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '140px' }}
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="longest_open">Longest Open</option>
+          </select>
+        </div>
+      </div>
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredTickets.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
+                <div className="admin-empty-state">No tickets found</div>
+              </td>
+            </tr>
+          ) : (
+            filteredTickets.map((ticket) => (
+              <tr key={ticket.id}>
+                <td>{ticket.id}</td>
+                <td>{ticket.title}</td>
+                <td style={{ textTransform: 'capitalize' }}>{ticket.status.replace('_', ' ')}</td>
+                <td style={{ textTransform: 'capitalize' }}>{ticket.priority}</td>
+                <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
+                <td>
+                  <div className="admin-table-actions">
+                    <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
+                    <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ConversationsPage Component
+type ConversationsPageProps = {
+  conversations: any[];
+  setConversations: React.Dispatch<React.SetStateAction<any[]>>;
+};
+
+function ConversationsPage({ conversations, setConversations }: ConversationsPageProps) {
+  const [filters, setFilters] = useState({
+    ai_only: false,
+    agent_involved: false,
+    status: '',
+    sort_by: 'newest'
+  });
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [conversationMessages, setConversationMessages] = useState<any[]>([]);
+
+  // Filter and sort conversations
+  const filteredConversations = conversations
+    .filter((conv) => {
+      if (filters.ai_only && conv.agent_involved) return false;
+      if (filters.agent_involved && !conv.agent_involved) return false;
+      if (filters.status && conv.status !== filters.status) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (filters.sort_by) {
+        case 'newest':
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case 'oldest':
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        default:
+          return 0;
+      }
+    });
+
+  const handleViewConversation = async (conversation: any) => {
+    setSelectedConversation(conversation);
+    try {
+      // Load conversation messages
+      const messages = await conversationDetailsApi.getConversationDetailsByConversation(conversation.id);
+      setConversationMessages(messages);
+    } catch (err) {
+      console.error('Error loading conversation details:', err);
+    }
+  };
+
+  const handleChangeAgent = async (conversationId: number) => {
+    // This would typically open a modal to select a new agent
+    alert('Change agent functionality - would open agent selection modal');
+  };
+
+  const handleExportConversations = async () => {
+    // This would export selected conversations
+    alert('Export functionality - would download CSV/JSON of conversations');
+  };
+
+  if (selectedConversation) {
+    return (
+      <div className="admin-agents-page">
+        <div className="admin-page-header">
+          <button onClick={() => setSelectedConversation(null)} className="admin-button">← Back to Conversations</button>
+          <h2 className="admin-page-title">Conversation #{selectedConversation.id}</h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+          {/* Conversation Details */}
+          <div className="admin-content-card">
+            <h3>Conversation Details</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div><strong>Session ID:</strong> {selectedConversation.session_id}</div>
+              <div><strong>User ID:</strong> {selectedConversation.user_id || 'N/A'}</div>
+              <div><strong>Browser:</strong> {selectedConversation.browser || 'N/A'}</div>
+              <div><strong>IP Address:</strong> {selectedConversation.ip_address || 'N/A'}</div>
+              <div><strong>Start Time:</strong> {selectedConversation.start_time ? new Date(selectedConversation.start_time).toLocaleString() : 'N/A'}</div>
+              <div><strong>End Time:</strong> {selectedConversation.end_time ? new Date(selectedConversation.end_time).toLocaleString() : 'N/A'}</div>
+            </div>
+          </div>
+
+          {/* Conversation Messages */}
+          <div className="admin-content-card">
+            <h3>Messages ({conversationMessages.length})</h3>
+            <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+              {conversationMessages.length === 0 ? (
+                <div className="admin-empty-state">No messages in this conversation</div>
+              ) : (
+                conversationMessages.map((message: any) => (
+                  <div key={message.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                      <strong>{message.responder_type} {message.agent_id ? `(Agent ${message.agent_id})` : ''}</strong> - {new Date(message.created_at).toLocaleString()}
+                    </div>
+                    {message.prompt && (
+                      <div style={{ marginTop: '4px', fontStyle: 'italic', color: '#374151' }}>
+                        <strong>Prompt:</strong> {message.prompt}
+                      </div>
+                    )}
+                    {message.output && (
+                      <div style={{ marginTop: '4px' }}>
+                        <strong>Response:</strong> {message.output}
+                      </div>
+                    )}
+                    {message.category && (
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                        Category: {message.category}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-agents-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Conversations</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              type="checkbox"
+              checked={filters.ai_only}
+              onChange={(e) => setFilters({ ...filters, ai_only: e.target.checked })}
+            />
+            AI Only
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              type="checkbox"
+              checked={filters.agent_involved}
+              onChange={(e) => setFilters({ ...filters, agent_involved: e.target.checked })}
+            />
+            Agent Involved
+          </label>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Status</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button onClick={handleExportConversations} className="admin-button admin-button-primary">Export</button>
+        </div>
+      </div>
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Session ID</th>
+            <th>User ID</th>
+            <th>Status</th>
+            <th>Messages</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredConversations.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
+                <div className="admin-empty-state">No conversations found</div>
+              </td>
+            </tr>
+          ) : (
+            filteredConversations.map((conv) => (
+              <tr key={conv.id}>
+                <td>{conv.session_id}</td>
+                <td>{conv.user_id || 'N/A'}</td>
+                <td style={{ textTransform: 'capitalize' }}>{conv.status || 'N/A'}</td>
+                <td>{conversationMessages.length || 0}</td>
+                <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                  <div className="admin-table-actions">
+                    <button onClick={() => handleViewConversation(conv)} className="admin-button">View</button>
+                    <button onClick={() => handleChangeAgent(conv.id)} className="admin-button">Change Agent</button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// AlertsPage Component
+type AlertsPageProps = {
+  analytics: any;
+};
+
+function AlertsPage({ analytics }: AlertsPageProps) {
+  const alerts = analytics?.alerts || [];
+
+  return (
+    <div className="admin-agents-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Alerts</h2>
+      </div>
+
+      <div className="admin-content-grid">
+        {alerts.length === 0 ? (
+          <div className="admin-content-card" style={{ gridColumn: 'span 3' }}>
+            <div className="admin-empty-state">No alerts at this time</div>
+          </div>
+        ) : (
+          alerts.map((alert: any) => (
+            <div key={alert.agent_id} className="admin-content-card">
+              <h3 style={{ color: '#ef4444' }}>⚠️ Low Rating Alert</h3>
+              <div style={{ marginTop: '8px' }}>
+                <div><strong>Agent:</strong> {alert.agent_name}</div>
+                <div><strong>Average Rating:</strong> {alert.avg_rating}/5</div>
+                <div style={{ marginTop: '12px' }}>
+                  <button className="admin-button admin-button-primary">Contact Agent</button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// SkillsPage Component
+type SkillsPageProps = {
+  skills: Skill[];
+  setSkills: React.Dispatch<React.SetStateAction<Skill[]>>;
+};
+
+function SkillsPage({ skills, setSkills }: SkillsPageProps) {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [formData, setFormData] = useState({ name: '' });
+
+  const handleCreateSkill = async () => {
+    if (formData.name.trim()) {
+      try {
+        const newSkill = await skillsApi.createSkill({ name: formData.name.trim() });
+        setSkills((prev) => [...prev, newSkill]);
+        setShowCreateModal(false);
+        setFormData({ name: '' });
+      } catch (err) {
+        alert('Error creating skill');
+      }
+    }
+  };
+
+  const handleUpdateSkill = async () => {
+    if (editingSkill && formData.name.trim()) {
+      try {
+        const updatedSkill = await skillsApi.updateSkill({
+          id: editingSkill.id,
+          name: formData.name.trim()
+        });
+        setSkills((prev) =>
+          prev.map((skill) =>
+            skill.id === editingSkill.id ? updatedSkill : skill
+          )
+        );
+        setEditingSkill(null);
+        setShowCreateModal(false);
+        setFormData({ name: '' });
+      } catch (err) {
+        alert('Error updating skill');
+      }
+    }
+  };
+
+  const handleDeleteSkill = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this skill?')) {
+      try {
+        await skillsApi.deleteSkill(id);
+        setSkills((prev) => prev.filter((skill) => skill.id !== id));
+      } catch (err) {
+        alert('Error deleting skill');
+      }
+    }
+  };
+
+  return (
+    <div className="admin-agents-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Skills</h2>
+        <button
+          onClick={() => {
+            setEditingSkill(null);
+            setFormData({ name: '' });
+            setShowCreateModal(true);
+          }}
+          className="admin-button admin-button-primary"
+        >
+          Add Skill
+        </button>
+      </div>
+
+      {showCreateModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button
+              onClick={() => {
+                setShowCreateModal(false);
+                setEditingSkill(null);
+                setFormData({ name: '' });
+              }}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#6b7280',
+                padding: '4px',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              ×
+            </button>
+            <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingSkill ? 'Edit Skill' : 'Create New Skill'}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              <label>
+                Skill Name
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ name: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="Enter skill name"
+                  required
+                />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingSkill(null);
+                  setFormData({ name: '' });
+                }}
+                className="admin-button"
+                style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
+              >
+                Close
+              </button>
+              <button
+                onClick={editingSkill ? handleUpdateSkill : handleCreateSkill}
+                className="admin-button admin-button-primary"
+              >
+                {editingSkill ? 'Update Skill' : 'Create Skill'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Skill Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {skills
+            .sort((a, b) => a.id - b.id)
+            .map((skill, index) => (
+            <tr key={skill.id}>
+              <td>{index + 1}</td>
+              <td>{skill.name}</td>
+              <td>
+                <div className="admin-table-actions">
+                  <button
+                    onClick={() => {
+                      setEditingSkill(skill);
+                      setFormData({ name: skill.name });
+                      setShowCreateModal(true);
+                    }}
+                    className="admin-button"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSkill(skill.id)}
+                    className="admin-button admin-button-danger"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // Mock Data Functions
 function mockAgents(): Agent[] {
   return [
     { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
     { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
     { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
-  ];
-}
-
-function mockSessions(): Session[] {
-  return [
-    { id: 101, userId: 'u101', topic: 'booking', status: 'assigned', assignedAgentId: 2, messages: [{ sender: 'user', text: 'Hi, I need help booking' }, { sender: 'agent', text: 'Sure — I can help' }], duration: 120, waitTime: 5 },
-    { id: 102, userId: 'u102', topic: 'technical', status: 'waiting', assignedAgentId: null, messages: [{ sender: 'user', text: 'App crashes when I upload' }], duration: 0, waitTime: 20 },
-    { id: 103, userId: 'u103', topic: 'pricing', status: 'closed', assignedAgentId: null, messages: [{ sender: 'user', text: 'What are your fees?' }, { sender: 'bot', text: 'Here is our pricing' }], duration: 60, waitTime: 2 },
-  ];
-}
-
-function mockTemplates(): Template[] {
-  return [
-    { id: 1, type: 'greeting', content: 'Welcome! How can I help today?' },
-    { id: 2, type: 'waiting', content: "All agents are busy. We'll connect you shortly." },
-    { id: 3, type: 'fallback', content: 'Your agent is unavailable. Please try again later or leave a message.' },
-  ];
-}
-
-function mockRoutingRules(): RoutingRule[] {
-  return [
-    { id: 1, topic: 'technical', allowedRoles: ['technical'], priority: 1, autoAssign: true },
-    { id: 2, topic: 'sales', allowedRoles: ['sales'], priority: 5, autoAssign: true },
   ];
 }
 
