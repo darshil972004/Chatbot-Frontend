@@ -453,7 +453,6 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.025em;
-  align-self: center;
 }
 
 .admin-stat-value {
@@ -461,7 +460,6 @@
   font-weight: 700;
   color: var(--admin-text);
   line-height: 1;
-  align-self: center;
 }
 
 .admin-content-grid {
@@ -547,8 +545,8 @@
 
 .admin-table {
   width: 100%;
-  text-align: left;
   border-collapse: collapse;
+  text-align: left;
 }
 
 .admin-table thead tr {
@@ -1586,16 +1584,19 @@ html, body {
 
 /* Add padding to table cells for better spacing */
 .admin-table th {
-  padding: 20px 8px; /* Increased vertical padding */
+  padding: 12px 8px;
   font-weight: 600;
   color: var(--admin-text-secondary);
   text-transform: uppercase;
-  font-size: 16px;
+  font-size: 12px;
   letter-spacing: 0.025em;
+  background: var(--admin-surface);
+  border-bottom: 2px solid var(--admin-border);
 }
 
 .admin-table td {
-  padding: 8px 8px; /* Increased vertical padding for better row height */
+  padding: 8px;
+  vertical-align: top; /* Ensure content aligns to top of cells */
 }
 
 /* Agents Page Improvements */
@@ -2030,4 +2031,91 @@ html, body {
   white-space: pre-wrap;
   word-break: break-all;
   border: 1px solid var(--admin-border-light);
+}
+
+/* Tickets Page Improvements */
+.admin-tickets-container {
+  margin-top: 20px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow);
+  overflow: hidden;
+  padding: 0; /* Remove padding to let table take full width */
+}
+
+.admin-tickets-table-wrapper {
+  max-height: 70vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--admin-border) transparent;
+  padding: 0; /* Remove padding */
+}
+
+.admin-tickets-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-tickets-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-tickets-table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--admin-border);
+  border-radius: 3px;
+}
+
+.admin-tickets-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-border-hover);
+}
+
+/* Tickets table header specific styles */
+.admin-tickets-table-wrapper .admin-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--admin-surface);
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-tickets-table-wrapper .admin-table thead th {
+  height: 6vh;
+  font-size: 10px;
+  padding: 6px 3px;
+  line-height: 1.1;
+  background: var(--admin-surface);
+  border-bottom: 2px solid var(--admin-border);
+}
+
+/* Responsive Design for Tickets */
+@media (max-width: 1200px) {
+  .admin-ticket-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .admin-ticket-messages-card,
+  .admin-ticket-events-card {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-ticket-detail-grid {
+    padding: 0;
+  }
+
+  .admin-ticket-card {
+    padding: 16px;
+  }
+
+  .admin-ticket-messages-card,
+  .admin-ticket-events-card {
+    height: 300px;
+  }
+
+  .admin-messages-container,
+  .admin-events-container {
+    height: 200px;
+  }
 }
