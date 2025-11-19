@@ -610,7 +610,6 @@ type StatCardProps = {
 function StatCard({ title, value, icon }: StatCardProps) {
   return (
     <div className="admin-stat-card">
-      <div className="admin-stat-icon">{icon}</div>
       <div className="admin-stat-content">
         <div className="admin-stat-title">{title}</div>
         <div className="admin-stat-value">{value}</div>

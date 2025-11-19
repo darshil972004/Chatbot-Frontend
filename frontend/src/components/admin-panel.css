@@ -453,6 +453,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.025em;
+  align-self: center;
 }
 
 .admin-stat-value {
@@ -460,6 +461,7 @@
   font-weight: 700;
   color: var(--admin-text);
   line-height: 1;
+  align-self: center;
 }
 
 .admin-content-grid {
