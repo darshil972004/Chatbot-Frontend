@@ -412,13 +412,13 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                   >
                     Release Chat
                   </button>
-                  <button
+                  {/* <button
                     className="profile-btn modal-btn"
                     style={{ backgroundColor: '#e53935' }}
                     onClick={endChatSession}
                   >
                     End Chat
-                  </button>
+                  </button> */}
                 </>
               )}
               <button className="logout-button modal-logout-btn" onClick={handleLogout}>Logout</button>
@@ -454,6 +454,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           <div className="shortcut-buttons">
             <button className="shortcut-btn primary" onClick={handleOpenNext}>Open Next</button>
             <button className="shortcut-btn success" onClick={handleMarkAway}>Mark Away</button>
+            <button className="shortcut-btn Chat" onClick={releaseChatSession}>Release  All Chat</button>
             {/* <button className="shortcut-btn muted" onClick={handleViewReports}>View Reports</button> */}
           </div>
         </section>
