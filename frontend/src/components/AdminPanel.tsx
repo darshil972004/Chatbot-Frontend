@@ -631,6 +631,8 @@ type AgentsPageProps = {
 function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }: AgentsPageProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingAgent, setViewingAgent] = useState<Agent | null>(null);
   const [formData, setFormData] = useState<{
     username: string;
     password: string;
@@ -814,6 +816,9 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
         alert(msg);
       }
     }
+  function handleViewAgent(agent: Agent) {
+    setViewingAgent(agent);
+    setShowViewModal(true);
   }
 
   async function handleDeleteAgent(id: number) {
@@ -849,217 +854,304 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
 
   // ...existing code...
   return (
-    <div className="admin-agents-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Agents</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Status</option>
-            <option value="online">Online</option>
-            <option value="offline">Offline</option>
-            <option value="busy">Busy</option>
-            <option value="away">Away</option>
-          </select>
-          <select
-            value={filters.role}
-            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Roles</option>
-            {roles.map((role) => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
-          <select
-            value={filters.sort_by}
-            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '140px' }}
-          >
-            <option value="name">Name A-Z</option>
-            <option value="role">Role</option>
-            <option value="status">Status</option>
-          </select>
-          <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
-        </div>
-      </div>
-
-      {showCreateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-            <button
-              onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: '#6b7280',
-                padding: '4px',
-                borderRadius: '4px'
-              }}
-              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
-              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+    <div>
+      <div className="admin-agents-page">
+        <div className="admin-page-header">
+          <h2 className="admin-page-title">Agents</h2>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="admin-login-input"
+              style={{ width: '120px' }}
             >
-              ×
-            </button>
-            <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-              <label>
-                Username
-                <input
-                  type="text"
-                  value={formData.username}
-                  required
-                />
-                {formData.password.length > 72 && (
-                  <div style={{ color: 'red', fontSize: '12px' }}>
-                    Password must be 72 characters or less.
-                  </div>
-                )}
-              </label>
-              <label>
-                Display Name
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="admin-login-input"
-                  placeholder="Agent name"
-                />
-              </label>
-              <label>
-                Email
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="admin-login-input"
-                  placeholder="Email address"
-                  required
-                />
-              </label>
-              <label>
-                Role
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="admin-login-input"
-                >
-                  <option value="">Select role</option>
-                  {roles.map((role) => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Skills
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px' }}>
-                  {skills.length === 0 && <div style={{ fontSize: '14px', color: '#94a3b8' }}>No skills available.</div>}
-                  {skills.map((skill) => (
-                    <label key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937' }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.skillIds.includes(skill.id)}
-                        onChange={() => toggleSkillSelection(skill.id)}
-                      />
-                      {skill.name}
-                    </label>
-                  ))}
-                </div>
-              </label>
-              <label>
-                Status
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Agent['status'] })}
-                  className="admin-login-input"
-                >
-                  <option value="online">Online</option>
-                  <option value="offline">Offline</option>
-                  <option value="busy">Busy</option>
-                  <option value="away">Away</option>
-                </select>
-              </label>
-              <label>
-                Max Concurrent Chats
-                <input
-                  type="number"
-                  value={formData.max_concurrent_chats}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, max_concurrent_chats: Number(e.target.value) })}
-                  className="admin-login-input"
-                  placeholder="Max Concurrent Chats"
-                  min={1}
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
-                className="admin-button"
-                style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
-              >
-                Close
-              </button>
-              <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
-                {editingAgent ? 'Update Agent' : 'Create Agent'}
-              </button>
-            </div>
+              <option value="">All Status</option>
+              <option value="online">Online</option>
+              <option value="offline">Offline</option>
+              <option value="busy">Busy</option>
+              <option value="away">Away</option>
+            </select>
+            <select
+              value={filters.role}
+              onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+              className="admin-login-input"
+              style={{ width: '120px' }}
+            >
+              <option value="">All Roles</option>
+              {roles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+            <select
+              value={filters.sort_by}
+              onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
+              className="admin-login-input"
+              style={{ width: '140px' }}
+            >
+              <option value="name">Name A-Z</option>
+              <option value="role">Role</option>
+              <option value="status">Status</option>
+            </select>
+            <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
           </div>
         </div>
-      )}
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>No.</th>
-            <th>Username</th>
-            <th>Name</th>
-            <th>Role</th>
-            <th>Skills</th>
-            <th>Status</th>
-            <th>Chats Today</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredAgents.map((a: Agent, index: number) => (
-            <tr key={a.id}>
-              <td>{index + 1}</td>
-              <td>{a.username}</td>
-              <td>{a.name}</td>
-              <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
-              <td style={{ fontSize: '14px', color: '#1f2937' }}>
-                {a.skills && a.skills.length > 0 ? (
-                  a.skills.length <= 3
-                    ? a.skills.map((skill) => skill.name).join(', ')
-                    : `${a.skills.slice(0, 3).map((skill) => skill.name).join(', ')}...`
-                ) : '—'}
-              </td>
-              <td style={{ textTransform: 'capitalize', fontWeight: a.status === 'online' ? 600 : 400 }}>
-                {a.status}
-              </td>
-              <td>{a.metrics.chatsToday}</td>
-              <td>
-                <div className="admin-table-actions">
-                  <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
-                  <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
-                  <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
+        {showCreateModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+              <button
+                onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '4px',
+                  borderRadius: '4px'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+              >
+                ×
+              </button>
+              <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    className="admin-login-input"
+                    placeholder="Username"
+                    required
+                  />
+                </label>
+                <label>
+                  Display Name
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="admin-login-input"
+                    placeholder="Agent name"
+                  />
+                </label>
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="admin-login-input"
+                    placeholder="Email address"
+                    required
+                  />
+                </label>
+                <label>
+                  Role
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="admin-login-input"
+                  >
+                    <option value="">Select role</option>
+                    {roles.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Skills
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
+                    {skills.length === 0 && <div style={{ fontSize: '14px', color: '#94a3b8', padding: '8px 0' }}>No skills available.</div>}
+                    {skills.map((skill) => (
+                      <label key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937', padding: '4px 0', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.skillIds.includes(skill.id)}
+                          onChange={() => toggleSkillSelection(skill.id)}
+                        />
+                        {skill.name}
+                      </label>
+                    ))}
+                  </div>
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Agent['status'] })}
+                    className="admin-login-input"
+                  >
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="busy">Busy</option>
+                    <option value="away">Away</option>
+                  </select>
+                </label>
+                <label>
+                  Max Concurrent Chats
+                  <input
+                    type="number"
+                    value={formData.max_concurrent_chats}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, max_concurrent_chats: Number(e.target.value) })}
+                    className="admin-login-input"
+                    placeholder="Max Concurrent Chats"
+                    min={1}
+                  />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
+                  className="admin-button"
+                  style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
+                >
+                  Close
+                </button>
+                <button onClick={editingAgent ? handleUpdateAgent : handleCreateAgent} className="admin-button admin-button-primary">
+                  {editingAgent ? 'Update Agent' : 'Create Agent'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showViewModal && viewingAgent && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+              <button
+                onClick={() => { setShowViewModal(false); setViewingAgent(null); }}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '4px',
+                  borderRadius: '4px'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+              >
+                ×
+              </button>
+              <h3 style={{ marginTop: 0, marginRight: '40px' }}>Agent Details</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Username:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.username}</div>
                 </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Display Name:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.name}</div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Email:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.email || 'Not provided'}</div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Role:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.role}</div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Status:</label>
+                  <div style={{ marginTop: '4px' }}>
+                    <span className={`admin-status-badge admin-status-${viewingAgent.status}`}>
+                      {viewingAgent.status}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Skills:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>
+                    {viewingAgent.skills && viewingAgent.skills.length > 0
+                      ? viewingAgent.skills.map((skill) => skill.name).join(', ')
+                      : 'No skills assigned'
+                    }
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Max Concurrent Chats:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.max_concurrent_chats || 2}</div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', color: '#374151' }}>Chats Today:</label>
+                  <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.metrics.chatsToday}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => { setShowViewModal(false); setViewingAgent(null); }}
+                  className="admin-button"
+                  style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      <div className="admin-agents-container">
+        <div className="admin-agents-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th style={{ width: '60px' }}>No.</th>
+                <th style={{ minWidth: '120px' }}>Username</th>
+                <th style={{ minWidth: '150px' }}>Name</th>
+                <th style={{ width: '100px' }}>Role</th>
+                <th style={{ minWidth: '200px' }}>Skills</th>
+                <th style={{ width: '100px' }}>Status</th>
+                <th style={{ width: '120px' }}>Chats Today</th>
+                <th style={{ width: '160px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAgents.map((a: Agent, index: number) => (
+                <tr key={a.id}>
+                  <td style={{ fontWeight: '500', color: 'var(--admin-text)' }}>{index + 1}</td>
+                  <td style={{ fontWeight: '500' }}>{a.username}</td>
+                  <td style={{ fontWeight: '500' }}>{a.name}</td>
+                  <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
+                  <td style={{ fontSize: '14px', color: '#1f2937' }}>
+                    {a.skills && a.skills.length > 0 ? (
+                      a.skills.map((skill) => skill.name).join(', ').length > 60
+                        ? `${a.skills.map((skill) => skill.name).join(', ').substring(0, 60)}...`
+                        : a.skills.map((skill) => skill.name).join(', ')
+                    ) : '—'}
+                  </td>
+                  <td>
+                    <span className={`admin-status-badge admin-status-${a.status}`}>
+                      {a.status}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
+                  <td>
+                    <div className="admin-table-actions">
+                      <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
+                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
+                      <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
+                      <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1200,7 +1292,6 @@ function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
           onChange={(e) => setMessageText(e.target.value)}
           onKeyPress={handleKeyPress}
         />
-        <button onClick={handleSendMessage} className="admin-button admin-button-primary">Send</button>
       </div>
     </div>
   );
@@ -1223,12 +1314,12 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
 
   function addRule() {
     if (newRuleData.topic.trim()) {
-      const newRule: RoutingRule = { 
-        id: Date.now(), 
-        topic: newRuleData.topic.trim(), 
-        allowedRoles: newRuleData.allowedRoles, 
-        priority: newRuleData.priority, 
-        autoAssign: true 
+      const newRule: RoutingRule = {
+        id: Date.now(),
+        topic: newRuleData.topic.trim(),
+        allowedRoles: newRuleData.allowedRoles,
+        priority: newRuleData.priority,
+        autoAssign: true
       };
       setRules((r) => [newRule, ...r]);
       setShowCreateModal(false);
@@ -1314,9 +1405,9 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
               </label>
               <label>
                 Allowed Roles
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
                   {availableRoles.map((role) => (
-                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937' }}>
+                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937', padding: '4px 0', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
                         checked={newRuleData.allowedRoles.includes(role)}
@@ -1745,54 +1836,94 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
     return (
       <div className="admin-agents-page">
         <div className="admin-page-header">
-          <button onClick={() => setSelectedTicket(null)} className="admin-button">← Back to Tickets</button>
+          <button onClick={() => setSelectedTicket(null)} className="admin-button">
+            ← Back to Tickets
+          </button>
           <h2 className="admin-page-title">Ticket #{selectedTicket.id}</h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="admin-ticket-detail-grid">
           {/* Ticket Details */}
-          <div className="admin-content-card">
-            <h3>Ticket Details</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div><strong>Title:</strong> {selectedTicket.title}</div>
-              <div><strong>Description:</strong> {selectedTicket.description || 'N/A'}</div>
-              <div><strong>Status:</strong> {selectedTicket.status}</div>
-              <div><strong>Priority:</strong> {selectedTicket.priority}</div>
-              <div><strong>Category:</strong> {selectedTicket.category || 'N/A'}</div>
-              <div><strong>Created:</strong> {new Date(selectedTicket.created_at).toLocaleString()}</div>
-              <div><strong>Updated:</strong> {new Date(selectedTicket.updated_at).toLocaleString()}</div>
+          <div className="admin-content-card admin-ticket-card">
+            <h3 className="admin-card-title">Ticket Details</h3>
+            <div className="admin-ticket-details">
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Title:</span>
+                <span className="admin-detail-value">{selectedTicket.title}</span>
+              </div>
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Description:</span>
+                <span className="admin-detail-value">{selectedTicket.description || 'No description provided'}</span>
+              </div>
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Status:</span>
+                <span className={`admin-status-badge admin-status-${selectedTicket.status.replace('_', '-')}`}>
+                  {selectedTicket.status.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Priority:</span>
+                <span className={`admin-priority-badge admin-priority-${selectedTicket.priority}`}>
+                  {selectedTicket.priority}
+                </span>
+              </div>
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Category:</span>
+                <span className="admin-detail-value">{selectedTicket.category || 'Uncategorized'}</span>
+              </div>
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Created:</span>
+                <span className="admin-detail-value">{new Date(selectedTicket.created_at).toLocaleString()}</span>
+              </div>
+              <div className="admin-detail-row">
+                <span className="admin-detail-label">Updated:</span>
+                <span className="admin-detail-value">{new Date(selectedTicket.updated_at).toLocaleString()}</span>
+              </div>
             </div>
           </div>
 
           {/* Ticket Feedback */}
-          <div className="admin-content-card">
-            <h3>Feedback & Rating</h3>
-            {ticketFeedback.length === 0 ? (
-              <div className="admin-empty-state">No feedback available</div>
-            ) : (
-              ticketFeedback.map((feedback: any) => (
-                <div key={feedback.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                  <div><strong>Rating:</strong> {feedback.rating}/5</div>
-                  <div><strong>Comment:</strong> {feedback.comment || 'No comment'}</div>
-                  <div><strong>Date:</strong> {new Date(feedback.created_at).toLocaleString()}</div>
-                </div>
-              ))
-            )}
+          <div className="admin-content-card admin-ticket-card">
+            <h3 className="admin-card-title">Feedback & Rating</h3>
+            <div className="admin-ticket-feedback">
+              {ticketFeedback.length === 0 ? (
+                <div className="admin-empty-state">No feedback available</div>
+              ) : (
+                ticketFeedback.map((feedback: any) => (
+                  <div key={feedback.id} className="admin-feedback-item">
+                    <div className="admin-feedback-header">
+                      <span className="admin-feedback-rating">Rating: {feedback.rating}/5</span>
+                      <span className="admin-feedback-date">
+                        {new Date(feedback.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="admin-feedback-comment">
+                      {feedback.comment || 'No comment provided'}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Ticket Messages */}
-          <div className="admin-content-card" style={{ gridColumn: 'span 2' }}>
-            <h3>Messages</h3>
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          <div className="admin-content-card admin-ticket-messages-card">
+            <h3 className="admin-card-title">Messages ({ticketMessages.length})</h3>
+            <div className="admin-messages-container">
               {ticketMessages.length === 0 ? (
-                <div className="admin-empty-state">No messages</div>
+                <div className="admin-empty-state">No messages in this ticket</div>
               ) : (
                 ticketMessages.map((message: any) => (
-                  <div key={message.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      <strong>{message.sender_type} {message.sender_id}</strong> - {new Date(message.created_at).toLocaleString()}
+                  <div key={message.id} className="admin-message-item">
+                    <div className="admin-message-header">
+                      <span className="admin-message-sender">
+                        {message.sender_type} {message.sender_id}
+                      </span>
+                      <span className="admin-message-time">
+                        {new Date(message.created_at).toLocaleString()}
+                      </span>
                     </div>
-                    <div>{message.content}</div>
+                    <div className="admin-message-content">{message.content}</div>
                   </div>
                 ))
               )}
@@ -1800,20 +1931,24 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
           </div>
 
           {/* Ticket Events */}
-          <div className="admin-content-card" style={{ gridColumn: 'span 2' }}>
-            <h3>Events</h3>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+          <div className="admin-content-card admin-ticket-events-card">
+            <h3 className="admin-card-title">Events ({ticketEvents.length})</h3>
+            <div className="admin-events-container">
               {ticketEvents.length === 0 ? (
-                <div className="admin-empty-state">No events</div>
+                <div className="admin-empty-state">No events recorded</div>
               ) : (
                 ticketEvents.map((event: any) => (
-                  <div key={event.id} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      <strong>{event.event_type}</strong> by {event.actor_id} - {new Date(event.created_at).toLocaleString()}
+                  <div key={event.id} className="admin-event-item">
+                    <div className="admin-event-header">
+                      <span className="admin-event-type">{event.event_type}</span>
+                      <span className="admin-event-time">
+                        {new Date(event.created_at).toLocaleString()}
+                      </span>
                     </div>
+                    <div className="admin-event-actor">by {event.actor_id}</div>
                     {event.details && (
-                      <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                        {JSON.stringify(event.details)}
+                      <div className="admin-event-details">
+                        {JSON.stringify(event.details, null, 2)}
                       </div>
                     )}
                   </div>
@@ -1868,43 +2003,59 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
         </div>
       </div>
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTickets.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="admin-empty-state">No tickets found</div>
-              </td>
-            </tr>
-          ) : (
-            filteredTickets.map((ticket) => (
-              <tr key={ticket.id}>
-                <td>{ticket.id}</td>
-                <td>{ticket.title}</td>
-                <td style={{ textTransform: 'capitalize' }}>{ticket.status.replace('_', ' ')}</td>
-                <td style={{ textTransform: 'capitalize' }}>{ticket.priority}</td>
-                <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
-                <td>
-                  <div className="admin-table-actions">
-                    <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
-                    <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
-                  </div>
-                </td>
+      <div className="admin-tickets-container">
+        <div className="admin-tickets-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th style={{ width: '80px' }}>ID</th>
+                <th style={{ minWidth: '200px' }}>Title</th>
+                <th style={{ width: '120px' }}>Status</th>
+                <th style={{ width: '100px' }}>Priority</th>
+                <th style={{ width: '120px' }}>Created</th>
+                <th style={{ width: '140px' }}>Actions</th>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {filteredTickets.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
+                    <div className="admin-empty-state">No tickets found</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredTickets.map((ticket) => (
+                  <tr key={ticket.id}>
+                    <td style={{ fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
+                    <td style={{ fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ticket.title}
+                    </td>
+                    <td>
+                      <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
+                        {ticket.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
+                        {ticket.priority}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
+                      {new Date(ticket.created_at).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
+                        <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2273,45 +2424,47 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
         </div>
       )}
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>No.</th>
-            <th>Skill Name</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {skills
-            .sort((a, b) => a.id - b.id)
-            .map((skill, index) => (
-            <tr key={skill.id}>
-              <td>{index + 1}</td>
-              <td>{skill.name}</td>
-              <td>
-                <div className="admin-table-actions">
-                  <button
-                    onClick={() => {
-                      setEditingSkill(skill);
-                      setFormData({ name: skill.name });
-                      setShowCreateModal(true);
-                    }}
-                    className="admin-button"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSkill(skill.id)}
-                    className="admin-button admin-button-danger"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
+      <div className="admin-skills-table-wrapper">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Skill Name</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {skills
+              .sort((a, b) => a.id - b.id)
+              .map((skill, index) => (
+              <tr key={skill.id}>
+                <td>{index + 1}</td>
+                <td>{skill.name}</td>
+                <td>
+                  <div className="admin-table-actions">
+                    <button
+                      onClick={() => {
+                        setEditingSkill(skill);
+                        setFormData({ name: skill.name });
+                        setShowCreateModal(true);
+                      }}
+                      className="admin-button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSkill(skill.id)}
+                      className="admin-button admin-button-danger"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -2324,4 +2477,4 @@ function mockAgents(): Agent[] {
     { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
   ];
 }
-
+}
