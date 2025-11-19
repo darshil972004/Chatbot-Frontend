@@ -2,6 +2,14 @@ import { FormEvent, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import ChatbotWidget from './ChatbotWidget';
+import {
+  getTickets, getTicketById, getTicketAgents, getTicketMessages, getTicketFeedback, getTicketEvents,
+  getAgents, createAgent, updateAgent, deleteAgent, getAgentSkills,
+  getSkills, createSkill, updateSkill, deleteSkill, assignSkillToAgent, removeSkillFromAgent,
+  getConversations, getAnalytics,
+  type Ticket, type TicketAgent, type TicketMessage, type TicketFeedback, type TicketEvent,
+  type Agent, type Skill, type Conversation, type AnalyticsData
+} from '../api/ticket';
 import './admin-panel.css';
 
 type AdminPanelProps = {
@@ -10,46 +18,8 @@ type AdminPanelProps = {
   onLogout: () => void;
 };
 
-// Types for Admin Panel UI
-type Skill = {
-  id: number;
-  name: string;
-  proficiency?: number;
-};
-
-type Agent = {
-  id: number;
-  username: string;
-  password: string;
-  name: string;
-  email?: string;
-  role: string;
-  status: 'online' | 'offline' | 'busy' | 'away';
-  currentSessionId: number | null;
-  metrics: {
-    chatsToday: number;
-    avgResponse: number;
-  };
-  skills: Skill[];
-  max_concurrent_chats?: number;
-};
-
-type Session = {
-  id: number;
-  userId: string;
-  topic: string;
-  status: 'waiting' | 'assigned' | 'closed';
-  assignedAgentId: number | null;
-  messages: Array<{ sender: string; text: string }>;
-  duration: number;
-  waitTime: number;
-};
-
-type Template = {
-  id: number;
-  type: string;
-  content: string;
-};
+const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
+const CHATBOT_TOKEN = (window as any).VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
 
 type RoutingRule = {
   id: number;
@@ -59,33 +29,24 @@ type RoutingRule = {
   autoAssign: boolean;
 };
 
-const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
-const CHATBOT_TOKEN = (window as any).VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
+type Session = {
+  id: number;
+  user: { name: string; email: string; country?: string; pastIssues?: number };
+  topic: string;
+  status: string;
+  unread: number;
+  lastMsgTime: string;
+  startedAgo: string;
+  messages: any[];
+  duration?: number;
+  assignedAgentId?: number;
+};
 
-const apiClient = axios.create({
-  baseURL: API_BASE,
-  headers: {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${CHATBOT_TOKEN}`,
-  },
-});
-
-const normalizeAgent = (agent: any, index: number): Agent => ({
-  id: agent.id ?? index + 1,
-  username: agent.username ?? `agent-${index + 1}`,
-  password: '',
-  name: agent.display_name ?? agent.name ?? agent.username ?? `Agent ${index + 1}`,
-  email: agent.email ?? '',
-  role: agent.role ?? 'support',
-  status: agent.is_active === false ? 'offline' : 'online',
-  currentSessionId: null,
-  metrics: {
-    chatsToday: agent.metrics?.chatsToday ?? agent.chatsToday ?? 0,
-    avgResponse: agent.metrics?.avgResponse ?? agent.avgResponse ?? 0,
-  },
-  skills: [],
-  max_concurrent_chats: agent.max_concurrent_chats ?? 2,
-});
+type Template = {
+  id: number;
+  type: string;
+  content: string;
+};
 
 export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelProps) {
   const [username, setUsername] = useState('');
@@ -93,122 +54,110 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Admin Panel UI state
-  const [route, setRoute] = useState('dashboard');
+  // Main navigation state
+  const [activeSection, setActiveSection] = useState('tickets');
+
+  // Data states
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [routingRules, setRoutingRules] = useState<RoutingRule[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
 
-  const loadSkills = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/api/skills');
-      const payload = res.data?.data;
-      if (res.data?.success && Array.isArray(payload)) {
-        setSkills(
-          payload.map((skill: any) => ({
-            id: skill.id,
-            name: skill.name,
-          }))
-        );
-      }
-    } catch (err) {
-      console.error('Error fetching skills:', err);
-    }
-  }, []);
+  // Loading states
+  const [loading, setLoading] = useState(false);
 
-  const attachAgentSkills = useCallback(async (agent: Agent): Promise<Agent> => {
-    if (!agent.id) {
-      return agent;
-    }
-    try {
-      const res = await apiClient.get(`/api/agents/${agent.id}/skills`);
-      const skillList = Array.isArray(res.data?.data)
-        ? res.data.data.map((skill: any) => ({
-            id: skill.id,
-            name: skill.name,
-            proficiency: skill.proficiency,
-          }))
-        : [];
-      return { ...agent, skills: skillList };
-    } catch (err) {
-      console.error(`Error fetching skills for agent ${agent.id}`, err);
-      return { ...agent, skills: [] };
-    }
-  }, []);
+  // Filter states
+  const [ticketFilters, setTicketFilters] = useState({
+    status: '',
+    priority: '',
+    agent_id: '',
+    category: '',
+    sort_by: 'created_at',
+    sort_order: 'desc' as 'asc' | 'desc'
+  });
 
-  const attachAgentStatus = useCallback(async (agent: Agent): Promise<Agent> => {
-    if (!agent.id) {
-      return agent;
-    }
-    try {
-      const res = await apiClient.get(`/api/agents/${agent.id}/current-status`);
-      if (res.data?.success && res.data?.data?.status) {
-        return { ...agent, status: res.data.data.status as Agent['status'] };
-      }
-      // Fallback to is_active if no status event exists
-      return agent;
-    } catch (err: any) {
-      // If 404, it means no status events exist, so use is_active from agent
-      if (err?.response?.status === 404) {
-        // Status will be set from normalizeAgent based on is_active
-        return agent;
-      }
-      console.error(`Error fetching status for agent ${agent.id}`, err);
-      // Fallback to is_active if status fetch fails
-      return agent;
-    }
-  }, []);
+  const [agentFilters, setAgentFilters] = useState({
+    is_active: '',
+    role: '',
+    skill_id: '',
+    sort_by: 'created_at',
+    sort_order: 'desc' as 'asc' | 'desc'
+  });
 
-  const loadAgents = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/api/agents');
-      const payload = res.data?.data;
-      if (res.data?.success && Array.isArray(payload)) {
-        const normalized = payload.map((agent: any, idx: number) => normalizeAgent(agent, idx));
-        const withSkills = await Promise.all(normalized.map((agent) => attachAgentSkills(agent)));
-        const withStatus = await Promise.all(withSkills.map((agent) => attachAgentStatus(agent)));
-        setAgents(withStatus);
-      }
-    } catch (err) {
-      console.error('Error fetching agents:', err);
-    }
-  }, [attachAgentSkills, attachAgentStatus]);
-
+  // Load initial data
   useEffect(() => {
-    loadAgents();
-  }, [loadAgents]);
+    if (isAdmin) {
+      loadInitialData();
+    }
+  }, [isAdmin]);
 
-  useEffect(() => {
-    loadSkills();
-  }, [loadSkills]);
-
-  const syncAgentSkills = useCallback(async (agentId: number, selectedSkillIds: number[]) => {
+  const loadInitialData = async () => {
+    setLoading(true);
     try {
-      const res = await apiClient.get(`/api/agents/${agentId}/skills`);
-      const existingIds: number[] = Array.isArray(res.data?.data)
-        ? res.data.data.map((skill: any) => Number(skill.id))
-        : [];
-
-      const toAdd = selectedSkillIds.filter((skillId: number) => !existingIds.includes(skillId));
-      const toRemove = existingIds.filter((skillId: number) => !selectedSkillIds.includes(skillId));
-
       await Promise.all([
-        ...toAdd.map((skillId) =>
-          apiClient.post('/api/agent-skills', {
-            agent_id: agentId,
-            skill_id: skillId,
-            proficiency: 5,
-          })
-        ),
-        ...toRemove.map((skillId) => apiClient.delete(`/api/agent-skills/${agentId}/${skillId}`)),
+        loadTickets(),
+        loadAgents(),
+        loadSkills(),
+        loadAnalytics(),
+        loadConversations()
       ]);
     } catch (err) {
-      console.error(`Error syncing skills for agent ${agentId}`, err);
-      throw err;
+      console.error('Error loading initial data:', err);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
+
+  const loadTickets = async () => {
+    const filters = {
+      status: ticketFilters.status || undefined,
+      priority: ticketFilters.priority || undefined,
+      agent_id: ticketFilters.agent_id ? Number(ticketFilters.agent_id) : undefined,
+      category: ticketFilters.category || undefined,
+      sort_by: ticketFilters.sort_by as 'created_at' | 'updated_at' | 'priority' | undefined,
+      sort_order: ticketFilters.sort_order as 'asc' | 'desc' | undefined
+    };
+    const result = await getTickets(filters);
+    if (result.success && result.data) {
+      setTickets(result.data);
+    }
+  };
+
+  const loadAgents = async () => {
+    const filters = {
+      is_active: agentFilters.is_active ? agentFilters.is_active === 'true' : undefined,
+      role: agentFilters.role || undefined,
+      skill_id: agentFilters.skill_id ? Number(agentFilters.skill_id) : undefined,
+      sort_by: agentFilters.sort_by as 'created_at' | 'max_concurrent_chats' | 'total_tickets' | undefined,
+      sort_order: agentFilters.sort_order as 'asc' | 'desc' | undefined
+    };
+    const result = await getAgents(filters);
+    if (result.success && result.data) {
+      setAgents(result.data);
+    }
+  };
+
+  const loadSkills = async () => {
+    const result = await getSkills();
+    if (result.success && result.data) {
+      setSkills(result.data);
+    }
+  };
+
+  const loadAnalytics = async () => {
+    const result = await getAnalytics();
+    if (result.success && result.data) {
+      setAnalytics(result.data);
+    }
+  };
+
+  const loadConversations = async () => {
+    const result = await getConversations();
+    if (result.success && result.data) {
+      setConversations(result.data);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -235,7 +184,7 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
         <div className="admin-login-card">
           <h1 className="admin-login-heading">Admin Panel Login</h1>
           <p className="admin-login-subtitle">
-            Enter your credentials to access workflow management tools.
+            Enter your credentials to access the ticket management system.
           </p>
           <form onSubmit={handleSubmit} className="admin-login-form">
             <label className="admin-login-label">
@@ -277,43 +226,59 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
       <div className="admin-panel-wrapper">
         <div className="admin-panel-grid">
           <aside className="admin-panel-sidebar">
-            <Sidebar route={route} setRoute={setRoute} agents={agents} sessions={sessions} onLogout={onLogout} />
+            <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
           </aside>
 
           <main className="admin-panel-main">
-            <Header onLogout={onLogout} setRoute={setRoute} />
+            <Header onLogout={onLogout} />
 
             <div style={{ marginTop: '16px' }}>
-              {route === 'dashboard' && <Dashboard agents={agents} sessions={sessions} />}
-              {route === 'agents' && (
-                <AgentsPage
+              {loading && <div className="admin-loading">Loading...</div>}
+
+              {activeSection === 'tickets' && (
+                <TicketsPage
+                  tickets={tickets}
                   agents={agents}
-                  setAgents={setAgents}
-                  skills={skills}
-                  reloadAgents={loadAgents}
-                  syncAgentSkills={syncAgentSkills}
+                  filters={ticketFilters}
+                  setFilters={setTicketFilters}
+                  onRefresh={loadTickets}
                 />
               )}
-              {route === 'live' && (
-                <LiveChatsPage sessions={sessions} setSessions={setSessions} agents={agents} setAgents={setAgents} />
+
+              {activeSection === 'agents' && (
+                <AgentsPage
+                  agents={agents}
+                  skills={skills}
+                  filters={agentFilters}
+                  setFilters={setAgentFilters}
+                  onRefresh={loadAgents}
+                />
               )}
-              {route === 'routing' && (
-                <RoutingPage rules={routingRules} setRules={setRoutingRules} agents={agents} />
+
+              {activeSection === 'analytics' && (
+                <AnalyticsPage analytics={analytics} agents={agents} />
               )}
-              {route === 'templates' && (
-                <TemplatesPage templates={templates} setTemplates={setTemplates} />
+
+              {activeSection === 'conversations' && (
+                <ConversationsPage conversations={conversations} />
               )}
-              {route === 'history' && <ChatHistoryPage sessions={sessions} />}
-              {route === 'analytics' && <AnalyticsPage sessions={sessions} agents={agents} />}
-              {route === 'settings' && <SettingsPage />}
-              {route === 'workflows' && (
+
+              {activeSection === 'alerts' && (
+                <AlertsPage agents={agents} />
+              )}
+
+              {activeSection === 'skills' && (
+                <SkillsPage skills={skills} onRefresh={loadSkills} />
+              )}
+
+              {activeSection === 'workflows' && (
                 <WorkflowSection />
               )}
             </div>
           </main>
         </div>
       </div>
-          </div>
+    </div>
   );
 }
 
@@ -339,8 +304,8 @@ function WorkflowSection() {
 }
 
 // Header Component
-type HeaderProps = { onLogout: () => void; setRoute: (route: string) => void };
-function Header({ onLogout, setRoute }: HeaderProps) {
+type HeaderProps = { onLogout: () => void };
+function Header({ onLogout }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -373,7 +338,7 @@ function Header({ onLogout, setRoute }: HeaderProps) {
               <div style={{ fontWeight: 600, fontSize: '16px' }}>Admin</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 16px' }}>
-              <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px' }} onClick={() => { setShowMenu(false); setRoute('settings'); }}>Settings</button>
+              <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px' }} onClick={() => { setShowMenu(false); }}>Settings</button>
               <button className="admin-header-dropdown-btn" style={{ textAlign: 'left', padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px', color: '#ef4444' }} onClick={() => { setShowMenu(false); onLogout(); }}>Log out</button>
             </div>
           </div>
@@ -385,128 +350,353 @@ function Header({ onLogout, setRoute }: HeaderProps) {
 
 // Sidebar Component
 type SidebarProps = {
-  route: string;
-  setRoute: (route: string) => void;
-  agents: Agent[];
-  sessions: Session[];
-  onLogout: () => void;
+  activeSection: string;
+  setActiveSection: (section: string) => void;
 };
 
-function Sidebar({ route, setRoute, agents, sessions, onLogout }: SidebarProps) {
-  const waitingCount = sessions.filter((s) => s.status === 'waiting').length;
-  const onlineCount = agents.filter((a) => a.status === 'online').length;
-
-  const item = (id: string, label: string, subtitle: string | null) => (
-    <li
-      key={id}
-      onClick={() => setRoute(id)}
-      className={`admin-sidebar-item ${route === id ? 'active' : ''}`}
-    >
-      <div>
-        <div className="admin-sidebar-item-label">{label}</div>
-        {subtitle && <div className="admin-sidebar-item-subtitle">{subtitle}</div>}
-      </div>
-    </li>
-  );
-
-  const handleAddAgent = () => {
-    setRoute('agents');
-    // Trigger create modal - this will be handled by AgentsPage component
-    setTimeout(() => {
-      const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
-      if (createButton) createButton.click();
-    }, 100);
-  };
+function Sidebar({ activeSection, setActiveSection }: SidebarProps) {
+  const sections = [
+    { id: 'tickets', label: 'Tickets', icon: '🎫' },
+    { id: 'agents', label: 'Agents', icon: '👥' },
+    { id: 'analytics', label: 'Analytics', icon: '📊' },
+    { id: 'conversations', label: 'Conversations', icon: '💬' },
+    { id: 'alerts', label: 'Alerts', icon: '🚨' },
+    { id: 'skills', label: 'Skills', icon: '🛠️' },
+    { id: 'workflows', label: 'Workflows', icon: '⚙️' },
+  ];
 
   return (
     <div className="admin-sidebar">
       <div className="admin-sidebar-card">
         <div style={{ marginBottom: '16px' }}>
-          <h2 className="admin-sidebar-title">Overview</h2>
-          <div className="admin-sidebar-subtitle">Realtime control center</div>
+          <h2 className="admin-sidebar-title">Real Estate CRM</h2>
+          <div className="admin-sidebar-subtitle">Ticket Management System</div>
         </div>
 
         <ul className="admin-sidebar-list">
-          {item('dashboard', 'Dashboard', null)}
-          {item('agents', `Agents (${onlineCount} online)`, null)}
-          {/* {item('live', 'Live Chats', `Waiting: ${waitingCount}`)} */}
-          {/* {item('routing', 'Routing Rules', null)} */}
-          {/* {item('templates', 'Message Templates', null)} */}
-          {/* {item('history', 'Chat History', null)} */}
-          {item('analytics', 'Analytics', null)}
-          {/* Settings button removed, now only accessible from header dropdown */}
-          {item('workflows', 'Workflows', null)}
+          {sections.map((section) => (
+            <li
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`admin-sidebar-item ${activeSection === section.id ? 'active' : ''}`}
+            >
+              <div>
+                <div className="admin-sidebar-item-label">
+                  {section.icon} {section.label}
+                </div>
+              </div>
+            </li>
+          ))}
         </ul>
-      </div>
-
-      <div className="admin-sidebar-card admin-quick-actions">
-        <h3>Quick Actions</h3>
-        <div className="admin-quick-actions-buttons">
-          <button className="admin-button admin-button-primary" onClick={handleAddAgent}>Add Agent</button>
-          {/* <button className="admin-button admin-button-success" onClick={() => setRoute('live')}>View Waiting</button> */}
-          <button className="admin-button admin-button-success">View Waiting</button>
-          {/* Log out button removed, now handled in header dropdown */}
-        </div>
       </div>
     </div>
   );
 }
 
-// Dashboard Component
-type DashboardProps = {
+type TicketsPageProps = {
+  tickets: Ticket[];
   agents: Agent[];
-  sessions: Session[];
+  filters: {
+    status: string;
+    priority: string;
+    agent_id: string;
+    category: string;
+    sort_by: string;
+    sort_order: 'asc' | 'desc';
+  };
+  setFilters: React.Dispatch<React.SetStateAction<{
+    status: string;
+    priority: string;
+    agent_id: string;
+    category: string;
+    sort_by: string;
+    sort_order: 'asc' | 'desc';
+  }>>;
+  onRefresh: () => void;
 };
 
-function Dashboard({ agents, sessions }: DashboardProps) {
-  const totalChats = sessions.length;
-  const avgWait = Math.round((sessions.reduce((s, it) => s + (it.waitTime || 0), 0) / Math.max(1, sessions.length)) * 10) / 10;
+function TicketsPage({ tickets, agents, filters, setFilters, onRefresh }: TicketsPageProps) {
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [ticketDetails, setTicketDetails] = useState<{
+    agents: TicketAgent[];
+    messages: TicketMessage[];
+    feedback: TicketFeedback[];
+    events: TicketEvent[];
+  } | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const topicCounts = sessions.reduce((acc, s) => {
-    acc[s.topic] = (acc[s.topic] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const loadTicketDetails = async (ticketId: string) => {
+    setLoadingDetails(true);
+    try {
+      const [agentsRes, messagesRes, feedbackRes, eventsRes] = await Promise.all([
+        getTicketAgents(ticketId),
+        getTicketMessages(ticketId),
+        getTicketFeedback(ticketId),
+        getTicketEvents(ticketId)
+      ]);
+
+      setTicketDetails({
+        agents: agentsRes.data || [],
+        messages: messagesRes.data || [],
+        feedback: feedbackRes.data || [],
+        events: eventsRes.data || []
+      });
+    } catch (err) {
+      console.error('Error loading ticket details:', err);
+      setTicketDetails({ agents: [], messages: [], feedback: [], events: [] });
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleTicketClick = async (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    await loadTicketDetails(ticket.id);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return '#10b981';
+      case 'in_progress': return '#3b82f6';
+      case 'waiting': return '#f59e0b';
+      case 'resolved': return '#8b5cf6';
+      case 'closed': return '#6b7280';
+      default: return '#6b7280';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return '#ef4444';
+      case 'medium': return '#f59e0b';
+      case 'low': return '#10b981';
+      default: return '#6b7280';
+    }
+  };
 
   return (
-    <div className="admin-dashboard">
-      <div className="admin-stats-grid">
-        <StatCard title="Total Chats" value={totalChats} />
-        <StatCard title="Active Agents" value={agents.filter((a) => a.status !== 'offline').length} />
-        <StatCard title="Avg Wait (s)" value={avgWait || 0} />
+    <div className="admin-tickets-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Tickets Management</h2>
+        <button onClick={onRefresh} className="admin-button admin-button-secondary">Refresh</button>
       </div>
 
-      <div className="admin-content-grid">
-        <div className="admin-content-card admin-content-card-wide">
-          <h3>Topics distribution</h3>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div className="admin-topic-list">
-              {Object.entries(topicCounts).length === 0 && <div className="admin-empty-state">No data</div>}
-              {Object.entries(topicCounts).map(([k, v]) => (
-                <div key={k} className="admin-topic-item">
-                  <div>{k}</div>
-                  <div className="admin-topic-value">{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ flex: 1, fontSize: '14px', color: '#64748b' }}>
-              Use analytics to dig deeper into topics and agent performance.
-            </div>
-          </div>
+      {/* Filters */}
+      <div className="admin-filters">
+        <div className="admin-filter-group">
+          <label>Status:</label>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+          >
+            <option value="">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="waiting">Waiting</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
         </div>
 
-        <div className="admin-content-card">
-          <h3>Top Agents</h3>
-          <ul className="admin-agents-list">
-            {agents.slice(0, 5).map((a) => (
-              <li key={a.id} className="admin-agent-item">
-                <div>
-                  <div className="admin-agent-name">{a.name}</div>
-                  <div className="admin-agent-role">{a.role}</div>
-                </div>
-                <div style={{ fontSize: '14px' }}>{a.metrics.chatsToday}</div>
-              </li>
+        <div className="admin-filter-group">
+          <label>Priority:</label>
+          <select
+            value={filters.priority}
+            onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+          >
+            <option value="">All Priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Agent:</label>
+          <select
+            value={filters.agent_id}
+            onChange={(e) => setFilters(prev => ({ ...prev, agent_id: e.target.value }))}
+          >
+            <option value="">All Agents</option>
+            {agents.map(agent => (
+              <option key={agent.id} value={agent.id}>{agent.display_name}</option>
             ))}
-          </ul>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Sort By:</label>
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters(prev => ({ ...prev, sort_by: e.target.value as any }))}
+          >
+            <option value="created_at">Created Date</option>
+            <option value="updated_at">Updated Date</option>
+            <option value="priority">Priority</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Order:</label>
+          <select
+            value={filters.sort_order}
+            onChange={(e) => setFilters(prev => ({ ...prev, sort_order: e.target.value as 'asc' | 'desc' }))}
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="admin-tickets-grid">
+        {/* Tickets List */}
+        <div className="admin-tickets-list">
+          <h3>Tickets ({tickets.length})</h3>
+          {tickets.length === 0 ? (
+            <div className="admin-empty-state">No tickets found</div>
+          ) : (
+            tickets.map(ticket => (
+              <div
+                key={ticket.id}
+                className={`admin-ticket-item ${selectedTicket?.id === ticket.id ? 'selected' : ''}`}
+                onClick={() => handleTicketClick(ticket)}
+              >
+                <div className="admin-ticket-header">
+                  <div className="admin-ticket-title">{ticket.title}</div>
+                  <div className="admin-ticket-id">#{ticket.id.slice(-8)}</div>
+                </div>
+                <div className="admin-ticket-meta">
+                  <span className="admin-ticket-status" style={{ backgroundColor: getStatusColor(ticket.status) }}>
+                    {ticket.status.replace('_', ' ')}
+                  </span>
+                  <span className="admin-ticket-priority" style={{ color: getPriorityColor(ticket.priority) }}>
+                    {ticket.priority}
+                  </span>
+                  <span className="admin-ticket-date">
+                    {new Date(ticket.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                {ticket.description && (
+                  <div className="admin-ticket-description">{ticket.description}</div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Ticket Details */}
+        <div className="admin-ticket-details">
+          {selectedTicket ? (
+            <>
+              <h3>Ticket Details</h3>
+              <div className="admin-ticket-detail-card">
+                <h4>{selectedTicket.title}</h4>
+                <div className="admin-ticket-detail-meta">
+                  <p><strong>ID:</strong> {selectedTicket.id}</p>
+                  <p><strong>Status:</strong>
+                    <span style={{ backgroundColor: getStatusColor(selectedTicket.status), padding: '2px 8px', borderRadius: '4px', color: 'white', marginLeft: '8px' }}>
+                      {selectedTicket.status.replace('_', ' ')}
+                    </span>
+                  </p>
+                  <p><strong>Priority:</strong>
+                    <span style={{ color: getPriorityColor(selectedTicket.priority), marginLeft: '8px' }}>
+                      {selectedTicket.priority}
+                    </span>
+                  </p>
+                  <p><strong>Created:</strong> {new Date(selectedTicket.created_at).toLocaleString()}</p>
+                  {selectedTicket.updated_at && (
+                    <p><strong>Updated:</strong> {new Date(selectedTicket.updated_at).toLocaleString()}</p>
+                  )}
+                  {selectedTicket.category && <p><strong>Category:</strong> {selectedTicket.category}</p>}
+                </div>
+                {selectedTicket.description && (
+                  <div className="admin-ticket-detail-description">
+                    <strong>Description:</strong>
+                    <p>{selectedTicket.description}</p>
+                  </div>
+                )}
+              </div>
+
+              {loadingDetails ? (
+                <div className="admin-loading">Loading details...</div>
+              ) : ticketDetails ? (
+                <>
+                  {/* Assigned Agents */}
+                  <div className="admin-ticket-detail-section">
+                    <h4>Assigned Agents ({ticketDetails.agents.length})</h4>
+                    {ticketDetails.agents.length === 0 ? (
+                      <p>No agents assigned</p>
+                    ) : (
+                      ticketDetails.agents.map(agent => (
+                        <div key={agent.id} className="admin-agent-assignment">
+                          <p><strong>{agent.agent?.display_name || 'Unknown Agent'}</strong></p>
+                          <p>Status: {agent.status.replace('_', ' ')}</p>
+                          <p>Assigned: {new Date(agent.created_at).toLocaleString()}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Messages */}
+                  <div className="admin-ticket-detail-section">
+                    <h4>Messages ({ticketDetails.messages.length})</h4>
+                    {ticketDetails.messages.length === 0 ? (
+                      <p>No messages</p>
+                    ) : (
+                      ticketDetails.messages.map(message => (
+                        <div key={message.id} className="admin-message-item">
+                          <div className="admin-message-header">
+                            <strong>{message.sender_type}</strong>
+                            <span>{new Date(message.created_at).toLocaleString()}</span>
+                          </div>
+                          <div className="admin-message-content">{message.content}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Feedback */}
+                  <div className="admin-ticket-detail-section">
+                    <h4>Feedback ({ticketDetails.feedback.length})</h4>
+                    {ticketDetails.feedback.length === 0 ? (
+                      <p>No feedback</p>
+                    ) : (
+                      ticketDetails.feedback.map(fb => (
+                        <div key={fb.id} className="admin-feedback-item">
+                          <div className="admin-feedback-rating">Rating: {fb.rating}/5 ⭐</div>
+                          {fb.comment && <div className="admin-feedback-comment">{fb.comment}</div>}
+                          <div className="admin-feedback-date">{new Date(fb.created_at).toLocaleString()}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Events */}
+                  <div className="admin-ticket-detail-section">
+                    <h4>Events ({ticketDetails.events.length})</h4>
+                    {ticketDetails.events.length === 0 ? (
+                      <p>No events</p>
+                    ) : (
+                      ticketDetails.events.map(event => (
+                        <div key={event.id} className="admin-event-item">
+                          <div className="admin-event-type">{event.event_type || 'Event'}</div>
+                          <div className="admin-event-actor">Actor: {event.actor_id || 'System'}</div>
+                          <div className="admin-event-date">{new Date(event.created_at).toLocaleString()}</div>
+                          {event.details && (
+                            <div className="admin-event-details">
+                              {JSON.stringify(event.details, null, 2)}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <div className="admin-empty-state">Select a ticket to view details</div>
+          )}
         </div>
       </div>
     </div>
@@ -531,222 +721,493 @@ function StatCard({ title, value }: StatCardProps) {
 // AgentsPage Component
 type AgentsPageProps = {
   agents: Agent[];
-  setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
   skills: Skill[];
-  reloadAgents: () => Promise<void>;
-  syncAgentSkills: (agentId: number, skillIds: number[]) => Promise<void>;
+  filters: {
+    is_active: string;
+    role: string;
+    skill_id: string;
+    sort_by: string;
+    sort_order: 'asc' | 'desc';
+  };
+  setFilters: React.Dispatch<React.SetStateAction<{
+    is_active: string;
+    role: string;
+    skill_id: string;
+    sort_by: string;
+    sort_order: 'asc' | 'desc';
+  }>>;
+  onRefresh: () => void;
 };
 
-function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }: AgentsPageProps) {
+function AgentsPage({ agents, skills, filters, setFilters, onRefresh }: AgentsPageProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
-  const [formData, setFormData] = useState<{
-    username: string;
-    password: string;
-    name: string;
-    email: string;
-    role: string;
-    status: Agent['status'];
-    skillIds: number[];
-    max_concurrent_chats: number;
-  }>({
+  const [formData, setFormData] = useState({
     username: '',
-    password: '',
-    name: '',
+    display_name: '',
     email: '',
-    role: '',
-    status: 'online',
-    skillIds: [],
+    password: '',
+    role: 'agent',
     max_concurrent_chats: 2,
+    skillIds: [] as number[]
   });
 
-  const [roles, setRoles] = useState<string[]>([]);
-
-  useEffect(() => {
-    async function fetchRoles() {
-      try {
-        const res = await apiClient.get('/api/agents');
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          const uniqueRoles = Array.from(new Set(res.data.data.map((a: any) => a.role).filter(Boolean))) as string[];
-          setRoles(uniqueRoles);
-        }
-      } catch (err) {
-        setRoles([]);
-      }
-    }
-    fetchRoles();
-  }, []);
-
-  const toggleSkillSelection = (skillId: number) => {
-    setFormData((prev) => {
-      const exists = prev.skillIds.includes(skillId);
-      return {
-        ...prev,
-        skillIds: exists ? prev.skillIds.filter((id) => id !== skillId) : [...prev.skillIds, skillId],
+  const handleCreateAgent = async () => {
+    try {
+      const agentData = {
+        username: formData.username,
+        display_name: formData.display_name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        max_concurrent_chats: formData.max_concurrent_chats
       };
+
+      const result = await createAgent(agentData);
+      if (result.success) {
+        // Assign skills to the new agent
+        if (formData.skillIds.length > 0 && result.data) {
+          await Promise.all(
+            formData.skillIds.map(skillId =>
+              assignSkillToAgent(result.data!.id, skillId)
+            )
+          );
+        }
+        onRefresh();
+        setShowCreateModal(false);
+        resetForm();
+      } else {
+        alert('Error creating agent: ' + (result.error?.message || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error creating agent');
+    }
+  };
+
+  const handleUpdateAgent = async () => {
+    if (!editingAgent) return;
+
+    try {
+      const agentData = {
+        username: formData.username,
+        display_name: formData.display_name,
+        email: formData.email,
+        role: formData.role,
+        max_concurrent_chats: formData.max_concurrent_chats
+      };
+
+      const result = await updateAgent(editingAgent.id, agentData);
+      if (result.success) {
+        // Update skills
+        const currentSkills = editingAgent.skills?.map(s => s.id) || [];
+        const skillsToAdd = formData.skillIds.filter(id => !currentSkills.includes(id));
+        const skillsToRemove = currentSkills.filter(id => !formData.skillIds.includes(id));
+
+        await Promise.all([
+          ...skillsToAdd.map(skillId => assignSkillToAgent(editingAgent.id, skillId)),
+          ...skillsToRemove.map(skillId => removeSkillFromAgent(editingAgent.id, skillId))
+        ]);
+
+        onRefresh();
+        setShowCreateModal(false);
+        setEditingAgent(null);
+        resetForm();
+      } else {
+        alert('Error updating agent: ' + (result.error?.message || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error updating agent');
+    }
+  };
+
+  const handleDeleteAgent = async (agentId: number) => {
+    if (!window.confirm('Are you sure you want to delete this agent?')) return;
+
+    try {
+      const result = await deleteAgent(agentId);
+      if (result.success) {
+        onRefresh();
+      } else {
+        alert('Error deleting agent');
+      }
+    } catch (err) {
+      alert('Error deleting agent');
+    }
+  };
+
+  const handleEditAgent = (agent: Agent) => {
+    setEditingAgent(agent);
+    setFormData({
+      username: agent.username,
+      display_name: agent.display_name,
+      email: agent.email || '',
+      password: '', // Don't populate password for security
+      role: agent.role,
+      max_concurrent_chats: agent.max_concurrent_chats,
+      skillIds: agent.skills?.map(s => s.id) || []
+    });
+    setShowCreateModal(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      username: '',
+      display_name: '',
+      email: '',
+      password: '',
+      role: 'agent',
+      max_concurrent_chats: 2,
+      skillIds: []
     });
   };
 
-  async function toggleStatus(id: number) {
-    const agent = agents.find((a) => a.id === id);
-    if (!agent) return;
-    const newStatus = agent.status === 'online' ? 'offline' : 'online';
-    try {
-      // Optimistically update UI
-      setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-      );
+  const toggleSkill = (skillId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      skillIds: prev.skillIds.includes(skillId)
+        ? prev.skillIds.filter(id => id !== skillId)
+        : [...prev.skillIds, skillId]
+    }));
+  };
 
-      // Create status event to track the status change
-      await apiClient.post('/api/agent-status-events', {
-        agent_id: id,
-        status: newStatus,
-        concurrent_load: 0,
-        details: { source: 'admin_panel_toggle' }
-      });
-
-      // Reload to get the latest status from backend
-      await reloadAgents();
-    } catch (err) {
-      // Revert optimistic update on error
-      setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
-      );
-      alert('Error updating agent status');
-    }
-  }
-
-  async function handleCreateAgent() {
-    try {
-      const res = await apiClient.post('/api/agents', {
-        username: formData.username,
-        password: formData.password,
-        email: formData.email,
-        display_name: formData.name,
-        role: formData.role,
-        max_concurrent_chats: formData.max_concurrent_chats
-      });
-      if (res.data.success) {
-        const newAgentId = res.data?.data?.id;
-        if (newAgentId) {
-          await syncAgentSkills(newAgentId, formData.skillIds);
-          // Create initial status event for the new agent
-          try {
-            await apiClient.post('/api/agent-status-events', {
-              agent_id: newAgentId,
-              status: formData.status,
-              concurrent_load: 0,
-              details: { source: 'admin_panel_create' }
-            });
-          } catch (statusErr) {
-            console.error('Error creating initial status event:', statusErr);
-            // Don't fail the whole operation if status event creation fails
-          }
-        }
-        await reloadAgents();
-        setShowCreateModal(false);
-        setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 });
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Error creating agent';
-      alert(msg);
-    }
-  }
-
-  // Remove handleEditAgent click logic, show agent details directly
-
-  async function handleUpdateAgent() {
-    if (editingAgent) {
-      try {
-        const res = await apiClient.put('/api/agents', {
-          id: editingAgent.id,
-          username: formData.username,
-          password: formData.password,
-          email: formData.email,
-          display_name: formData.name,
-          role: formData.role,
-          max_concurrent_chats: formData.max_concurrent_chats
-        });
-        if (res.data.success) {
-          await syncAgentSkills(editingAgent.id, formData.skillIds);
-          // Always log a status event so backend history reflects the change time
-          try {
-            await apiClient.post('/api/agent-status-events', {
-              agent_id: editingAgent.id,
-              status: formData.status,
-              concurrent_load: 0,
-              details: {
-                source: 'admin_panel_update',
-                previous_status: editingAgent.status,
-              },
-            });
-          } catch (statusErr) {
-            console.error('Error creating status event:', statusErr);
-            // Don't fail the whole operation if status event creation fails
-          }
-          await reloadAgents();
-          setEditingAgent(null);
-          setShowCreateModal(false);
-          setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 });
-        }
-      } catch (err: any) {
-        const msg = err?.response?.data?.error?.message || err?.message || 'Error updating agent';
-        alert(msg);
-      }
-    }
-  }
-
-  async function handleDeleteAgent(id: number) {
-    if (window.confirm('Are you sure you want to delete this agent?')) {
-      try {
-        const res = await apiClient.delete(`/api/agents/${id}`);
-        if (res.data.success) {
-          await reloadAgents();
-        }
-      } catch (err) {
-        alert('Error deleting agent');
-      }
-    }
-  }
-
-  // Always show agent details directly, no click needed
   return (
     <div className="admin-agents-page">
       <div className="admin-page-header">
-        <h2 className="admin-page-title">Agents</h2>
-        <button onClick={() => { setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [],max_concurrent_chats:2 }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Agent</button>
+        <h2 className="admin-page-title">Agent Management</h2>
+        <div className="admin-page-actions">
+          <button onClick={onRefresh} className="admin-button admin-button-secondary">Refresh</button>
+          <button
+            onClick={() => {
+              setEditingAgent(null);
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            className="admin-button admin-button-primary"
+          >
+            Create Agent
+          </button>
+        </div>
       </div>
 
+      {/* Filters */}
+      <div className="admin-filters">
+        <div className="admin-filter-group">
+          <label>Status:</label>
+          <select
+            value={filters.is_active}
+            onChange={(e) => setFilters(prev => ({ ...prev, is_active: e.target.value }))}
+          >
+            <option value="">All Statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Role:</label>
+          <select
+            value={filters.role}
+            onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
+          >
+            <option value="">All Roles</option>
+            <option value="agent">Agent</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Skill:</label>
+          <select
+            value={filters.skill_id}
+            onChange={(e) => setFilters(prev => ({ ...prev, skill_id: e.target.value }))}
+          >
+            <option value="">All Skills</option>
+            {skills.map(skill => (
+              <option key={skill.id} value={skill.id}>{skill.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Sort By:</label>
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters(prev => ({ ...prev, sort_by: e.target.value as any }))}
+          >
+            <option value="created_at">Created Date</option>
+            <option value="max_concurrent_chats">Max Chats</option>
+            <option value="total_tickets">Total Tickets</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Order:</label>
+          <select
+            value={filters.sort_order}
+            onChange={(e) => setFilters(prev => ({ ...prev, sort_order: e.target.value as 'asc' | 'desc' }))}
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Agents List */}
       <div className="admin-agents-list">
-        {agents.map((a: Agent) => (
-          <div key={a.id} className="admin-profile-card">
-            <div className="admin-profile-header">
-              <div className="profile-avatar">{a.name[0]}</div>
-              <div>
-                <div className="profile-name">{a.name}</div>
-                <div className="profile-role">{a.role}</div>
-                <div className="profile-status">Status: {a.status}</div>
-                <div>Email: {a.email}</div>
-                <div>Username: {a.username}</div>
-                <div>Max Chats: {a.max_concurrent_chats}</div>
-                <div>Chats Today: {a.metrics.chatsToday}</div>
-                <div>Avg Response: {a.metrics.avgResponse}</div>
-                <div>Skills: {a.skills && a.skills.length > 0 ? a.skills.map((skill) => skill.name).join(', ') : '—'}</div>
+        {agents.length === 0 ? (
+          <div className="admin-empty-state">No agents found</div>
+        ) : (
+          agents.map(agent => (
+            <div key={agent.id} className="admin-agent-card">
+              <div className="admin-agent-header">
+                <div className="admin-agent-avatar">
+                  {agent.display_name[0].toUpperCase()}
+                </div>
+                <div className="admin-agent-info">
+                  <h4>{agent.display_name}</h4>
+                  <p className="admin-agent-role">{agent.role}</p>
+                  <p className="admin-agent-status">
+                    <span className={`admin-status-indicator ${agent.is_active ? 'active' : 'inactive'}`}></span>
+                    {agent.is_active ? 'Active' : 'Inactive'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="admin-agent-details">
+                <div className="admin-agent-detail-item">
+                  <strong>Username:</strong> {agent.username}
+                </div>
+                <div className="admin-agent-detail-item">
+                  <strong>Email:</strong> {agent.email || 'Not set'}
+                </div>
+                <div className="admin-agent-detail-item">
+                  <strong>Max Concurrent Chats:</strong> {agent.max_concurrent_chats}
+                </div>
+                <div className="admin-agent-detail-item">
+                  <strong>Skills:</strong> {agent.skills && agent.skills.length > 0
+                    ? agent.skills.map(s => s.name).join(', ')
+                    : 'No skills assigned'}
+                </div>
+                {agent.metrics && (
+                  <>
+                    <div className="admin-agent-detail-item">
+                      <strong>Total Tickets:</strong> {agent.metrics.total_tickets || 0}
+                    </div>
+                    <div className="admin-agent-detail-item">
+                      <strong>Avg Rating:</strong> {agent.metrics.avg_rating?.toFixed(1) || 'N/A'}
+                    </div>
+                    <div className="admin-agent-detail-item">
+                      <strong>Avg Response Time:</strong> {agent.metrics.avg_response_time || 'N/A'}s
+                    </div>
+                    <div className="admin-agent-detail-item">
+                      <strong>Active Chats:</strong> {agent.metrics.active_chats || 0}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="admin-agent-actions">
+                <button
+                  onClick={() => handleEditAgent(agent)}
+                  className="admin-button admin-button-secondary"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteAgent(agent.id)}
+                  className="admin-button admin-button-danger"
+                >
+                  Delete
+                </button>
               </div>
             </div>
-            <div className="admin-profile-actions">
-              <button onClick={() => toggleStatus(a.id)} className="admin-profile-btn">Toggle Status</button>
-              <button onClick={() => handleDeleteAgent(a.id)} className="admin-logout-btn">Delete</button>
+          ))
+        )}
+      </div>
+
+      {/* Create/Edit Modal */}
+      {showCreateModal && (
+        <div className="admin-modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
+              <button
+                className="admin-modal-close"
+                onClick={() => setShowCreateModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="admin-modal-body">
+              <div className="admin-form-group">
+                <label>Username:</label>
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Enter username"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Display Name:</label>
+                <input
+                  type="text"
+                  value={formData.display_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
+                  placeholder="Enter display name"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter email"
+                />
+              </div>
+
+              {!editingAgent && (
+                <div className="admin-form-group">
+                  <label>Password:</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Enter password"
+                  />
+                </div>
+              )}
+
+              <div className="admin-form-group">
+                <label>Role:</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                >
+                  <option value="agent">Agent</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div className="admin-form-group">
+                <label>Max Concurrent Chats:</label>
+                <input
+                  type="number"
+                  value={formData.max_concurrent_chats}
+                  onChange={(e) => setFormData(prev => ({ ...prev, max_concurrent_chats: Number(e.target.value) }))}
+                  min="1"
+                  max="10"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Skills:</label>
+                <div className="admin-skills-checkboxes">
+                  {skills.map(skill => (
+                    <label key={skill.id} className="admin-skill-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={formData.skillIds.includes(skill.id)}
+                        onChange={() => toggleSkill(skill.id)}
+                      />
+                      {skill.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-modal-footer">
+              <button
+                className="admin-button admin-button-secondary"
+                onClick={() => setShowCreateModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-button admin-button-primary"
+                onClick={editingAgent ? handleUpdateAgent : handleCreateAgent}
+              >
+                {editingAgent ? 'Update Agent' : 'Create Agent'}
+              </button>
             </div>
           </div>
-        ))}
-      </div>
-      {/* ...existing code for create modal and table can be removed or kept for admin use... */}
+        </div>
+      )}
     </div>
   );
 }
 
-// LiveChatsPage Component
+// AnalyticsPage Component
+type AnalyticsPageProps = {
+  analytics: AnalyticsData | null;
+  agents: Agent[];
+};
+
+function AnalyticsPage({ analytics, agents }: AnalyticsPageProps) {
+  if (!analytics) {
+    return <div className="admin-loading">Loading analytics...</div>;
+  }
+
+  const general = analytics.general;
+  const perAgent = analytics.per_agent;
+
+  return (
+    <div className="admin-analytics-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Analytics Dashboard</h2>
+      </div>
+
+      {/* General Analytics */}
+      <div className="admin-analytics-section">
+        <h3>General Analytics</h3>
+        <div className="admin-stats-grid">
+          <StatCard title="Total Tickets" value={general.total_tickets} />
+          <StatCard title="Open Tickets" value={general.open_tickets} />
+          <StatCard title="Resolved Tickets" value={general.resolved_tickets} />
+          <StatCard title="Avg Resolution Time" value={`${general.avg_resolution_time}s`} />
+          <StatCard title="Satisfied Users" value={general.satisfied_users} />
+          <StatCard title="Avg Rating" value={general.avg_rating.toFixed(1)} />
+        </div>
+      </div>
+
+      {/* Per-Agent Analytics */}
+      <div className="admin-analytics-section">
+        <h3>Agent Performance</h3>
+        {perAgent.length === 0 ? (
+          <div className="admin-empty-state">No agent data available</div>
+        ) : (
+          <div className="admin-agents-analytics-table">
+            <div className="admin-table-header">
+              <div>Agent</div>
+              <div>Total Tickets</div>
+              <div>Resolved</div>
+              <div>Avg Rating</div>
+              <div>Avg Response Time</div>
+              <div>Active Chats</div>
+            </div>
+            {perAgent.map(agent => (
+              <div key={agent.agent_id} className="admin-table-row">
+                <div className="admin-agent-name">{agent.agent_name}</div>
+                <div>{agent.total_tickets}</div>
+                <div>{agent.resolved_tickets}</div>
+                <div>{agent.avg_rating.toFixed(1)}</div>
+                <div>{agent.avg_response_time}s</div>
+                <div>{agent.active_chats}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 type LiveChatsPageProps = {
   sessions: Session[];
   setSessions: React.Dispatch<React.SetStateAction<Session[]>>;
@@ -829,7 +1290,7 @@ function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
   const [localMessages, setLocalMessages] = useState<Array<{ sender: string; text: string }>>([]);
 
   if (!session) return null;
-  const availableAgents = agents.filter((a) => a.status === 'online');
+  const availableAgents = agents.filter((a) => a.is_active); // Use is_active instead of status
   const allMessages = [...session.messages, ...localMessages];
 
   const handleSendMessage = () => {
@@ -873,7 +1334,7 @@ function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
         <select defaultValue="" onChange={(e) => { if (e.target.value) onAssign(session.id, Number(e.target.value)); }}>
           <option value="">Assign to agent...</option>
           {availableAgents.map((a) => (
-            <option key={a.id} value={a.id}>{a.name} — {a.role}</option>
+            <option key={a.id} value={a.id}>{a.display_name} — {a.role}</option>
           ))}
         </select>
         <input 
@@ -906,9 +1367,9 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
   useEffect(() => {
     async function fetchRoles() {
       try {
-        const res = await apiClient.get('/api/skills');
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          setAvailableRoles(res.data.data.map((skill: any) => skill.name));
+        const result = await getSkills();
+        if (result.success && Array.isArray(result.data)) {
+          setAvailableRoles(result.data.map((skill: Skill) => skill.name));
         }
       } catch (err) {
         setAvailableRoles([]);
@@ -1209,63 +1670,212 @@ function TemplatesPage({ templates, setTemplates }: TemplatesPageProps) {
   );
 }
 
-// ChatHistoryPage Component
-type ChatHistoryPageProps = {
-  sessions: Session[];
-};
+// ConversationsPage Component
+function ConversationsPage({ conversations }: { conversations: Conversation[] }) {
+  const [filters, setFilters] = useState({
+    status: '',
+    agent_id: '',
+    has_feedback: '',
+    rating_min: '',
+    sort_by: 'created_at',
+    sort_order: 'desc' as 'asc' | 'desc'
+  });
 
-function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadConversations();
+  }, [filters]);
+
+  const loadConversations = async () => {
+    setLoading(true);
+    const result = await getConversations({
+      status: filters.status || undefined,
+      agent_id: filters.agent_id ? Number(filters.agent_id) : undefined,
+      has_feedback: filters.has_feedback ? filters.has_feedback === 'true' : undefined,
+      rating_min: filters.rating_min ? Number(filters.rating_min) : undefined,
+      sort_by: filters.sort_by as any,
+      sort_order: filters.sort_order
+    });
+    if (result.success && result.data) {
+      // Note: conversations state is managed at parent level
+    }
+    setLoading(false);
+  };
+
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    alert('Export functionality to be implemented');
+  };
+
+  const handleChangeAgent = (conversation: Conversation) => {
+    // TODO: Implement change agent functionality
+    alert('Change agent functionality to be implemented');
+  };
 
   return (
-    <div className="admin-history-page">
-      <h2 className="admin-page-title">Chat History</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div>
-          <div className="admin-history-list">
-            {sessions.map((s) => (
-              <div 
-                key={s.id} 
-                className={`admin-history-item ${selectedSession?.id === s.id ? 'admin-sidebar-item active' : ''}`}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setSelectedSession(s)}
+    <div className="admin-conversations-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Conversations Management</h2>
+        <button onClick={handleExport} className="admin-button admin-button-secondary">Export</button>
+      </div>
+
+      {/* Filters */}
+      <div className="admin-filters">
+        <div className="admin-filter-group">
+          <label>Status:</label>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+          >
+            <option value="">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Agent ID:</label>
+          <input
+            type="text"
+            value={filters.agent_id}
+            onChange={(e) => setFilters(prev => ({ ...prev, agent_id: e.target.value }))}
+            placeholder="Agent ID"
+          />
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Has Feedback:</label>
+          <select
+            value={filters.has_feedback}
+            onChange={(e) => setFilters(prev => ({ ...prev, has_feedback: e.target.value }))}
+          >
+            <option value="">All</option>
+            <option value="true">With Feedback</option>
+            <option value="false">Without Feedback</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Min Rating:</label>
+          <input
+            type="number"
+            value={filters.rating_min}
+            onChange={(e) => setFilters(prev => ({ ...prev, rating_min: e.target.value }))}
+            placeholder="Min rating"
+            min="1"
+            max="5"
+          />
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Sort By:</label>
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters(prev => ({ ...prev, sort_by: e.target.value }))}
+          >
+            <option value="created_at">Created Date</option>
+            <option value="updated_at">Updated Date</option>
+          </select>
+        </div>
+
+        <div className="admin-filter-group">
+          <label>Order:</label>
+          <select
+            value={filters.sort_order}
+            onChange={(e) => setFilters(prev => ({ ...prev, sort_order: e.target.value as 'asc' | 'desc' }))}
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      {loading && <div className="admin-loading">Loading conversations...</div>}
+
+      <div className="admin-conversations-grid">
+        {/* Conversations List */}
+        <div className="admin-conversations-list">
+          <h3>Conversations ({conversations.length})</h3>
+          {conversations.length === 0 ? (
+            <div className="admin-empty-state">No conversations found</div>
+          ) : (
+            conversations.map(conversation => (
+              <div
+                key={conversation.session_id}
+                className={`admin-conversation-item ${selectedConversation?.session_id === conversation.session_id ? 'selected' : ''}`}
+                onClick={() => setSelectedConversation(conversation)}
               >
-                <div className="admin-history-item-header">
-                  <div>
-                    <div className="admin-history-item-title">Session {s.id}</div>
-                    <div className="admin-history-item-topic">Topic: {s.topic} • Status: {s.status}</div>
-                  </div>
-                  <div style={{ fontSize: '14px' }}>Messages: {s.messages.length}</div>
+                <div className="admin-conversation-header">
+                  <div className="admin-conversation-title">Session {conversation.session_id.slice(-8)}</div>
+                  <div className="admin-conversation-status">{conversation.status || 'Unknown'}</div>
+                </div>
+                <div className="admin-conversation-meta">
+                  <span>Created: {conversation.created_at ? new Date(conversation.created_at).toLocaleDateString() : 'N/A'}</span>
+                  {conversation.feedback && (
+                    <span>Rating: {conversation.feedback.rating}/5</span>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
-        <div>
-          {selectedSession ? (
-            <div className="admin-content-card">
-              <h3>Session {selectedSession.id} Details</h3>
-              <div style={{ marginBottom: '16px' }}>
-                <div><strong>Topic:</strong> {selectedSession.topic}</div>
-                <div><strong>Status:</strong> {selectedSession.status}</div>
-                <div><strong>Duration:</strong> {selectedSession.duration}s</div>
-                <div><strong>Wait Time:</strong> {selectedSession.waitTime}s</div>
-                {selectedSession.assignedAgentId && <div><strong>Assigned Agent:</strong> {selectedSession.assignedAgentId}</div>}
-              </div>
-              <h4>Messages:</h4>
-              <div className="admin-chat-window-messages" style={{ height: '300px' }}>
-                {selectedSession.messages.map((m, i) => (
-                  <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
-                    <div className="admin-chat-message-sender">{m.sender}</div>
-                    <div>{m.text}</div>
+
+        {/* Conversation Details */}
+        <div className="admin-conversation-details">
+          {selectedConversation ? (
+            <>
+              <h3>Conversation Details</h3>
+              <div className="admin-conversation-detail-card">
+                <h4>Session {selectedConversation.session_id}</h4>
+                <div className="admin-conversation-detail-meta">
+                  <p><strong>Status:</strong> {selectedConversation.status || 'Unknown'}</p>
+                  <p><strong>Created:</strong> {selectedConversation.created_at ? new Date(selectedConversation.created_at).toLocaleString() : 'N/A'}</p>
+                  {selectedConversation.user_id && <p><strong>User ID:</strong> {selectedConversation.user_id}</p>}
+                </div>
+                {selectedConversation.feedback && (
+                  <div className="admin-conversation-feedback">
+                    <strong>Feedback:</strong>
+                    <p>Rating: {selectedConversation.feedback.rating}/5</p>
+                    {selectedConversation.feedback.comment && <p>{selectedConversation.feedback.comment}</p>}
                   </div>
-                ))}
+                )}
+                {selectedConversation.ticket && (
+                  <div className="admin-conversation-ticket">
+                    <strong>Ticket:</strong>
+                    <p>Status: {selectedConversation.ticket.status}</p>
+                    <p>Title: {selectedConversation.ticket.title}</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => handleChangeAgent(selectedConversation)}
+                  className="admin-button admin-button-primary"
+                >
+                  Change Agent
+                </button>
               </div>
-            </div>
+
+              {/* Messages */}
+              <div className="admin-conversation-messages">
+                <h4>Messages</h4>
+                {selectedConversation.messages && selectedConversation.messages.length > 0 ? (
+                  selectedConversation.messages.map((msg: any, i: number) => (
+                    <div key={i} className="admin-message-item">
+                      <div className="admin-message-header">
+                        <strong>{msg.sender || 'Unknown'}</strong>
+                        <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ''}</span>
+                      </div>
+                      <div className="admin-message-content">{msg.text || msg.content}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p>No messages available</p>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="admin-content-card">
-              <div className="admin-empty-state">Select a session to view details</div>
-            </div>
+            <div className="admin-empty-state">Select a conversation to view details</div>
           )}
         </div>
       </div>
@@ -1273,115 +1883,199 @@ function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
   );
 }
 
-// AnalyticsPage Component
-type AnalyticsPageProps = {
-  sessions: Session[];
-  agents: Agent[];
-};
-
-function AnalyticsPage({ sessions, agents }: AnalyticsPageProps) {
-  const total = sessions.length;
-  const closed = sessions.filter((s) => s.status === 'closed').length;
-  const avgDuration = Math.round((sessions.reduce((s, it) => s + (it.duration || 0), 0) / Math.max(1, sessions.length)) * 10) / 10;
+// AlertsPage Component
+function AlertsPage({ agents }: { agents: Agent[] }) {
+  // Critical agents: avg rating < 3
+  const criticalAgents = agents.filter(agent => 
+    agent.metrics && agent.metrics.avg_rating && agent.metrics.avg_rating < 3
+  );
 
   return (
-    <div className="admin-analytics-page">
-      <div className="admin-analytics-stats">
-        <StatCard title="Total Sessions" value={total} />
-        <StatCard title="Closed" value={closed} />
-        <StatCard title="Avg Duration (s)" value={avgDuration} />
+    <div className="admin-alerts-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Alerts</h2>
       </div>
 
-      <div className="admin-content-card">
-        <h3>Agent Response Times)</h3>
-        <ul className="admin-analytics-list">
-          {agents.map((a) => (
-            <li key={a.id} className="admin-analytics-item">
-              <div>{a.name}</div>
-              <div>{a.metrics.avgResponse}s</div>
-            </li>
-          ))}
-        </ul>
+      <div className="admin-alerts-section">
+        <h3>Critical Agents (Avg Rating &lt; 3)</h3>
+        {criticalAgents.length === 0 ? (
+          <div className="admin-empty-state">No critical agents found</div>
+        ) : (
+          <div className="admin-alerts-list">
+            {criticalAgents.map(agent => (
+              <div key={agent.id} className="admin-alert-item">
+                <div className="admin-alert-header">
+                  <div className="admin-alert-title">{agent.display_name}</div>
+                  <div className="admin-alert-severity">Critical</div>
+                </div>
+                <div className="admin-alert-details">
+                  <p><strong>Average Rating:</strong> {agent.metrics?.avg_rating?.toFixed(1) || 'N/A'}</p>
+                  <p><strong>Total Tickets:</strong> {agent.metrics?.total_tickets || 0}</p>
+                  <p><strong>Active Chats:</strong> {agent.metrics?.active_chats || 0}</p>
+                  <p><strong>Response Time:</strong> {agent.metrics?.avg_response_time || 'N/A'}s</p>
+                </div>
+                <div className="admin-alert-actions">
+                  <button className="admin-button admin-button-secondary">Review Performance</button>
+                  <button className="admin-button admin-button-primary">Contact Agent</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// SettingsPage Component
-function SettingsPage() {
-  const [settings, setSettings] = useState({
-    businessHours: 'Mon-Fri 9:00-18:00',
-    fallbackOption: 'Continue with bot'
-  });
-  const [saved, setSaved] = useState(false);
+// SkillsPage Component
+function SkillsPage({ skills, onRefresh }: { skills: Skill[]; onRefresh: () => void }) {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [formData, setFormData] = useState({ name: '' });
 
-  const handleSave = () => {
-    // In a real app, this would save to API
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleCreateSkill = async () => {
+    try {
+      const result = await createSkill({ name: formData.name.trim() });
+      if (result.success) {
+        onRefresh();
+        setShowCreateModal(false);
+        resetForm();
+      } else {
+        alert('Error creating skill: ' + (result.error?.message || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error creating skill');
+    }
+  };
+
+  const handleUpdateSkill = async () => {
+    if (!editingSkill) return;
+
+    try {
+      const result = await updateSkill(editingSkill.id, { name: formData.name.trim() });
+      if (result.success) {
+        onRefresh();
+        setShowCreateModal(false);
+        setEditingSkill(null);
+        resetForm();
+      } else {
+        alert('Error updating skill: ' + (result.error?.message || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error updating skill');
+    }
+  };
+
+  const handleDeleteSkill = async (skillId: number) => {
+    if (!window.confirm('Are you sure you want to delete this skill?')) return;
+
+    try {
+      const result = await deleteSkill(skillId);
+      if (result.success) {
+        onRefresh();
+      } else {
+        alert('Error deleting skill');
+      }
+    } catch (err) {
+      alert('Error deleting skill');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '' });
   };
 
   return (
-    <div className="admin-settings-page">
+    <div className="admin-skills-page">
       <div className="admin-page-header">
-        <h2 className="admin-page-title">Settings</h2>
-        <button onClick={handleSave} className="admin-button admin-button-primary">Save Settings</button>
+        <h2 className="admin-page-title">Skills Management</h2>
+        <button
+          onClick={() => {
+            setEditingSkill(null);
+            resetForm();
+            setShowCreateModal(true);
+          }}
+          className="admin-button admin-button-primary"
+        >
+          Create Skill
+        </button>
       </div>
-      {saved && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>Settings saved successfully!</div>}
-      <div className="admin-settings-form">
-        <div className="admin-settings-field">
-          <label>Business Hours</label>
-          <input 
-            value={settings.businessHours}
-            onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
-          />
-        </div>
-        <div className="admin-settings-field">
-          <label>Fallback Option</label>
-          <select 
-            value={settings.fallbackOption}
-            onChange={(e) => setSettings({ ...settings, fallbackOption: e.target.value })}
-          >
-            <option>Continue with bot</option>
-            <option>Request callback</option>
-            <option>Send email</option>
-          </select>
-        </div>
+
+      <div className="admin-skills-list">
+        {skills.length === 0 ? (
+          <div className="admin-empty-state">No skills found</div>
+        ) : (
+          skills.map(skill => (
+            <div key={skill.id} className="admin-skill-card">
+              <div className="admin-skill-info">
+                <h4>{skill.name}</h4>
+              </div>
+              <div className="admin-skill-actions">
+                <button
+                  onClick={() => {
+                    setEditingSkill(skill);
+                    setFormData({ name: skill.name });
+                    setShowCreateModal(true);
+                  }}
+                  className="admin-button admin-button-secondary"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteSkill(skill.id)}
+                  className="admin-button admin-button-danger"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
+
+      {/* Create/Edit Modal */}
+      {showCreateModal && (
+        <div className="admin-modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>{editingSkill ? 'Edit Skill' : 'Create New Skill'}</h3>
+              <button
+                className="admin-modal-close"
+                onClick={() => setShowCreateModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="admin-modal-body">
+              <div className="admin-form-group">
+                <label>Skill Name:</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter skill name"
+                />
+              </div>
+            </div>
+
+            <div className="admin-modal-footer">
+              <button
+                className="admin-button admin-button-secondary"
+                onClick={() => setShowCreateModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-button admin-button-primary"
+                onClick={editingSkill ? handleUpdateSkill : handleCreateSkill}
+              >
+                {editingSkill ? 'Update Skill' : 'Create Skill'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// Mock Data Functions
-// function mockAgents(): Agent[] {
-//   return [
-//     { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
-//     { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
-//     { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
-//   ];
-// }
-
-// function mockSessions(): Session[] {
-//   return [
-//     { id: 101, userId: 'u101', topic: 'booking', status: 'assigned', assignedAgentId: 2, messages: [{ sender: 'user', text: 'Hi, I need help booking' }, { sender: 'agent', text: 'Sure — I can help' }], duration: 120, waitTime: 5 },
-//     { id: 102, userId: 'u102', topic: 'technical', status: 'waiting', assignedAgentId: null, messages: [{ sender: 'user', text: 'App crashes when I upload' }], duration: 0, waitTime: 20 },
-//     { id: 103, userId: 'u103', topic: 'pricing', status: 'closed', assignedAgentId: null, messages: [{ sender: 'user', text: 'What are your fees?' }, { sender: 'bot', text: 'Here is our pricing' }], duration: 60, waitTime: 2 },
-//   ];
-// }
-
-// function mockTemplates(): Template[] {
-//   return [
-//     { id: 1, type: 'greeting', content: 'Welcome! How can I help today?' },
-//     { id: 2, type: 'waiting', content: "All agents are busy. We'll connect you shortly." },
-//     { id: 3, type: 'fallback', content: 'Your agent is unavailable. Please try again later or leave a message.' },
-//   ];
-// }
-
-// function mockRoutingRules(): RoutingRule[] {
-//   return [
-//     { id: 1, topic: 'technical', allowedRoles: ['technical'], priority: 1, autoAssign: true },
-//     { id: 2, topic: 'sales', allowedRoles: ['sales'], priority: 5, autoAssign: true },
-//   ];
-// }
-
-
