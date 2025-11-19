@@ -1,10 +1,48 @@
 import React, {useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
-import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms } from '../api/agent'
+import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, type AgentSkill } from '../api/agent'
+
+const DEFAULT_ROLE_LABEL = 'Technical Agent'
+
+function formatRoleLabel(role?: string): string {
+  if (!role || typeof role !== 'string') {
+    return DEFAULT_ROLE_LABEL
+  }
+
+  const normalized = role.replace(/[_-]+/g, ' ').trim()
+  if (!normalized) return DEFAULT_ROLE_LABEL
+
+  return normalized
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function normalizeAgentSkills(skills?: any): AgentSkill[] {
+  if (!Array.isArray(skills)) return []
+
+  return skills
+    .map((skill: any, index: number) => {
+      if (typeof skill === 'string') {
+        return { id: index, name: skill }
+      }
+      if (skill && typeof skill.name === 'string') {
+        return {
+          id: typeof skill.id === 'number' ? skill.id : index,
+          name: skill.name,
+          proficiency: skill.proficiency,
+        }
+      }
+      return null
+    })
+    .filter(Boolean) as AgentSkill[]
+}
 
 export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number, onLogout?: () => void}){
-  const [status, setStatus] = useState<string>('online') // online, away, busy, offline
+  const [status, setStatus] = useState<string>('offline') // online, away, busy, offline
+  const [statusSynced, setStatusSynced] = useState<boolean>(false)
   // Initialize with empty list so queue comes from backend active rooms + notifier
   const [sessions, setSessions] = useState<any[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string|number|null>(null)
@@ -13,15 +51,76 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const [loggedOut, setLoggedOut] = useState(false)
   
   const [agentName, setAgentName] = useState<string>('Agent')
+  const [agentRole, setAgentRole] = useState<string>(DEFAULT_ROLE_LABEL)
+  const [agentSkills, setAgentSkills] = useState<AgentSkill[]>([])
+  const [skillsSynced, setSkillsSynced] = useState<boolean>(false)
   const chatWsRef = useRef<WebSocket | null>(null)
   const [activeChatTicketId, setActiveChatTicketId] = useState<string | number | null>(null)
 
   useEffect(()=>{
+    let isMounted = true
+    setStatusSynced(false)
+    setSkillsSynced(false)
     // Read agent info from localStorage and set display name
     const agent = retrieveAgentInfo()
     if (agent && agent.display_name) {
       setAgentName(agent.display_name || agent.username || 'Agent')
     }
+    if (agent?.role) {
+      setAgentRole(formatRoleLabel(agent.role))
+    } else {
+      setAgentRole(DEFAULT_ROLE_LABEL)
+    }
+
+    const storedSkills = normalizeAgentSkills(agent?.skills)
+    setAgentSkills(storedSkills)
+    if (storedSkills.length > 0) {
+      setSkillsSynced(true)
+    } else {
+      ;(async () => {
+        if (!agent?.id) {
+          if (isMounted) setSkillsSynced(true)
+          return
+        }
+        try {
+          const skills = await fetchAgentSkills(agent.id)
+          if (!isMounted) return
+          setAgentSkills(skills)
+        } catch (err) {
+          console.error('Failed to load agent skills', err)
+        } finally {
+          if (isMounted) setSkillsSynced(true)
+        }
+      })()
+    }
+
+    const hydrateStatusFromBackend = async () => {
+      if (!agent?.id) {
+        setStatusSynced(true)
+        return
+      }
+      try {
+        const backendStatus = await fetchAgentCurrentStatus(agent.id)
+        if (!isMounted) return
+        if (backendStatus) {
+          setStatus(backendStatus)
+        } else if (typeof agent.is_active === 'boolean') {
+          setStatus(agent.is_active ? 'online' : 'offline')
+        }
+      } catch (err) {
+        console.error('Failed to load agent status from backend', err)
+        if (!isMounted) return
+        if (typeof agent?.is_active === 'boolean') {
+          setStatus(agent.is_active ? 'online' : 'offline')
+        }
+      } finally {
+        if (isMounted) {
+          setStatusSynced(true)
+        }
+      }
+    }
+
+    hydrateStatusFromBackend()
 
     // Connect notifier websocket for agent notifications (new tickets, claims)
     if (agent && agent.id) {
@@ -53,9 +152,6 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         },
         (err) => console.error('Notifier error:', err)
       )
-      // Ensure backend reflects the agent is online when panel loads
-      updateAgentStatus(agent.id, 'online', { source: 'agent_panel_mount' })
-        .catch(err => console.error('Failed to sync agent online status on mount', err))
     }
 
     // Fetch current active rooms from backend to initialize session list
@@ -90,6 +186,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     })()
 
     return ()=>{
+      isMounted = false
       if(wsRef.current) wsRef.current.close()
       if(chatWsRef.current) chatWsRef.current.close()
     }
@@ -235,6 +332,14 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     setActiveSessionId(null)
   }
 
+  // End chat and allow user to chat with AI again
+  function endChatSession(){
+    releaseChatSession();
+    // Optionally, you can add logic here to notify the frontend/chatbot widget to switch back to AI mode
+    // For example, you might trigger an event or update a shared state
+    alert('Chat ended. User can now chat with AI again.');
+  }
+
   const activeSession = sessions.find(s => s.id == activeSessionId)
   const waitingCount = sessions.filter((s: any)=>s.status==='waiting').length
 
@@ -269,15 +374,28 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           </div>
           <div style={{ flex: 1 }}>
             <div className="profile-name modal-name">{agentName}</div>
-            <div className="profile-role modal-role">Technical Agent</div>
+            <div className="profile-role modal-role">{agentRole}</div>
+            {/* <div className="profile-skills">
+              <span className="profile-skills-label">Skills:</span>
+              {!skillsSynced && <span className="profile-skills-empty">Syncing…</span>}
+              {skillsSynced && agentSkills.length === 0 && (
+                <span className="profile-skills-empty">Not assigned</span>
+              )}
+              {skillsSynced && agentSkills.length > 0 && agentSkills.map(skill => (
+                <span key={skill.id ?? skill.name} className="skill-pill">
+                  {skill.name}
+                </span>
+              ))}
+            </div> */}
             <div className="profile-status modal-status">
-              Status: <span className={`status-pill ${status}`}>{status}</span>
+              Status: <span className={`status-pill ${statusSynced ? status : 'offline'}`}>{statusSynced ? status : 'syncing...'}</span>
             </div>
             <div className="profile-actions" style={{ marginTop: 10 }}>
               <select
                 className="profile-select modal-select"
                 value={status}
                 onChange={e => setAgentStatus(e.target.value)}
+                disabled={!statusSynced}
               >
                 <option value="online">Online</option>
                 <option value="away">Away</option>
@@ -286,13 +404,22 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               </select>
               {/* <button className="profile-btn modal-btn">View Profile</button> */}
               {activeChatTicketId && (
-                <button
-                  className="profile-btn modal-btn"
-                  style={{ backgroundColor: '#ff9800' }}
-                  onClick={releaseChatSession}
-                >
-                  Release Chat
-                </button>
+                <>
+                  <button
+                    className="profile-btn modal-btn"
+                    style={{ backgroundColor: '#ff9800', marginRight: 8 }}
+                    onClick={releaseChatSession}
+                  >
+                    Release Chat
+                  </button>
+                  <button
+                    className="profile-btn modal-btn"
+                    style={{ backgroundColor: '#e53935' }}
+                    onClick={endChatSession}
+                  >
+                    End Chat
+                  </button>
+                </>
               )}
               <button className="logout-button modal-logout-btn" onClick={handleLogout}>Logout</button>
             </div>
@@ -303,7 +430,12 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           <div className="workspace-header">
             <div>
               <p className="workspace-title">Agent Workspace</p>
-              <p className="workspace-meta">Logged in as Agent #{agentId} — Role: Technical</p>
+              <p className="workspace-meta">Logged in as Agent #{agentId} — Role: {agentRole}</p>
+              {skillsSynced && (
+                <p className="workspace-meta">
+                  Skills: {agentSkills.length > 0 ? agentSkills.map(skill => skill.name).join(', ') : 'Not assigned'}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -337,7 +469,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
         <section className="agent-card grid-preview">
           {activeSession ? (
-            <ChatWindow session={activeSession} onSend={sendMessageToSession} quickReplies={quickReplies} />
+            <ChatWindow session={activeSession} onSend={sendMessageToSession} quickReplies={quickReplies} onEndChat={endChatSession} />
           ) : (
             <div className="preview-placeholder">Select a conversation to begin</div>
           )}
@@ -376,7 +508,13 @@ interface ChatWindowProps {
   onSend: (sessionId: number, text: string) => void;
   quickReplies: string[];
 }
-function ChatWindow({session, onSend, quickReplies}: ChatWindowProps){
+interface ChatWindowProps {
+  session: any;
+  onSend: (sessionId: number, text: string) => void;
+  quickReplies: string[];
+  onEndChat?: () => void;
+}
+function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps){
   const [input, setInput] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
 
@@ -425,6 +563,8 @@ function ChatWindow({session, onSend, quickReplies}: ChatWindowProps){
           onKeyDown={(e)=> e.key==='Enter' && send()}
         />
         <button onClick={send} className="send-button">Send</button>
+        {/* End Chat button for agent to end chat and allow user to chat with AI again */}
+        <button onClick={onEndChat} className="end-chat-button" style={{marginLeft:8, backgroundColor:'#e53935', color:'#fff'}}>End Chat</button>
       </div>
     </div>
   )
