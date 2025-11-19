@@ -1150,6 +1150,7 @@
   box-shadow: var(--admin-shadow);
   flex: 1;
   min-height: 0; /* Allow flex shrinking */
+  max-height: 400px; /* Prevent it from taking too much space */
 }
 
 .dashboard-top-agents h3 {
@@ -1157,14 +1158,32 @@
   font-weight: 600;
   color: var(--admin-text);
   margin: 0 0 var(--admin-space-3) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-2);
 }
 
 .top-agents-compact {
   display: flex;
   flex-direction: column;
-  gap: var(--admin-space-3);
-  height: 100%;
-  overflow: hidden;
+  gap: var(--admin-space-2);
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--admin-border) transparent;
+}
+
+.top-agents-compact::-webkit-scrollbar {
+  width: 4px;
+}
+
+.top-agents-compact::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.top-agents-compact::-webkit-scrollbar-thumb {
+  background: var(--admin-border);
+  border-radius: 2px;
 }
 
 .top-agent-compact {
@@ -1176,7 +1195,7 @@
   border: 1px solid var(--admin-border-light);
   border-radius: var(--admin-radius);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  flex: 1;
+  cursor: pointer;
 }
 
 .top-agent-compact:hover {

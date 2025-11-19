@@ -95,7 +95,7 @@ export default function App() {
           />
           <Route
             path="/agent"
-            element={agentLoggedIn ? <AgentPanelApp agentId={agentId ?? 1} /> : <AgentLogin onLogin={handleAgentLogin} />}
+            element={agentLoggedIn ? <AgentPanelApp agentId={agentId ?? 1} onLogout={handleAgentLogout} /> : <AgentLogin onLogin={handleAgentLogin} />}
           />
           <Route
             path="/workflows"
