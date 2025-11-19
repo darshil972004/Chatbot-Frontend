@@ -610,6 +610,7 @@ type StatCardProps = {
 function StatCard({ title, value, icon }: StatCardProps) {
   return (
     <div className="admin-stat-card">
+      <div className="admin-stat-icon">{icon}</div>
       <div className="admin-stat-content">
         <div className="admin-stat-title">{title}</div>
         <div className="admin-stat-value">{value}</div>
@@ -815,6 +816,8 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
         alert(msg);
       }
     }
+  }
+
   function handleViewAgent(agent: Agent) {
     setViewingAgent(agent);
     setShowViewModal(true);
@@ -1120,24 +1123,24 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             <tbody>
               {filteredAgents.map((a: Agent, index: number) => (
                 <tr key={a.id}>
-                  <td style={{ fontWeight: '500', color: 'var(--admin-text)' }}>{index + 1}</td>
-                  <td style={{ fontWeight: '500' }}>{a.username}</td>
-                  <td style={{ fontWeight: '500' }}>{a.name}</td>
-                  <td style={{ fontSize: '14px', color: '#475569' }}>{a.role}</td>
-                  <td style={{ fontSize: '14px', color: '#1f2937' }}>
+                  <td style={{ width: '60px', fontWeight: '500', color: 'var(--admin-text)' }}>{index + 1}</td>
+                  <td style={{ minWidth: '120px', fontWeight: '500' }}>{a.username}</td>
+                  <td style={{ minWidth: '150px', fontWeight: '500' }}>{a.name}</td>
+                  <td style={{ width: '100px', fontSize: '14px', color: '#475569' }}>{a.role}</td>
+                  <td style={{ minWidth: '200px', fontSize: '14px', color: '#1f2937' }}>
                     {a.skills && a.skills.length > 0 ? (
                       a.skills.map((skill) => skill.name).join(', ').length > 60
                         ? `${a.skills.map((skill) => skill.name).join(', ').substring(0, 60)}...`
                         : a.skills.map((skill) => skill.name).join(', ')
                     ) : '—'}
                   </td>
-                  <td>
+                  <td style={{ width: '100px' }}>
                     <span className={`admin-status-badge admin-status-${a.status}`}>
                       {a.status}
                     </span>
                   </td>
-                  <td style={{ fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
-                  <td>
+                  <td style={{ width: '120px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
+                  <td style={{ width: '160px' }}>
                     <div className="admin-table-actions">
                       <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
                       <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
@@ -2025,24 +2028,24 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
               ) : (
                 filteredTickets.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td style={{ fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
-                    <td style={{ fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ width: '80px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
+                    <td style={{ minWidth: '200px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {ticket.title}
                     </td>
-                    <td>
+                    <td style={{ width: '120px' }}>
                       <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td>
+                    <td style={{ width: '100px' }}>
                       <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
                         {ticket.priority}
                       </span>
                     </td>
-                    <td style={{ fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
+                    <td style={{ width: '120px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
-                    <td>
+                    <td style={{ width: '140px' }}>
                       <div className="admin-table-actions">
                         <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
                         <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
@@ -2475,5 +2478,4 @@ function mockAgents(): Agent[] {
     { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
     { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
   ];
-}
 }
