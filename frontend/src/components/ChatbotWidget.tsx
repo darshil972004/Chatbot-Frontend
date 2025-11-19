@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
 import { v4 as uuidv4 } from 'uuid';
 
-// Extend ChatMessage to support optional blog property (array) and live-agent roles
+// Extend ChatMessage to support optional blog property (array)
 type BlogInfo = { blog_id: string; title: string; blog_url: string };
 type ChatRole = 'user' | 'bot' | 'system' | 'agent';
 type ChatMessage = Omit<BaseChatMessage, 'role'> & {
@@ -10,7 +10,6 @@ type ChatMessage = Omit<BaseChatMessage, 'role'> & {
   propertyGroup?: { id: string; header?: string; items: any[] };
   blog?: BlogInfo[];
 };
-
 function uid() {
   return uuidv4();
 }
@@ -107,7 +106,7 @@ export default function ChatbotWidget() {
     } catch {}
   }, [messages]);
 
-  // Cleanup live agent session on unmount
+    // Cleanup live agent session on unmount
   useEffect(() => {
     return () => {
       resetLiveAgentSession();
@@ -121,6 +120,7 @@ export default function ChatbotWidget() {
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
 
   function handleShowConvos() {
+    resetLiveAgentSession();
     // Load all conversations from localStorage
     let all = [];
     try {
@@ -135,7 +135,6 @@ export default function ChatbotWidget() {
   }
 
   function handleSelectConvo(convo: { id: string; userId: string; messages: any[]; created: number }) {
-    resetLiveAgentSession();
     setActiveConvoId(convo.id);
     setUserId(convo.userId);
     setMessages(convo.messages);
@@ -359,17 +358,19 @@ export default function ChatbotWidget() {
   async function handleSend(customText?: string, skipAutoRespond: boolean = false) {
     const trimmed = (customText ?? input).trim();
     if (!trimmed) return;
+    
 
     const shouldRouteToLiveAgent = Boolean(ticketId) && !skipAutoRespond;
 
     // Allow auto-respond to bypass loading check for bot mode
     if (!skipAutoRespond && !shouldRouteToLiveAgent && loading) return;
 
+
     setInput('');
     setPendingOptions([]);
     setPendingMode(null);
     setSelectedOption('');
-
+    setLoading(true);
     if (shouldRouteToLiveAgent) {
       const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
       addMessage(userMsg);
@@ -386,8 +387,6 @@ export default function ChatbotWidget() {
       const userMsg: ChatMessage = { id: uid(), role: 'user', text: trimmed };
       addMessage(userMsg);
     }
-
-    setLoading(true);
 
     const res = await sendMessageToBot(userId, trimmed);
     setLoading(false);
@@ -509,13 +508,18 @@ export default function ChatbotWidget() {
     setExpandedGroups([]);
     setInput('');
   }
-
   const getMessageClass = (role: ChatRole) => {
     if (role === 'user') return 'cp-msg--user';
     if (role === 'agent') return 'cp-msg--agent';
     if (role === 'system') return 'cp-msg--system';
     return 'cp-msg--bot';
   };
+  // Add a stub for handleLiveSupport
+  function handleLiveSupport() {
+    // Send a message to tech support via the chatbot
+    const techSupportMsg = 'tech support';
+    handleSend(techSupportMsg);
+  }
 
   return (
     <>
@@ -769,6 +773,16 @@ export default function ChatbotWidget() {
                   type="button"
                 >
                   Chat History
+                </button>
+              </div>
+              <div className="cp-footer-row">
+                <button
+                  className="cp-chatbot__livesupport-btn "
+                  onClick={handleLiveSupport}
+                  aria-label = "Live Support"
+                  type="button"
+                  >
+                    Connect To Live Support
                 </button>
               </div>
             </div>

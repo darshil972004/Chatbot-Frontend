@@ -85,6 +85,9 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
   // Admin Panel UI state
   const [route, setRoute] = useState('dashboard');
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [sessions, setSessions] = useState<Session[]>(mockSessions());
+  const [templates, setTemplates] = useState<Template[]>(mockTemplates());
+  const [routingRules, setRoutingRules] = useState<RoutingRule[]>(mockRoutingRules());
   const [skills, setSkills] = useState<Skill[]>([]);
 
   // New state for additional sections
@@ -466,13 +469,23 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
           {item('dashboard', 'Dashboard', null)}
           {item('tickets', 'Tickets', null)}
           {item('agents', `Agents (${onlineCount} online)`, null)}
-          {item('analysis', 'Analysis', null)}
-          {item('conversations', 'Conversations', null)}
-          {item('alerts', 'Alerts', null)}
-          {item('skills', 'Skills', null)}
+          {item('live', 'Live Chats', `Waiting: ${waitingCount}`)}
+          {item('routing', 'Routing Rules', null)}
+          {item('templates', 'Message Templates', null)}
+          {item('history', 'Chat History', null)}
+          {item('analytics', 'Analytics', null)}
           {/* Settings button removed, now only accessible from header dropdown */}
           {item('workflows', 'Workflows', null)}
         </ul>
+      </div>
+
+      <div className="admin-sidebar-card admin-quick-actions">
+        <h3>Quick Actions</h3>
+        <div className="admin-quick-actions-buttons">
+          <button className="admin-button admin-button-primary" onClick={handleAddAgent}>Add Agent</button>
+          <button className="admin-button admin-button-success" onClick={() => setRoute('live')}>View Waiting</button>
+          {/* Log out button removed, now handled in header dropdown */}
+        </div>
       </div>
     </div>
   );
@@ -1172,7 +1185,21 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
 
-  const availableRoles = ['technical', 'sales', 'support'];
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await apiClient.get('/api/skills');
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setAvailableRoles(res.data.data.map((skill: any) => skill.name));
+        }
+      } catch (err) {
+        setAvailableRoles([]);
+      }
+    }
+    fetchRoles();
+  }, []);
 
   function addRule() {
     if (newRuleData.topic.trim()) {
@@ -1253,7 +1280,6 @@ function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
                   value={newRuleData.topic}
                   onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
                   className="admin-login-input"
-                  placeholder="e.g., technical, sales, support"
                 />
               </label>
               <label>
@@ -1574,7 +1600,7 @@ function AnalyticsPage({ sessions, agents }: AnalyticsPageProps) {
       </div>
 
       <div className="admin-content-card">
-        <h3>Agent Response Times (sample)</h3>
+        <h3>Agent Response Times)</h3>
         <ul className="admin-analytics-list">
           {agents.map((a) => (
             <li key={a.id} className="admin-analytics-item">
@@ -1633,648 +1659,35 @@ function SettingsPage() {
   );
 }
 
-// TicketsPage Component
-type TicketsPageProps = {
-  tickets: any[];
-  setTickets: React.Dispatch<React.SetStateAction<any[]>>;
-};
-
-function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
-  const [filters, setFilters] = useState({
-    status: '',
-    priority: '',
-    agent_id: '',
-    sort_by: 'newest'
-  });
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
-  const [ticketEvents, setTicketEvents] = useState<any[]>([]);
-  const [ticketFeedback, setTicketFeedback] = useState<any[]>([]);
-
-  // Filter and sort tickets
-  const filteredTickets = tickets
-    .filter((ticket) => {
-      if (filters.status && ticket.status !== filters.status) return false;
-      if (filters.priority && ticket.priority !== filters.priority) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      switch (filters.sort_by) {
-        case 'newest':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'oldest':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        case 'longest_open':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); // Assuming open means created_at is older
-        default:
-          return 0;
-      }
-    });
-
-  const handleViewTicket = async (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-    try {
-      // Load ticket messages, events, and feedback
-      const [messages, events, feedback] = await Promise.all([
-        ticketMessagesApi.getTicketMessages(ticket.id),
-        ticketEventsApi.getTicketEvents(ticket.id),
-        ticketFeedbackApi.getTicketFeedbackByTicket(ticket.id)
-      ]);
-      setTicketMessages(messages);
-      setTicketEvents(events);
-      setTicketFeedback(feedback);
-    } catch (err) {
-      console.error('Error loading ticket details:', err);
-    }
-  };
-
-  const handleAssignTicket = async (ticketId: string) => {
-    // This would typically open a modal to select an agent
-    // For now, just show an alert
-    alert('Assign ticket functionality - would open agent selection modal');
-  };
-
-  if (selectedTicket) {
-    return (
-      <div className="admin-agents-page">
-        <div className="admin-page-header">
-          <button onClick={() => setSelectedTicket(null)} className="admin-button">← Back to Tickets</button>
-          <h2 className="admin-page-title">Ticket #{selectedTicket.id}</h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          {/* Ticket Details */}
-          <div className="admin-content-card">
-            <h3>Ticket Details</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div><strong>Title:</strong> {selectedTicket.title}</div>
-              <div><strong>Description:</strong> {selectedTicket.description || 'N/A'}</div>
-              <div><strong>Status:</strong> {selectedTicket.status}</div>
-              <div><strong>Priority:</strong> {selectedTicket.priority}</div>
-              <div><strong>Category:</strong> {selectedTicket.category || 'N/A'}</div>
-              <div><strong>Created:</strong> {new Date(selectedTicket.created_at).toLocaleString()}</div>
-              <div><strong>Updated:</strong> {new Date(selectedTicket.updated_at).toLocaleString()}</div>
-            </div>
-          </div>
-
-          {/* Ticket Feedback */}
-          <div className="admin-content-card">
-            <h3>Feedback & Rating</h3>
-            {ticketFeedback.length === 0 ? (
-              <div className="admin-empty-state">No feedback available</div>
-            ) : (
-              ticketFeedback.map((feedback: any) => (
-                <div key={feedback.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                  <div><strong>Rating:</strong> {feedback.rating}/5</div>
-                  <div><strong>Comment:</strong> {feedback.comment || 'No comment'}</div>
-                  <div><strong>Date:</strong> {new Date(feedback.created_at).toLocaleString()}</div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Ticket Messages */}
-          <div className="admin-content-card" style={{ gridColumn: 'span 2' }}>
-            <h3>Messages</h3>
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-              {ticketMessages.length === 0 ? (
-                <div className="admin-empty-state">No messages</div>
-              ) : (
-                ticketMessages.map((message: any) => (
-                  <div key={message.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      <strong>{message.sender_type} {message.sender_id}</strong> - {new Date(message.created_at).toLocaleString()}
-                    </div>
-                    <div>{message.content}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Ticket Events */}
-          <div className="admin-content-card" style={{ gridColumn: 'span 2' }}>
-            <h3>Events</h3>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {ticketEvents.length === 0 ? (
-                <div className="admin-empty-state">No events</div>
-              ) : (
-                ticketEvents.map((event: any) => (
-                  <div key={event.id} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      <strong>{event.event_type}</strong> by {event.actor_id} - {new Date(event.created_at).toLocaleString()}
-                    </div>
-                    {event.details && (
-                      <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                        {JSON.stringify(event.details)}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="admin-agents-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Tickets</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="waiting">Waiting</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
-          <select
-            value={filters.priority}
-            onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Priority</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-          <select
-            value={filters.sort_by}
-            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '140px' }}
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="longest_open">Longest Open</option>
-          </select>
-        </div>
-      </div>
-
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTickets.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="admin-empty-state">No tickets found</div>
-              </td>
-            </tr>
-          ) : (
-            filteredTickets.map((ticket) => (
-              <tr key={ticket.id}>
-                <td>{ticket.id}</td>
-                <td>{ticket.title}</td>
-                <td style={{ textTransform: 'capitalize' }}>{ticket.status.replace('_', ' ')}</td>
-                <td style={{ textTransform: 'capitalize' }}>{ticket.priority}</td>
-                <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
-                <td>
-                  <div className="admin-table-actions">
-                    <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
-                    <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ConversationsPage Component
-type ConversationsPageProps = {
-  conversations: any[];
-  setConversations: React.Dispatch<React.SetStateAction<any[]>>;
-};
-
-function ConversationsPage({ conversations, setConversations }: ConversationsPageProps) {
-  const [filters, setFilters] = useState({
-    ai_only: false,
-    agent_involved: false,
-    status: '',
-    sort_by: 'newest'
-  });
-  const [selectedConversation, setSelectedConversation] = useState<any>(null);
-  const [conversationMessages, setConversationMessages] = useState<any[]>([]);
-
-  // Filter and sort conversations
-  const filteredConversations = conversations
-    .filter((conv) => {
-      if (filters.ai_only && conv.agent_involved) return false;
-      if (filters.agent_involved && !conv.agent_involved) return false;
-      if (filters.status && conv.status !== filters.status) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      switch (filters.sort_by) {
-        case 'newest':
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        case 'oldest':
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        default:
-          return 0;
-      }
-    });
-
-  const handleViewConversation = async (conversation: any) => {
-    setSelectedConversation(conversation);
-    try {
-      // Load conversation messages
-      const messages = await conversationDetailsApi.getConversationDetailsByConversation(conversation.id);
-      setConversationMessages(messages);
-    } catch (err) {
-      console.error('Error loading conversation details:', err);
-    }
-  };
-
-  const handleChangeAgent = async (conversationId: number) => {
-    // This would typically open a modal to select a new agent
-    alert('Change agent functionality - would open agent selection modal');
-  };
-
-  const handleExportConversations = async () => {
-    // This would export selected conversations
-    alert('Export functionality - would download CSV/JSON of conversations');
-  };
-
-  if (selectedConversation) {
-    return (
-      <div className="admin-agents-page">
-        <div className="admin-page-header">
-          <button onClick={() => setSelectedConversation(null)} className="admin-button">← Back to Conversations</button>
-          <h2 className="admin-page-title">Conversation #{selectedConversation.id}</h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-          {/* Conversation Details */}
-          <div className="admin-content-card">
-            <h3>Conversation Details</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div><strong>Session ID:</strong> {selectedConversation.session_id}</div>
-              <div><strong>User ID:</strong> {selectedConversation.user_id || 'N/A'}</div>
-              <div><strong>Browser:</strong> {selectedConversation.browser || 'N/A'}</div>
-              <div><strong>IP Address:</strong> {selectedConversation.ip_address || 'N/A'}</div>
-              <div><strong>Start Time:</strong> {selectedConversation.start_time ? new Date(selectedConversation.start_time).toLocaleString() : 'N/A'}</div>
-              <div><strong>End Time:</strong> {selectedConversation.end_time ? new Date(selectedConversation.end_time).toLocaleString() : 'N/A'}</div>
-            </div>
-          </div>
-
-          {/* Conversation Messages */}
-          <div className="admin-content-card">
-            <h3>Messages ({conversationMessages.length})</h3>
-            <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              {conversationMessages.length === 0 ? (
-                <div className="admin-empty-state">No messages in this conversation</div>
-              ) : (
-                conversationMessages.map((message: any) => (
-                  <div key={message.id} style={{ marginBottom: '12px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      <strong>{message.responder_type} {message.agent_id ? `(Agent ${message.agent_id})` : ''}</strong> - {new Date(message.created_at).toLocaleString()}
-                    </div>
-                    {message.prompt && (
-                      <div style={{ marginTop: '4px', fontStyle: 'italic', color: '#374151' }}>
-                        <strong>Prompt:</strong> {message.prompt}
-                      </div>
-                    )}
-                    {message.output && (
-                      <div style={{ marginTop: '4px' }}>
-                        <strong>Response:</strong> {message.output}
-                      </div>
-                    )}
-                    {message.category && (
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
-                        Category: {message.category}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="admin-agents-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Conversations</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <input
-              type="checkbox"
-              checked={filters.ai_only}
-              onChange={(e) => setFilters({ ...filters, ai_only: e.target.checked })}
-            />
-            AI Only
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <input
-              type="checkbox"
-              checked={filters.agent_involved}
-              onChange={(e) => setFilters({ ...filters, agent_involved: e.target.checked })}
-            />
-            Agent Involved
-          </label>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-          </select>
-          <button onClick={handleExportConversations} className="admin-button admin-button-primary">Export</button>
-        </div>
-      </div>
-
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Session ID</th>
-            <th>User ID</th>
-            <th>Status</th>
-            <th>Messages</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredConversations.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="admin-empty-state">No conversations found</div>
-              </td>
-            </tr>
-          ) : (
-            filteredConversations.map((conv) => (
-              <tr key={conv.id}>
-                <td>{conv.session_id}</td>
-                <td>{conv.user_id || 'N/A'}</td>
-                <td style={{ textTransform: 'capitalize' }}>{conv.status || 'N/A'}</td>
-                <td>{conversationMessages.length || 0}</td>
-                <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
-                <td>
-                  <div className="admin-table-actions">
-                    <button onClick={() => handleViewConversation(conv)} className="admin-button">View</button>
-                    <button onClick={() => handleChangeAgent(conv.id)} className="admin-button">Change Agent</button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// AlertsPage Component
-type AlertsPageProps = {
-  analytics: any;
-};
-
-function AlertsPage({ analytics }: AlertsPageProps) {
-  const alerts = analytics?.alerts || [];
-
-  return (
-    <div className="admin-agents-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Alerts</h2>
-      </div>
-
-      <div className="admin-content-grid">
-        {alerts.length === 0 ? (
-          <div className="admin-content-card" style={{ gridColumn: 'span 3' }}>
-            <div className="admin-empty-state">No alerts at this time</div>
-          </div>
-        ) : (
-          alerts.map((alert: any) => (
-            <div key={alert.agent_id} className="admin-content-card">
-              <h3 style={{ color: '#ef4444' }}>⚠️ Low Rating Alert</h3>
-              <div style={{ marginTop: '8px' }}>
-                <div><strong>Agent:</strong> {alert.agent_name}</div>
-                <div><strong>Average Rating:</strong> {alert.avg_rating}/5</div>
-                <div style={{ marginTop: '12px' }}>
-                  <button className="admin-button admin-button-primary">Contact Agent</button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-// SkillsPage Component
-type SkillsPageProps = {
-  skills: Skill[];
-  setSkills: React.Dispatch<React.SetStateAction<Skill[]>>;
-};
-
-function SkillsPage({ skills, setSkills }: SkillsPageProps) {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
-  const [formData, setFormData] = useState({ name: '' });
-
-  const handleCreateSkill = async () => {
-    if (formData.name.trim()) {
-      try {
-        const newSkill = await skillsApi.createSkill({ name: formData.name.trim() });
-        setSkills((prev) => [...prev, newSkill]);
-        setShowCreateModal(false);
-        setFormData({ name: '' });
-      } catch (err) {
-        alert('Error creating skill');
-      }
-    }
-  };
-
-  const handleUpdateSkill = async () => {
-    if (editingSkill && formData.name.trim()) {
-      try {
-        const updatedSkill = await skillsApi.updateSkill({
-          id: editingSkill.id,
-          name: formData.name.trim()
-        });
-        setSkills((prev) =>
-          prev.map((skill) =>
-            skill.id === editingSkill.id ? updatedSkill : skill
-          )
-        );
-        setEditingSkill(null);
-        setShowCreateModal(false);
-        setFormData({ name: '' });
-      } catch (err) {
-        alert('Error updating skill');
-      }
-    }
-  };
-
-  const handleDeleteSkill = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this skill?')) {
-      try {
-        await skillsApi.deleteSkill(id);
-        setSkills((prev) => prev.filter((skill) => skill.id !== id));
-      } catch (err) {
-        alert('Error deleting skill');
-      }
-    }
-  };
-
-  return (
-    <div className="admin-agents-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Skills</h2>
-        <button
-          onClick={() => {
-            setEditingSkill(null);
-            setFormData({ name: '' });
-            setShowCreateModal(true);
-          }}
-          className="admin-button admin-button-primary"
-        >
-          Add Skill
-        </button>
-      </div>
-
-      {showCreateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-            <button
-              onClick={() => {
-                setShowCreateModal(false);
-                setEditingSkill(null);
-                setFormData({ name: '' });
-              }}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: '#6b7280',
-                padding: '4px',
-                borderRadius: '4px'
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-            >
-              ×
-            </button>
-            <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingSkill ? 'Edit Skill' : 'Create New Skill'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-              <label>
-                Skill Name
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ name: e.target.value })}
-                  className="admin-login-input"
-                  placeholder="Enter skill name"
-                  required
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingSkill(null);
-                  setFormData({ name: '' });
-                }}
-                className="admin-button"
-                style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
-              >
-                Close
-              </button>
-              <button
-                onClick={editingSkill ? handleUpdateSkill : handleCreateSkill}
-                className="admin-button admin-button-primary"
-              >
-                {editingSkill ? 'Update Skill' : 'Create Skill'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>No.</th>
-            <th>Skill Name</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {skills
-            .sort((a, b) => a.id - b.id)
-            .map((skill, index) => (
-            <tr key={skill.id}>
-              <td>{index + 1}</td>
-              <td>{skill.name}</td>
-              <td>
-                <div className="admin-table-actions">
-                  <button
-                    onClick={() => {
-                      setEditingSkill(skill);
-                      setFormData({ name: skill.name });
-                      setShowCreateModal(true);
-                    }}
-                    className="admin-button"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSkill(skill.id)}
-                    className="admin-button admin-button-danger"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 // Mock Data Functions
 function mockAgents(): Agent[] {
   return [
     { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
     { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
     { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
+  ];
+}
+
+function mockSessions(): Session[] {
+  return [
+    { id: 101, userId: 'u101', topic: 'booking', status: 'assigned', assignedAgentId: 2, messages: [{ sender: 'user', text: 'Hi, I need help booking' }, { sender: 'agent', text: 'Sure — I can help' }], duration: 120, waitTime: 5 },
+    { id: 102, userId: 'u102', topic: 'technical', status: 'waiting', assignedAgentId: null, messages: [{ sender: 'user', text: 'App crashes when I upload' }], duration: 0, waitTime: 20 },
+    { id: 103, userId: 'u103', topic: 'pricing', status: 'closed', assignedAgentId: null, messages: [{ sender: 'user', text: 'What are your fees?' }, { sender: 'bot', text: 'Here is our pricing' }], duration: 60, waitTime: 2 },
+  ];
+}
+
+function mockTemplates(): Template[] {
+  return [
+    { id: 1, type: 'greeting', content: 'Welcome! How can I help today?' },
+    { id: 2, type: 'waiting', content: "All agents are busy. We'll connect you shortly." },
+    { id: 3, type: 'fallback', content: 'Your agent is unavailable. Please try again later or leave a message.' },
+  ];
+}
+
+function mockRoutingRules(): RoutingRule[] {
+  return [
+    { id: 1, topic: 'technical', allowedRoles: ['technical'], priority: 1, autoAssign: true },
+    { id: 2, topic: 'sales', allowedRoles: ['sales'], priority: 5, autoAssign: true },
   ];
 }
 
