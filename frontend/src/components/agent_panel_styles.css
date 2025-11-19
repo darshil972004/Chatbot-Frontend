@@ -124,7 +124,16 @@
 .agent-panel {
   min-height: 100vh;
   background: #f8fafc;
+  padding: 0;
+}
+
+.agent-panel .admin-navbar {
+  margin: 0;
+}
+
+.agent-panel > .agent-grid {
   padding: 32px;
+  margin-top: 45px;
 }
 
 .agent-grid {
