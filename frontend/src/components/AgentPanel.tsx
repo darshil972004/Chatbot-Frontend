@@ -366,30 +366,25 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   return (
+    
     <div className="agent-panel">
-      <header className="admin-navbar agent-navbar">
-      <div className="admin-navbar__inner">
-        <Link to="/agent" className="admin-navbar__brand">
-          <img src={logo} alt="RealEstate CRM" className="admin-navbar__logo" />
-          <span className="admin-navbar__brandName">RealEstate CRM</span>
-        </Link>
+      <div className="admin-navbar agent-navbar">
+        <div className="admin-navbar__inner">
+          <Link to="/agent" className="admin-navbar__brand">
+            <img src={logo} alt="RealEstate CRM" className="admin-navbar__logo" />
+            <span className="admin-navbar__brandName">RealEstate CRM</span>
+          </Link>
 
-        <div className="admin-navbar__title">
-          <h1>Agent Workspace</h1>
-          <p>Handle chats, claim tickets and assist customers</p>
-        </div>
+          <div className="admin-navbar__title">
+            <h1>Agent Workspace</h1>
+            <p>Handle chats, claim tickets and assist customers</p>
+          </div>
 
-        <div className="admin-navbar__meta">
-          {agentName && <div className="agent-name">{agentName}</div>}
-          {onLogout && (
-            <button className="agent-logout-btn" onClick={onLogout} style={{ marginLeft: 12 }}>
-              Logout
-            </button>
-          )}
+          <div className="admin-navbar__meta">
+            {/* Removed Last reviewed */}
+          </div>
         </div>
       </div>
-    </header>
-    <body>
       <div className="agent-grid">
         {/* Agent profile header with full profile content inline */}
         <div className="agent-header-profile">
@@ -436,13 +431,13 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                   >
                     Release Chat
                   </button>
-                  {/* <button
+                  <button
                     className="profile-btn modal-btn"
                     style={{ backgroundColor: '#e53935' }}
                     onClick={endChatSession}
                   >
                     End Chat
-                  </button> */}
+                  </button>
                 </>
               )}
               <button className="logout-button modal-logout-btn" onClick={handleLogout}>Logout</button>
@@ -478,7 +473,6 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           <div className="shortcut-buttons">
             <button className="shortcut-btn primary" onClick={handleOpenNext}>Open Next</button>
             <button className="shortcut-btn success" onClick={handleMarkAway}>Mark Away</button>
-            <button className="shortcut-btn Chat" onClick={releaseChatSession}>Release  All Chat</button>
             {/* <button className="shortcut-btn muted" onClick={handleViewReports}>View Reports</button> */}
           </div>
         </section>
@@ -501,7 +495,6 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         </section>
 
       </div>
-    </body>
     </div>
   )
 }
