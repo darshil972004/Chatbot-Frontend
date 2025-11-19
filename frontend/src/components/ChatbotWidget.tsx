@@ -15,6 +15,11 @@ function uid() {
 }
 
 export default function ChatbotWidget() {
+  // Handler for cancel request
+  function handleCancelRequest() {
+    addSystemMessage('Your live agent request has been cancelled. You can continue chatting with the AI assistant.');
+    resetLiveAgentSession();
+  }
   const [isOpen, setIsOpen] = useState(true)
   // Persist chat history in localStorage
   const LOCAL_KEY = 'cp_chatbot_history';
@@ -557,6 +562,7 @@ export default function ChatbotWidget() {
               </div>
               <div className="cp-live-banner-subtitle">Ticket #{ticketId.slice(0, 8)}</div>
               {liveChatError ? <div className="cp-live-banner-error">{liveChatError}</div> : null}
+              <button className="cp-cancel-request-btn" style={{marginTop:8}} onClick={handleCancelRequest}>Cancel Request</button>
             </div>
           </div>
         )}
