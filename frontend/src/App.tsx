@@ -9,7 +9,7 @@ import WorkflowList from './components/WorkflowList'
 import AdminPanel from './components/AdminPanel'
 import AgentLogin from './components/AgentLogin'
 import AgentPanelApp from './components/AgentPanel'
-import { agentLogin, storeAgentInfo, clearAgentInfo } from './api/agent'
+import { agentLogin, storeAgentInfo, clearAgentInfo, updateAgentStatus } from './api/agent'
 import './components/chatbot.css'
 
 const ADMIN_USERNAME = (window as any).VITE_ADMIN_USERNAME || 'admin'
@@ -71,18 +71,29 @@ export default function App() {
     }
   })
   const handleAgentLogin = async (username: string, password: string) => {
-    const result = await agentLogin(username, password);
+    const result = await agentLogin(username, password)
     if (result.success && result.data) {
-      setAgentLoggedIn(true);
-      setAgentId(result.data.id ?? 1);
-      storeAgentInfo(result.data);
-      return { success: true };
+      setAgentLoggedIn(true)
+      setAgentId(result.data.id ?? 1)
+      storeAgentInfo(result.data)
+
+      if (result.data.id != null) {
+        try {
+          await updateAgentStatus(result.data.id, 'online', {
+            source: 'agent_login',
+          })
+        } catch (err) {
+          console.error('Failed to mark agent online on login', err)
+        }
+      }
+
+      return { success: true, data: result.data }
     }
     return {
       success: false,
       message: result.error?.message || 'Invalid agent credentials.',
-    };
-  };
+    }
+  }
 
   const handleAgentLogout = () => {
     setAgentLoggedIn(false);
