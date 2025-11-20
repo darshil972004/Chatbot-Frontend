@@ -478,14 +478,14 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
     </li>
   );
 
-  const handleAddAgent = () => {
-    setRoute('agents');
-    // Trigger create modal - this will be handled by AgentsPage component
-    setTimeout(() => {
-      const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
-      if (createButton) createButton.click();
-    }, 100);
-  };
+  // const handleAddAgent = () => {
+  //   setRoute('agents');
+  //   // Trigger create modal - this will be handled by AgentsPage component
+  //   setTimeout(() => {
+  //     const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
+  //     if (createButton) createButton.click();
+  //   }, 100);
+  // };
 
   return (
     <div className="admin-sidebar">
@@ -526,9 +526,9 @@ function Dashboard({ agents }: DashboardProps) {
       <div className="dashboard-left-section">
         {/* Compact Stats Row */}
         <div className="dashboard-stats-compact">
-          <StatCard title="Total Agents" value={totalAgents} icon="👥" />
-          <StatCard title="Active Agents" value={activeAgents} icon="⚡" />
-          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} icon="🟢" />
+          <StatCard title="Total Agents" value={totalAgents} />
+          <StatCard title="Active Agents" value={activeAgents}/>
+          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} />
         </div>
 
         {/* Compact Status Overview */}
