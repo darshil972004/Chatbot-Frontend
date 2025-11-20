@@ -1,7 +1,7 @@
-import React, {useEffect, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
-import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, type AgentSkill } from '../api/agent'
+import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
 const DEFAULT_ROLE_LABEL = 'Technical Agent'
@@ -47,23 +47,54 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   // Initialize with empty list so queue comes from backend active rooms + notifier
   const [sessions, setSessions] = useState<any[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string|number|null>(null)
-  const [quickReplies] = useState<string[]>(mockQuickReplies())
   const wsRef = useRef<any>(null)
   const [loggedOut, setLoggedOut] = useState(false)
-  
+  const [agentProfile, setAgentProfile] = useState<any>(null)
   const [agentName, setAgentName] = useState<string>('Agent')
   const [agentRole, setAgentRole] = useState<string>(DEFAULT_ROLE_LABEL)
   const [agentSkills, setAgentSkills] = useState<AgentSkill[]>([])
   const [skillsSynced, setSkillsSynced] = useState<boolean>(false)
   const chatWsRef = useRef<WebSocket | null>(null)
   const [activeChatTicketId, setActiveChatTicketId] = useState<string | number | null>(null)
+  const [quickReplyTemplates, setQuickReplyTemplates] = useState<AgentQuickReply[]>([])
+  const [quickRepliesLoading, setQuickRepliesLoading] = useState<boolean>(false)
+  const [quickRepliesError, setQuickRepliesError] = useState<string | null>(null)
+  const [quickReplyDraft, setQuickReplyDraft] = useState<{ id: number | null; category: string; text: string }>({
+    id: null,
+    category: '',
+    text: '',
+  })
+  const [quickReplySubmitting, setQuickReplySubmitting] = useState<boolean>(false)
+
+  const loadQuickReplies = useCallback(async (agentIdentifier: number | string) => {
+    if (!agentIdentifier && agentIdentifier !== 0) {
+      setQuickReplyTemplates([])
+      setQuickRepliesLoading(false)
+      return
+    }
+    setQuickRepliesLoading(true)
+    setQuickRepliesError(null)
+    try {
+      const replies = await fetchAgentQuickReplies(agentIdentifier)
+      setQuickReplyTemplates(Array.isArray(replies) ? replies : [])
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load quick replies'
+      setQuickRepliesError(message)
+    } finally {
+      setQuickRepliesLoading(false)
+    }
+  }, [])
 
   useEffect(()=>{
+    if (loggedOut) {
+      return
+    }
     let isMounted = true
     setStatusSynced(false)
     setSkillsSynced(false)
     // Read agent info from localStorage and set display name
     const agent = retrieveAgentInfo()
+    setAgentProfile(agent || null)
     if (agent && agent.display_name) {
       setAgentName(agent.display_name || agent.username || 'Agent')
     }
@@ -122,6 +153,12 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
 
     hydrateStatusFromBackend()
+
+    if (agent?.id) {
+      loadQuickReplies(agent.id)
+    } else {
+      setQuickReplyTemplates([])
+    }
 
     // Connect notifier websocket for agent notifications (new tickets, claims)
     if (agent && agent.id) {
@@ -191,7 +228,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       if(wsRef.current) wsRef.current.close()
       if(chatWsRef.current) chatWsRef.current.close()
     }
-  },[agentId])
+  },[agentId, loggedOut, loadQuickReplies])
 
   function handleWS(msg: any){
     // handle incoming messages: new assignment, user msg, system
@@ -258,10 +295,71 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     setAgentStatus('away');
   }
 
-//   function handleViewReports() {
-//     // Placeholder: show alert, replace with modal if needed
-//     alert('Reports feature coming soon!');
-//   }
+  function resetQuickReplyDraft() {
+    setQuickReplyDraft({ id: null, category: '', text: '' })
+  }
+
+  function startQuickReplyEdit(reply: AgentQuickReply) {
+    setQuickReplyDraft({
+      id: reply.id,
+      category: reply.category || '',
+      text: reply.template_text,
+    })
+  }
+
+  async function handleSaveQuickReply(event?: React.FormEvent<HTMLFormElement>) {
+    if (event) {
+      event.preventDefault()
+    }
+    if (!agentProfile?.id) {
+      alert('Agent information not available. Please re-login.')
+      return
+    }
+    if (!quickReplyDraft.text.trim()) {
+      alert('Please enter a quick reply message.')
+      return
+    }
+    setQuickReplySubmitting(true)
+    try {
+      await createAgentQuickReply(agentProfile.id, {
+        category: quickReplyDraft.category.trim() || null,
+        template_text: quickReplyDraft.text.trim(),
+      })
+
+      if (quickReplyDraft.id) {
+        try {
+          await deleteAgentQuickReply(agentProfile.id, quickReplyDraft.id)
+        } catch (deleteErr) {
+          console.error('Failed to delete original quick reply while editing', deleteErr)
+        }
+      }
+
+      await loadQuickReplies(agentProfile.id)
+      resetQuickReplyDraft()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save quick reply'
+      alert(message)
+    } finally {
+      setQuickReplySubmitting(false)
+    }
+  }
+
+  async function handleDeleteQuickReply(replyId: number) {
+    if (!agentProfile?.id) {
+      alert('Agent information not available. Please re-login.')
+      return
+    }
+    if (!window.confirm('Delete this quick reply? This action cannot be undone.')) {
+      return
+    }
+    try {
+      await deleteAgentQuickReply(agentProfile.id, replyId)
+      setQuickReplyTemplates(prev => prev.filter(reply => reply.id !== replyId))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete quick reply'
+      alert(message)
+    }
+  }
 
   async function handleLogout() {
     const agent = retrieveAgentInfo()
@@ -343,6 +441,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
   const activeSession = sessions.find(s => s.id == activeSessionId)
   const waitingCount = sessions.filter((s: any)=>s.status==='waiting').length
+  const quickReplyOptions = quickReplyTemplates.map(reply => reply.template_text)
 
   if (loggedOut) {
     return <AgentLogin onLogin={async (loginData: any) => {
@@ -488,10 +587,74 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
         <section className="agent-card grid-preview">
           {activeSession ? (
-            <ChatWindow session={activeSession} onSend={sendMessageToSession} quickReplies={quickReplies} onEndChat={endChatSession} />
+            <ChatWindow session={activeSession} onSend={sendMessageToSession} quickReplies={quickReplyOptions} onEndChat={endChatSession} />
           ) : (
             <div className="preview-placeholder">Select a conversation to begin</div>
           )}
+        </section>
+
+        <section className="agent-card grid-knowledge quick-replies-card">
+          <div className="card-heading">Quick Reply Manager</div>
+          <p className="card-subtitle">Add canned responses to speed up replies.</p>
+          <form className="quick-reply-form" onSubmit={handleSaveQuickReply}>
+            <div className="quick-reply-fields">
+              <input
+                className="quick-reply-input"
+                placeholder="Category (optional)"
+                value={quickReplyDraft.category}
+                onChange={e => setQuickReplyDraft(prev => ({ ...prev, category: e.target.value }))}
+                disabled={quickReplySubmitting}
+              />
+              <textarea
+                className="quick-reply-textarea"
+                placeholder="Quick reply text"
+                value={quickReplyDraft.text}
+                onChange={e => setQuickReplyDraft(prev => ({ ...prev, text: e.target.value }))}
+                disabled={quickReplySubmitting}
+                rows={2}
+                required
+              />
+            </div>
+            <div className="quick-reply-actions-row">
+              <button type="submit" className="profile-btn modal-btn" disabled={quickReplySubmitting}>
+                {quickReplyDraft.id ? 'Update Reply' : 'Add Reply'}
+              </button>
+              {quickReplyDraft.id && (
+                <button
+                  type="button"
+                  className="quick-reply-cancel-btn"
+                  onClick={resetQuickReplyDraft}
+                  disabled={quickReplySubmitting}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+          {quickRepliesError && <div className="quick-reply-error">{quickRepliesError}</div>}
+          <div className="quick-replies-list">
+            {quickRepliesLoading && <p className="card-subtitle">Loading quick replies…</p>}
+            {!quickRepliesLoading && quickReplyTemplates.length === 0 && (
+              <p className="card-placeholder">No quick replies yet.</p>
+            )}
+            {!quickRepliesLoading &&
+              quickReplyTemplates.map(reply => (
+                <div key={reply.id} className="quick-reply-item">
+                  <div>
+                    {reply.category && <span className="quick-reply-category">{reply.category}</span>}
+                    <p className="quick-reply-text">{reply.template_text}</p>
+                  </div>
+                  <div className="quick-reply-item-actions">
+                    <button className="quick-reply-edit" type="button" onClick={() => startQuickReplyEdit(reply)}>
+                      Edit
+                    </button>
+                    <button className="quick-reply-delete" type="button" onClick={() => handleDeleteQuickReply(reply.id)}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
         </section>
 
       </div>
@@ -522,11 +685,6 @@ function ConversationListItem({session, onOpen, onClaim, active}: ConversationLi
   )
 }
 
-interface ChatWindowProps {
-  session: any;
-  onSend: (sessionId: number, text: string) => void;
-  quickReplies: string[];
-}
 interface ChatWindowProps {
   session: any;
   onSend: (sessionId: number, text: string) => void;
@@ -583,7 +741,7 @@ function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps)
         />
         <button onClick={send} className="send-button">Send</button>
         {/* End Chat button for agent to end chat and allow user to chat with AI again */}
-        <button onClick={onEndChat} className="end-chat-button" style={{marginLeft:8, backgroundColor:'#e53935', color:'#fff'}}>End Chat</button>
+        <button onClick={onEndChat} className="end-chat-button">End Chat</button>
       </div>
     </div>
   )
@@ -604,19 +762,5 @@ function CustomerInfoPanel({user}: CustomerInfoPanelProps){
     </div>
   )
 }
-
-// ---------------- Mock Data ----------------
-function mockSessions(){
-  return [
-    { id: 201, user:{name:'Asha', email:'asha@example.com', country:'India', pastIssues:2}, topic:'technical', status:'assigned', unread:1, lastMsgTime:'2m', startedAgo:'5m', messages:[{sender:'user', text:'App crashed while uploading', ts: Date.now()-60000}, {sender:'agent', text:'Can you share the screenshot?', ts: Date.now()-30000}]},
-    { id: 202, user:{name:'Rahul', email:'rahul@example.com', country:'India', pastIssues:1}, topic:'billing', status:'waiting', unread:2, lastMsgTime:'10m', startedAgo:'10m', messages:[{sender:'user', text:'I was charged twice', ts: Date.now()-600000}]},
-    { id: 203, user:{name:'Nina', email:'nina@example.com', country:'USA', pastIssues:0}, topic:'general', status:'assigned', unread:0, lastMsgTime:'1h', startedAgo:'15m', messages:[{sender:'user', text:'How do I change my password?', ts: Date.now()-900000}]},
-  ]
-}
-
-function mockQuickReplies(){
-  return ['Hello — I can help with that.', 'Can you share a screenshot?', 'I am escalating this to tech team.', 'Please try clearing cache and retry.', 'I have updated your request.']
-}
-
 
 // ---------------- End ----------------

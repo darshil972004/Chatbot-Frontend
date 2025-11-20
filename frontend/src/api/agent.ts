@@ -53,6 +53,14 @@ export type ChatMessage = {
   [key: string]: any;
 };
 
+export type AgentQuickReply = {
+  id: number;
+  category?: string | null;
+  template_text: string;
+  agent_id?: number;
+  created_at?: string;
+};
+
 const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
 const BACKEND_WS_HOST = (window as any).VITE_BACKEND_WS_HOST || (window.location.hostname || '127.0.0.1');
 const BACKEND_WS_PORT = (window as any).VITE_BACKEND_WS_PORT || '8000';
@@ -437,5 +445,107 @@ export async function fetchAgentSkills(agentId: number | string): Promise<AgentS
   } catch (err) {
     console.error(`Error fetching skills for agent ${agentId}`, err);
     return [];
+  }
+}
+
+/**
+ * Fetch quick replies assigned to an agent
+ */
+export async function fetchAgentQuickReplies(agentId: number | string): Promise<AgentQuickReply[]> {
+  if (!agentId && agentId !== 0) {
+    return [];
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies`, {
+      headers: {
+        Authorization: `Bearer ${CHATBOT_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to fetch quick replies (${res.status}): ${text || res.statusText}`);
+    }
+
+    const payload = await res.json();
+    const entries = Array.isArray(payload?.data) ? payload.data : [];
+    return entries as AgentQuickReply[];
+  } catch (err) {
+    console.error(`Error fetching quick replies for agent ${agentId}`, err);
+    throw err;
+  }
+}
+
+type QuickReplyMutationPayload = {
+  category?: string | null;
+  template_text: string;
+};
+
+/**
+ * Create a quick reply for an agent
+ */
+export async function createAgentQuickReply(
+  agentId: number | string,
+  payload: QuickReplyMutationPayload
+): Promise<AgentQuickReply> {
+  if (!payload?.template_text?.trim()) {
+    throw new Error('Quick reply text is required');
+  }
+
+  const body = {
+    category: payload.category ?? null,
+    template_text: payload.template_text.trim(),
+  };
+
+  const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${CHATBOT_TOKEN}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create quick reply (${res.status}): ${text || res.statusText}`);
+  }
+
+  const response = await res.json();
+  if (response?.success === false) {
+    const message = response?.error?.message || 'Failed to create quick reply';
+    throw new Error(message);
+  }
+
+  const newId = response?.data?.id;
+  return {
+    id: typeof newId === 'number' ? newId : Date.now(),
+    category: body.category ?? undefined,
+    template_text: body.template_text,
+    agent_id: typeof agentId === 'number' ? agentId : Number(agentId),
+  };
+}
+
+/**
+ * Delete a quick reply for an agent
+ */
+export async function deleteAgentQuickReply(agentId: number | string, replyId: number | string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies/${replyId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${CHATBOT_TOKEN}`,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to delete quick reply (${res.status}): ${text || res.statusText}`);
+  }
+
+  const response = await res.json();
+  if (response?.success === false) {
+    const message = response?.error?.message || 'Failed to delete quick reply';
+    throw new Error(message);
   }
 }

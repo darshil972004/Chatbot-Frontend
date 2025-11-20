@@ -482,7 +482,7 @@
   padding: 8px 14px;
   border-radius: 10px;
   border: none;
-  background: #f87171;
+  background: #e53f3f;
   color: #fff;
   font-weight: 600;
   cursor: pointer;
@@ -723,6 +723,16 @@
   cursor: pointer;
 }
 
+.end-chat-button{
+  border: none;
+  border-radius: 10px;
+  background: #e53f3f;
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
 .chat-suggestions-label {
   font-size: 13px;
   color: #94a3b8;
@@ -761,6 +771,115 @@
 
 .knowledge-item:hover {
   background: #f8fafc;
+}
+
+.quick-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quick-reply-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-reply-input,
+.quick-reply-textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.quick-reply-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-reply-cancel-btn {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #fff;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quick-reply-cancel-btn:hover {
+  background: #f1f5f9;
+}
+
+.quick-replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.quick-reply-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-reply-category {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.quick-reply-text {
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+}
+
+.quick-reply-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-reply-edit,
+.quick-reply-delete {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quick-reply-edit {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.quick-reply-delete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.quick-reply-error {
+  color: #b91c1c;
+  font-size: 13px;
+  margin-bottom: 8px;
 }
 
 /* Scrollbar styling */
