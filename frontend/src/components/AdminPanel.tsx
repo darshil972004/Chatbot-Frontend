@@ -923,7 +923,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
               <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
                 <label>
-                  Username
+                  Username : 
                   <input
                     type="text"
                     value={formData.username}
@@ -934,7 +934,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   />
                 </label>
                 <label>
-                  Display Name
+                  Display Name :
                   <input
                     type="text"
                     value={formData.name}
@@ -944,7 +944,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   />
                 </label>
                 <label>
-                  Email
+                  Email : 
                   <input
                     type="email"
                     value={formData.email}
@@ -955,7 +955,19 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   />
                 </label>
                 <label>
-                  Role
+                Password : 
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="admin-login-input"
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+                <label>
+                  Role :
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
@@ -968,7 +980,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   </select>
                 </label>
                 <label>
-                  Skills
+                  Skills : 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
                     {skills.length === 0 && <div style={{ fontSize: '14px', color: '#94a3b8', padding: '8px 0' }}>No skills available.</div>}
                     {skills.map((skill) => (
@@ -984,7 +996,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   </div>
                 </label>
                 <label>
-                  Status
+                  Status : 
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Agent['status'] })}
@@ -997,7 +1009,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   </select>
                 </label>
                 <label>
-                  Max Concurrent Chats
+                  Max Concurrent Chats : 
                   <input
                     type="number"
                     value={formData.max_concurrent_chats}
@@ -1142,8 +1154,8 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   <td style={{ width: '120px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
                   <td style={{ width: '160px' }}>
                     <div className="admin-table-actions">
-                      <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
-                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
+                      {/* <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
+                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button> */}
                       <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
                       <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
                     </div>
