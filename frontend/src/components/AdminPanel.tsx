@@ -2020,12 +2020,12 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
           <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: '80px' }}>ID</th>
+                <th style={{ width: '366px' }}>ID</th>
                 <th style={{ minWidth: '200px' }}>Title</th>
-                <th style={{ width: '120px' }}>Status</th>
+                <th style={{ width: '100px' }}>Status</th>
                 <th style={{ width: '100px' }}>Priority</th>
                 <th style={{ width: '120px' }}>Created</th>
-                <th style={{ width: '140px' }}>Actions</th>
+                <th style={{ minWidth: '145px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2038,21 +2038,21 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
               ) : (
                 filteredTickets.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td style={{ width: '80px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
+                    <td style={{ width: '366px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
                     <td style={{ minWidth: '200px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {ticket.title}
                     </td>
-                    <td style={{ width: '120px' }}>
+                    <td style={{ width: '100px' }}>
                       <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ width: '100px' }}>
+                    <td style={{ width: '80px' }}>
                       <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
                         {ticket.priority}
                       </span>
                     </td>
-                    <td style={{ width: '120px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
+                    <td style={{ width: '100px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
                     <td style={{ width: '140px' }}>
