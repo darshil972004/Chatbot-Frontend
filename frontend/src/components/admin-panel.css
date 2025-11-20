@@ -546,6 +546,7 @@
 
 .admin-page-title {
   font-size: 20px;
+  margin: 0;
   font-weight: 600;
 }
 
@@ -628,6 +629,10 @@
   background-color: #2563eb;
   color: #ffffff;
   border: none;
+}
+
+.admin-stat-title{
+  padding-left: 15px;
 }
 
 .admin-button-primary:hover {
@@ -1556,7 +1561,6 @@ html, body {
 
 /* Tickets Page Improvements */
 .admin-tickets-container {
-  margin-top: 20px;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);
@@ -2077,7 +2081,6 @@ html, body {
 
 /* Tickets Page Improvements */
 .admin-tickets-container {
-  margin-top: 20px;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);

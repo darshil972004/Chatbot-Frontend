@@ -533,7 +533,7 @@ function Dashboard({ agents }: DashboardProps) {
 
         {/* Compact Status Overview */}
         <div className="dashboard-status-overview">
-          <h3>📊 Agent Status Overview</h3>
+          <h3 className='admin-stat-title'>Agent Status Overview</h3>
           <div className="status-overview-grid">
             <div className="status-item">
               <div className="status-icon">🟢</div>
@@ -571,7 +571,7 @@ function Dashboard({ agents }: DashboardProps) {
       <div className="dashboard-right-section">
         {/* Top Agents by Performance */}
         <div className="dashboard-top-agents">
-          <h3>🏆 Top Agents by Chats Today</h3>
+          <h3>Top Agents by Chats Today</h3>
           <div className="top-agents-compact">
             {topAgents.length === 0 ? (
               <div className="admin-empty-state">No agent data available</div>
@@ -610,7 +610,7 @@ type StatCardProps = {
 function StatCard({ title, value, icon }: StatCardProps) {
   return (
     <div className="admin-stat-card">
-      <div className="admin-stat-icon">{icon}</div>
+      
       <div className="admin-stat-content">
         <div className="admin-stat-title">{title}</div>
         <div className="admin-stat-value">{value}</div>
