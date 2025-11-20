@@ -141,7 +141,8 @@
   grid-template-columns: 220px 320px 1fr 240px;
   grid-template-areas:
     "availability workspace workspace customer"
-    "availability conversations preview shortcuts";
+    "availability conversations preview knowledge"
+    "availability . . shortcuts";
   gap: 16px;
 }
 
@@ -900,9 +901,9 @@
     grid-template-areas:
       "availability workspace"
       "customer workspace"
-      "conversations shortcuts"
+      "conversations knowledge"
       "preview preview"
-      "knowledge knowledge";
+      "shortcuts shortcuts";
   }
 }
 
@@ -916,9 +917,9 @@
       "availability"
       "workspace"
       "customer"
-      "shortcuts"
       "conversations"
       "preview"
-      "knowledge";
+      "knowledge"
+      "shortcuts";
   }
 }

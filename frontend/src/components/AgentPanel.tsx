@@ -523,20 +523,20 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               {/* <button className="profile-btn modal-btn">View Profile</button> */}
               {activeChatTicketId && (
                 <>
-                  <button
+                  {/* <button
                     className="profile-btn modal-btn"
                     style={{ backgroundColor: '#ff9800', marginRight: 8 }}
                     onClick={releaseChatSession}
                   >
                     Release Chat
-                  </button>
-                  <button
-                    className="profile-btn modal-btn"
-                    style={{ backgroundColor: '#e53935' }}
-                    onClick={endChatSession}
-                  >
-                    End Chat
-                  </button>
+                  </button> */}
+                    {/* <button
+                      className="profile-btn modal-btn"
+                      style={{ backgroundColor: '#e53935' }}
+                      onClick={endChatSession}
+                    >
+                      End Chat
+                    </button> */}
                 </>
               )}
               <button className="logout-button modal-logout-btn" onClick={handleLogout}>Logout</button>
@@ -565,15 +565,6 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           ) : (
             <p className="card-placeholder">No customer selected</p>
           )}
-        </section>
-
-        <section className="agent-card grid-shortcuts shortcuts-card">
-          <div className="card-heading">Shortcuts</div>
-          <div className="shortcut-buttons">
-            <button className="shortcut-btn primary" onClick={handleOpenNext}>Open Next</button>
-            <button className="shortcut-btn success" onClick={handleMarkAway}>Mark Away</button>
-            {/* <button className="shortcut-btn muted" onClick={handleViewReports}>View Reports</button> */}
-          </div>
         </section>
 
         <section className="agent-card grid-conversations">
@@ -656,7 +647,6 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               ))}
           </div>
         </section>
-
       </div>
     </div>
   )
