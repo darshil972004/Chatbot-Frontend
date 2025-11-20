@@ -391,67 +391,67 @@ function Header({ onLogout, setRoute }: HeaderProps) {
     };
   }, [showMenu]);
 
-  // return (
-  //   <header className="crm-header">
-  //     <div className="crm-header-container">
-  //       {/* Logo and Brand */}
-  //       <div className="crm-brand">
-  //         <div className="crm-logo">
-  //           🏢
-  //         </div>
-  //         <div className="crm-brand-text">
-  //           <h1 className="crm-title">Real Estate CRM</h1>
-  //           <span className="crm-subtitle">Admin Panel</span>
-  //         </div>
-  //       </div>
+  return (
+    <header className="crm-header">
+      <div className="crm-header-container">
+        {/* Logo and Brand */}
+        <div className="crm-brand">
+          <div className="crm-logo">
+            🏢
+          </div>
+          <div className="crm-brand-text">
+            <h1 className="crm-title">Real Estate CRM</h1>
+            <span className="crm-subtitle">Admin Panel</span>
+          </div>
+        </div>
 
-  //       {/* Navigation */}
-  //       <nav className="crm-nav">
-  //         <button onClick={() => setRoute('dashboard')} className="crm-nav-link">Dashboard</button>
-  //         <button onClick={() => setRoute('agents')} className="crm-nav-link">Agents</button>
-  //         <button onClick={() => setRoute('tickets')} className="crm-nav-link">Tickets</button>
-  //         <button onClick={() => setRoute('analysis')} className="crm-nav-link">Analytics</button>
-  //       </nav>
+        {/* Navigation */}
+        <nav className="crm-nav">
+          <button onClick={() => setRoute('dashboard')} className="crm-nav-link">Dashboard</button>
+          <button onClick={() => setRoute('agents')} className="crm-nav-link">Agents</button>
+          <button onClick={() => setRoute('tickets')} className="crm-nav-link">Tickets</button>
+          <button onClick={() => setRoute('analysis')} className="crm-nav-link">Analytics</button>
+        </nav>
 
-  //       {/* User Menu */}
-  //       <div className="crm-user-menu" ref={menuRef}>
-  //         <button className="crm-user-button" onClick={() => setShowMenu(!showMenu)}>
-  //           <div className="crm-user-avatar">A</div>
-  //           <span className="crm-user-name">Admin</span>
-  //           <svg className="crm-dropdown-icon" fill="currentColor" viewBox="0 0 20 20">
-  //             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-  //           </svg>
-  //         </button>
+        {/* User Menu */}
+        <div className="crm-user-menu" ref={menuRef}>
+          <button className="crm-user-button" onClick={() => setShowMenu(!showMenu)}>
+            <div className="crm-user-avatar">A</div>
+            <span className="crm-user-name">Admin</span>
+            <svg className="crm-dropdown-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
 
-  //         {showMenu && (
-  //           <div className="crm-dropdown-menu">
-  //             <div className="crm-dropdown-header">
-  //               <div className="crm-user-avatar">A</div>
-  //               <div>
-  //                 <div className="crm-dropdown-name">Administrator</div>
-  //                 <div className="crm-dropdown-email">admin@realestate.com</div>
-  //               </div>
-  //             </div>
-  //             <div className="crm-dropdown-divider"></div>
-  //             <button className="crm-dropdown-item" onClick={() => { setShowMenu(false); setRoute('settings'); }}>
-  //               <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  //                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-  //                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  //               </svg>
-  //               Settings
-  //             </button>
-  //             <button className="crm-dropdown-item crm-dropdown-logout" onClick={() => { setShowMenu(false); onLogout(); }}>
-  //               <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  //                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-  //               </svg>
-  //               Sign Out
-  //             </button>
-  //           </div>
-  //         )}
-  //       </div>
-  //     </div>
-  //   </header>
-  // );
+          {showMenu && (
+            <div className="crm-dropdown-menu">
+              <div className="crm-dropdown-header">
+                <div className="crm-user-avatar">A</div>
+                <div>
+                  <div className="crm-dropdown-name">Administrator</div>
+                  <div className="crm-dropdown-email">admin@realestate.com</div>
+                </div>
+              </div>
+              <div className="crm-dropdown-divider"></div>
+              <button className="crm-dropdown-item" onClick={() => { setShowMenu(false); setRoute('settings'); }}>
+                <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
+              </button>
+              <button className="crm-dropdown-item crm-dropdown-logout" onClick={() => { setShowMenu(false); onLogout(); }}>
+                <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
 }
 
 // Sidebar Component
@@ -478,14 +478,14 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
     </li>
   );
 
-  // const handleAddAgent = () => {
-  //   setRoute('agents');
-  //   // Trigger create modal - this will be handled by AgentsPage component
-  //   setTimeout(() => {
-  //     const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
-  //     if (createButton) createButton.click();
-  //   }, 100);
-  // };
+  const handleAddAgent = () => {
+    setRoute('agents');
+    // Trigger create modal - this will be handled by AgentsPage component
+    setTimeout(() => {
+      const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
+      if (createButton) createButton.click();
+    }, 100);
+  };
 
   return (
     <div className="admin-sidebar">
@@ -526,9 +526,9 @@ function Dashboard({ agents }: DashboardProps) {
       <div className="dashboard-left-section">
         {/* Compact Stats Row */}
         <div className="dashboard-stats-compact">
-          <StatCard title="Total Agents" value={totalAgents} />
-          <StatCard title="Active Agents" value={activeAgents}/>
-          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} />
+          <StatCard title="Total Agents" value={totalAgents} icon="👥" />
+          <StatCard title="Active Agents" value={activeAgents} icon="⚡" />
+          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} icon="🟢" />
         </div>
 
         {/* Compact Status Overview */}
@@ -612,8 +612,8 @@ function StatCard({ title, value, icon }: StatCardProps) {
     <div className="admin-stat-card">
       
       <div className="admin-stat-content">
-        <div className="admin-stat-title">{title}</div>
-        <div className="admin-stat-value">{value}</div>
+        <span className="admin-stat-title">{title} </span>
+        <span className="admin-stat-value">{value}</span>
       </div>
     </div>
   );
@@ -688,34 +688,34 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     });
   };
 
-  async function toggleStatus(id: number) {
-    const agent = agents.find((a) => a.id === id);
-    if (!agent) return;
-    const newStatus = agent.status === 'online' ? 'offline' : 'online';
-    try {
-      // Optimistically update UI
-      setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-      );
+  // async function toggleStatus(id: number) {
+  //   const agent = agents.find((a) => a.id === id);
+  //   if (!agent) return;
+  //   const newStatus = agent.status === 'online' ? 'offline' : 'online';
+  //   try {
+  //     // Optimistically update UI
+  //     setAgents((prevAgents) =>
+  //       prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+  //     );
 
-      // Create status event to track the status change
-      await agentsApi.updateAgentStatus({
-        agent_id: id,
-        status: newStatus,
-        concurrent_load: 0,
-        details: { source: 'admin_panel_toggle' }
-      });
+  //     // Create status event to track the status change
+  //     await agentsApi.updateAgentStatus({
+  //       agent_id: id,
+  //       status: newStatus,
+  //       concurrent_load: 0,
+  //       details: { source: 'admin_panel_toggle' }
+  //     });
 
-      // Reload to get the latest status from backend
-      await reloadAgents();
-    } catch (err) {
-      // Revert optimistic update on error
-      setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
-      );
-      alert('Error updating agent status');
-    }
-  }
+  //     // Reload to get the latest status from backend
+  //     await reloadAgents();
+  //   } catch (err) {
+  //     // Revert optimistic update on error
+  //     setAgents((prevAgents) =>
+  //       prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
+  //     );
+  //     alert('Error updating agent status');
+  //   }
+  // }
 
   async function handleCreateAgent() {
     try {
@@ -818,10 +818,10 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     }
   }
 
-  function handleViewAgent(agent: Agent) {
-    setViewingAgent(agent);
-    setShowViewModal(true);
-  }
+  // function handleViewAgent(agent: Agent) {
+  //   setViewingAgent(agent);
+  //   setShowViewModal(true);
+  // }
 
   async function handleDeleteAgent(id: number) {
     if (window.confirm('Are you sure you want to delete this agent?')) {
@@ -923,7 +923,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
               <h3 style={{ marginTop: 0, marginRight: '40px' }}>{editingAgent ? 'Edit Agent' : 'Create New Agent'}</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
                 <label>
-                  Username
+                  Username : 
                   <input
                     type="text"
                     value={formData.username}
@@ -934,7 +934,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   />
                 </label>
                 <label>
-                  Display Name
+                  Display Name :
                   <input
                     type="text"
                     value={formData.name}
@@ -944,7 +944,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   />
                 </label>
                 <label>
-                  Email
+                  Email : 
                   <input
                     type="email"
                     value={formData.email}
@@ -955,7 +955,19 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   />
                 </label>
                 <label>
-                  Role
+                Password : 
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="admin-login-input"
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+                <label>
+                  Role :
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
@@ -968,7 +980,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   </select>
                 </label>
                 <label>
-                  Skills
+                  Skills : 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
                     {skills.length === 0 && <div style={{ fontSize: '14px', color: '#94a3b8', padding: '8px 0' }}>No skills available.</div>}
                     {skills.map((skill) => (
@@ -983,7 +995,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     ))}
                   </div>
                 </label>
-                <label>
+                {/* <label>
                   Status
                   <select
                     value={formData.status}
@@ -995,9 +1007,9 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     <option value="busy">Busy</option>
                     <option value="away">Away</option>
                   </select>
-                </label>
+                </label> */}
                 <label>
-                  Max Concurrent Chats
+                  Max Concurrent Chats : 
                   <input
                     type="number"
                     value={formData.max_concurrent_chats}
@@ -1024,7 +1036,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
           </div>
         )}
 
-        {/* {showViewModal && viewingAgent && (
+        {showViewModal && viewingAgent && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
               <button
@@ -1045,9 +1057,9 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                 onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
               >
                 ×
-              </button> */}
-              {/* <h3 style={{ marginTop: 0, marginRight: '40px' }}>Agent Details</h3> */}
-              {/* <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              </button>
+              <h3 style={{ marginTop: 0, marginRight: '40px' }}>Agent Details</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
                 <div>
                   <label style={{ fontWeight: '600', color: '#374151' }}>Username:</label>
                   <div style={{ marginTop: '4px', color: '#6b7280' }}>{viewingAgent.username}</div>
@@ -1098,15 +1110,12 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                 >
                   Close
                 </button>
-              </div> */}
-            {/* </div>
+              </div>
+            </div>
           </div>
-        )} */}
-
-      </div>
-
-      <div className="admin-agents-container">
-        <div className="admin-agents-table-wrapper admin-table-scroll">
+        )}
+        <div className="admin-tickets-container admin-tab-card">
+        <div className="admin-tickets-table-wrapper admin-table-scroll">
           <table className="admin-table">
             <thead>
               <tr>
@@ -1139,11 +1148,11 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                       {a.status}
                     </span>
                   </td>
-                  <td style={{ width: '120px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
-                  <td style={{ width: '160px' }}>
+                  <td style={{ width: '80px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
+                  <td style={{ width: '220px' }}>
                     <div className="admin-table-actions">
-                      <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
-                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
+                      {/* <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
+                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button> */}
                       <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
                       <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
                     </div>
@@ -1153,6 +1162,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -1300,214 +1310,214 @@ function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
 }
 
 // RoutingPage Component
-// type RoutingPageProps = {
-//   rules: RoutingRule[];
-//   setRules: React.Dispatch<React.SetStateAction<RoutingRule[]>>;
-//   agents: Agent[];
-// };
+type RoutingPageProps = {
+  rules: RoutingRule[];
+  setRules: React.Dispatch<React.SetStateAction<RoutingRule[]>>;
+  agents: Agent[];
+};
 
-// function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
-//   const [editing, setEditing] = useState<number | null>(null);
-//   const [editingData, setEditingData] = useState<{ topic: string; priority: number; allowedRoles: string[] } | null>(null);
-//   const [showCreateModal, setShowCreateModal] = useState(false);
-//   const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
+function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
+  const [editing, setEditing] = useState<number | null>(null);
+  const [editingData, setEditingData] = useState<{ topic: string; priority: number; allowedRoles: string[] } | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
 
-//   const availableRoles = ['technical', 'sales', 'support'];
+  const availableRoles = ['technical', 'sales', 'support'];
 
-//   function addRule() {
-//     if (newRuleData.topic.trim()) {
-//       const newRule: RoutingRule = {
-//         id: Date.now(),
-//         topic: newRuleData.topic.trim(),
-//         allowedRoles: newRuleData.allowedRoles,
-//         priority: newRuleData.priority,
-//         autoAssign: true
-//       };
-//       setRules((r) => [newRule, ...r]);
-//       setShowCreateModal(false);
-//       setNewRuleData({ topic: '', priority: 5, allowedRoles: ['technical'] });
-//     }
-//   }
+  function addRule() {
+    if (newRuleData.topic.trim()) {
+      const newRule: RoutingRule = {
+        id: Date.now(),
+        topic: newRuleData.topic.trim(),
+        allowedRoles: newRuleData.allowedRoles,
+        priority: newRuleData.priority,
+        autoAssign: true
+      };
+      setRules((r) => [newRule, ...r]);
+      setShowCreateModal(false);
+      setNewRuleData({ topic: '', priority: 5, allowedRoles: ['technical'] });
+    }
+  }
 
-//   function startEdit(rule: RoutingRule) {
-//     setEditing(rule.id);
-//     setEditingData({ topic: rule.topic, priority: rule.priority, allowedRoles: [...rule.allowedRoles] });
-//   }
+  function startEdit(rule: RoutingRule) {
+    setEditing(rule.id);
+    setEditingData({ topic: rule.topic, priority: rule.priority, allowedRoles: [...rule.allowedRoles] });
+  }
 
-//   function saveEdit(ruleId: number) {
-//     if (editingData) {
-//       setRules((prev) => prev.map((r) => 
-//         r.id === ruleId 
-//           ? { ...r, topic: editingData.topic, priority: editingData.priority, allowedRoles: editingData.allowedRoles }
-//           : r
-//       ));
-//       setEditing(null);
-//       setEditingData(null);
-//     }
-//   }
+  function saveEdit(ruleId: number) {
+    if (editingData) {
+      setRules((prev) => prev.map((r) => 
+        r.id === ruleId 
+          ? { ...r, topic: editingData.topic, priority: editingData.priority, allowedRoles: editingData.allowedRoles }
+          : r
+      ));
+      setEditing(null);
+      setEditingData(null);
+    }
+  }
 
-//   function toggleRole(role: string) {
-//     if (editingData) {
-//       const newRoles = editingData.allowedRoles.includes(role)
-//         ? editingData.allowedRoles.filter((r) => r !== role)
-//         : [...editingData.allowedRoles, role];
-//       setEditingData({ ...editingData, allowedRoles: newRoles });
-//     }
-//   }
+  function toggleRole(role: string) {
+    if (editingData) {
+      const newRoles = editingData.allowedRoles.includes(role)
+        ? editingData.allowedRoles.filter((r) => r !== role)
+        : [...editingData.allowedRoles, role];
+      setEditingData({ ...editingData, allowedRoles: newRoles });
+    }
+  }
 
-//   return (
-//     <div className="admin-routing-page">
-//       <div className="admin-page-header">
-//         <h2 className="admin-page-title">Routing Rules</h2>
-//         <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-primary">Create Rule</button>
-//       </div>
+  return (
+    <div className="admin-routing-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Routing Rules</h2>
+        <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-primary">Create Rule</button>
+      </div>
 
-//       {showCreateModal && (
-//         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-//           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-//             <button
-//               onClick={() => setShowCreateModal(false)}
-//               style={{
-//                 position: 'absolute',
-//                 top: '16px',
-//                 right: '16px',
-//                 background: 'none',
-//                 border: 'none',
-//                 fontSize: '24px',
-//                 cursor: 'pointer',
-//                 color: '#6b7280',
-//                 padding: '4px',
-//                 borderRadius: '4px'
-//               }}
-//               onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
-//               onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-//             >
-//               ×
-//             </button>
-//             <h3 style={{ marginTop: 0, marginRight: '40px' }}>Create New Routing Rule</h3>
-//             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-//               <label>
-//                 Topic
-//                 <input
-//                   type="text"
-//                   value={newRuleData.topic}
-//                   onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
-//                   className="admin-login-input"
-//                   placeholder="e.g., technical, sales, support"
-//                 />
-//               </label>
-//               <label>
-//                 Priority
-//                 <input
-//                   type="number"
-//                   value={newRuleData.priority}
-//                   onChange={(e) => setNewRuleData({ ...newRuleData, priority: Number(e.target.value) })}
-//                   className="admin-login-input"
-//                 />
-//               </label>
-//               <label>
-//                 Allowed Roles
-//                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
-//                   {availableRoles.map((role) => (
-//                     <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937', padding: '4px 0', cursor: 'pointer' }}>
-//                       <input
-//                         type="checkbox"
-//                         checked={newRuleData.allowedRoles.includes(role)}
-//                         onChange={(e) => {
-//                           if (e.target.checked) {
-//                             setNewRuleData({ ...newRuleData, allowedRoles: [...newRuleData.allowedRoles, role] });
-//                           } else {
-//                             setNewRuleData({ ...newRuleData, allowedRoles: newRuleData.allowedRoles.filter((r) => r !== role) });
-//                           }
-//                         }}
-//                       />
-//                       {role}
-//                     </label>
-//                   ))}
-//                 </div>
-//               </label>
-//             </div>
-//             <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-//               <button onClick={() => setShowCreateModal(false)} className="admin-button" style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>
-//                 Close
-//               </button>
-//               <button onClick={addRule} className="admin-button admin-button-primary">
-//                 Create Rule
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-//       )}
+      {showCreateModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button
+              onClick={() => setShowCreateModal(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#6b7280',
+                padding: '4px',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+            >
+              ×
+            </button>
+            <h3 style={{ marginTop: 0, marginRight: '40px' }}>Create New Routing Rule</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              <label>
+                Topic
+                <input
+                  type="text"
+                  value={newRuleData.topic}
+                  onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
+                  className="admin-login-input"
+                  placeholder="e.g., technical, sales, support"
+                />
+              </label>
+              <label>
+                Priority
+                <input
+                  type="number"
+                  value={newRuleData.priority}
+                  onChange={(e) => setNewRuleData({ ...newRuleData, priority: Number(e.target.value) })}
+                  className="admin-login-input"
+                />
+              </label>
+              <label>
+                Allowed Roles
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
+                  {availableRoles.map((role) => (
+                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937', padding: '4px 0', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={newRuleData.allowedRoles.includes(role)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewRuleData({ ...newRuleData, allowedRoles: [...newRuleData.allowedRoles, role] });
+                          } else {
+                            setNewRuleData({ ...newRuleData, allowedRoles: newRuleData.allowedRoles.filter((r) => r !== role) });
+                          }
+                        }}
+                      />
+                      {role}
+                    </label>
+                  ))}
+                </div>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowCreateModal(false)} className="admin-button" style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>
+                Close
+              </button>
+              <button onClick={addRule} className="admin-button admin-button-primary">
+                Create Rule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-//       <div className="admin-routing-rules">
-//         {rules.map((r) => (
-//           <div key={r.id} className="admin-routing-rule">
-//             <div className="admin-routing-rule-header">
-//               <div>
-//                 {editing === r.id ? (
-//                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-//                     <input
-//                       type="text"
-//                       value={editingData?.topic || ''}
-//                       onChange={(e) => setEditingData({ ...editingData!, topic: e.target.value })}
-//                       className="admin-login-input"
-//                       style={{ width: '100%' }}
-//                     />
-//                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-//                       {availableRoles.map((role) => (
-//                         <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-//                           <input
-//                             type="checkbox"
-//                             checked={editingData?.allowedRoles.includes(role) || false}
-//                             onChange={() => toggleRole(role)}
-//                           />
-//                           {role}
-//                         </label>
-//                       ))}
-//                     </div>
-//                   </div>
-//                 ) : (
-//                   <>
-//                     <div className="admin-routing-rule-topic">{r.topic}</div>
-//                     <div className="admin-routing-rule-roles">Roles: {r.allowedRoles.join(', ')}</div>
-//                   </>
-//                 )}
-//               </div>
-//               <div style={{ display: 'flex', gap: '8px' }}>
-//                 {editing === r.id ? (
-//                   <>
-//                     <button className="admin-button admin-button-primary" onClick={() => saveEdit(r.id)}>Save</button>
-//                     <button className="admin-button" onClick={() => { setEditing(null); setEditingData(null); }}>Cancel</button>
-//                   </>
-//                 ) : (
-//                   <>
-//                     <button className="admin-button" onClick={() => startEdit(r)}>Edit</button>
-//                     <button className="admin-button admin-button-danger" onClick={() => {
-//                       if (window.confirm('Are you sure you want to delete this rule?')) {
-//                         setRules((prev) => prev.filter((x) => x.id !== r.id));
-//                       }
-//                     }}>Delete</button>
-//                   </>
-//                 )}
-//               </div>
-//             </div>
+      <div className="admin-routing-rules">
+        {rules.map((r) => (
+          <div key={r.id} className="admin-routing-rule">
+            <div className="admin-routing-rule-header">
+              <div>
+                {editing === r.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={editingData?.topic || ''}
+                      onChange={(e) => setEditingData({ ...editingData!, topic: e.target.value })}
+                      className="admin-login-input"
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {availableRoles.map((role) => (
+                        <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                          <input
+                            type="checkbox"
+                            checked={editingData?.allowedRoles.includes(role) || false}
+                            onChange={() => toggleRole(role)}
+                          />
+                          {role}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="admin-routing-rule-topic">{r.topic}</div>
+                    <div className="admin-routing-rule-roles">Roles: {r.allowedRoles.join(', ')}</div>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {editing === r.id ? (
+                  <>
+                    <button className="admin-button admin-button-primary" onClick={() => saveEdit(r.id)}>Save</button>
+                    <button className="admin-button" onClick={() => { setEditing(null); setEditingData(null); }}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="admin-button" onClick={() => startEdit(r)}>Edit</button>
+                    <button className="admin-button admin-button-danger" onClick={() => {
+                      if (window.confirm('Are you sure you want to delete this rule?')) {
+                        setRules((prev) => prev.filter((x) => x.id !== r.id));
+                      }
+                    }}>Delete</button>
+                  </>
+                )}
+              </div>
+            </div>
 
-//             {editing === r.id && editingData && (
-//               <div className="admin-routing-rule-edit">
-//                 <label>Priority</label>
-//                 <input 
-//                   type="number" 
-//                   value={editingData.priority}
-//                   onChange={(e) => setEditingData({ ...editingData, priority: Number(e.target.value) })}
-//                 />
-//               </div>
-//             )}
-//           </div>
-//         ))}
-//       </div>
-//     </div>
-//   );
-// }
+            {editing === r.id && editingData && (
+              <div className="admin-routing-rule-edit">
+                <label>Priority</label>
+                <input 
+                  type="number" 
+                  value={editingData.priority}
+                  onChange={(e) => setEditingData({ ...editingData, priority: Number(e.target.value) })}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // TemplatesPage Component
 type TemplatesPageProps = {
@@ -1631,68 +1641,68 @@ function TemplatesPage({ templates, setTemplates }: TemplatesPageProps) {
 }
 
 // ChatHistoryPage Component
-// type ChatHistoryPageProps = {
-//   sessions: Session[];
-// };
+type ChatHistoryPageProps = {
+  sessions: Session[];
+};
 
-// function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
-//   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
-//   return (
-//     <div className="admin-history-page">
-//       <h2 className="admin-page-title">Chat History</h2>
-//       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-//         <div>
-//           <div className="admin-history-list">
-//             {sessions.map((s) => (
-//               <div 
-//                 key={s.id} 
-//                 className={`admin-history-item ${selectedSession?.id === s.id ? 'admin-sidebar-item active' : ''}`}
-//                 style={{ cursor: 'pointer' }}
-//                 onClick={() => setSelectedSession(s)}
-//               >
-//                 <div className="admin-history-item-header">
-//                   <div>
-//                     <div className="admin-history-item-title">Session {s.id}</div>
-//                     <div className="admin-history-item-topic">Topic: {s.topic} • Status: {s.status}</div>
-//                   </div>
-//                   <div style={{ fontSize: '14px' }}>Messages: {s.messages.length}</div>
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-//         <div>
-//           {selectedSession ? (
-//             <div className="admin-content-card">
-//               <h3>Session {selectedSession.id} Details</h3>
-//               <div style={{ marginBottom: '16px' }}>
-//                 <div><strong>Topic:</strong> {selectedSession.topic}</div>
-//                 <div><strong>Status:</strong> {selectedSession.status}</div>
-//                 <div><strong>Duration:</strong> {selectedSession.duration}s</div>
-//                 <div><strong>Wait Time:</strong> {selectedSession.waitTime}s</div>
-//                 {selectedSession.assignedAgentId && <div><strong>Assigned Agent:</strong> {selectedSession.assignedAgentId}</div>}
-//               </div>
-//               <h4>Messages:</h4>
-//               <div className="admin-chat-window-messages" style={{ height: '300px' }}>
-//                 {selectedSession.messages.map((m, i) => (
-//                   <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
-//                     <div className="admin-chat-message-sender">{m.sender}</div>
-//                     <div>{m.text}</div>
-//                   </div>
-//                 ))}
-//               </div>
-//             </div>
-//           ) : (
-//             <div className="admin-content-card">
-//               <div className="admin-empty-state">Select a session to view details</div>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
+  return (
+    <div className="admin-history-page">
+      <h2 className="admin-page-title">Chat History</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div>
+          <div className="admin-history-list">
+            {sessions.map((s) => (
+              <div 
+                key={s.id} 
+                className={`admin-history-item ${selectedSession?.id === s.id ? 'admin-sidebar-item active' : ''}`}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedSession(s)}
+              >
+                <div className="admin-history-item-header">
+                  <div>
+                    <div className="admin-history-item-title">Session {s.id}</div>
+                    <div className="admin-history-item-topic">Topic: {s.topic} • Status: {s.status}</div>
+                  </div>
+                  <div style={{ fontSize: '14px' }}>Messages: {s.messages.length}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          {selectedSession ? (
+            <div className="admin-content-card">
+              <h3>Session {selectedSession.id} Details</h3>
+              <div style={{ marginBottom: '16px' }}>
+                <div><strong>Topic:</strong> {selectedSession.topic}</div>
+                <div><strong>Status:</strong> {selectedSession.status}</div>
+                <div><strong>Duration:</strong> {selectedSession.duration}s</div>
+                <div><strong>Wait Time:</strong> {selectedSession.waitTime}s</div>
+                {selectedSession.assignedAgentId && <div><strong>Assigned Agent:</strong> {selectedSession.assignedAgentId}</div>}
+              </div>
+              <h4>Messages:</h4>
+              <div className="admin-chat-window-messages" style={{ height: '300px' }}>
+                {selectedSession.messages.map((m, i) => (
+                  <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
+                    <div className="admin-chat-message-sender">{m.sender}</div>
+                    <div>{m.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="admin-content-card">
+              <div className="admin-empty-state">Select a session to view details</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // AnalyticsPage Component
 type AnalyticsPageProps = {
@@ -1729,49 +1739,49 @@ function AnalyticsPage({ sessions, agents }: AnalyticsPageProps) {
 }
 
 // SettingsPage Component
-// function SettingsPage() {
-//   const [settings, setSettings] = useState({
-//     businessHours: 'Mon-Fri 9:00-18:00',
-//     fallbackOption: 'Continue with bot'
-//   });
-//   const [saved, setSaved] = useState(false);
+function SettingsPage() {
+  const [settings, setSettings] = useState({
+    businessHours: 'Mon-Fri 9:00-18:00',
+    fallbackOption: 'Continue with bot'
+  });
+  const [saved, setSaved] = useState(false);
 
-//   const handleSave = () => {
-//     // In a real app, this would save to API
-//     setSaved(true);
-//     setTimeout(() => setSaved(false), 3000);
-//   };
+  const handleSave = () => {
+    // In a real app, this would save to API
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
 
-//   return (
-//     <div className="admin-settings-page">
-//       <div className="admin-page-header">
-//         <h2 className="admin-page-title">Settings</h2>
-//         <button onClick={handleSave} className="admin-button admin-button-primary">Save Settings</button>
-//       </div>
-//       {saved && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>Settings saved successfully!</div>}
-//       <div className="admin-settings-form">
-//         <div className="admin-settings-field">
-//           <label>Business Hours</label>
-//           <input 
-//             value={settings.businessHours}
-//             onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
-//           />
-//         </div>
-//         <div className="admin-settings-field">
-//           <label>Fallback Option</label>
-//           <select 
-//             value={settings.fallbackOption}
-//             onChange={(e) => setSettings({ ...settings, fallbackOption: e.target.value })}
-//           >
-//             <option>Continue with bot</option>
-//             <option>Request callback</option>
-//             <option>Send email</option>
-//           </select>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
+  return (
+    <div className="admin-settings-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Settings</h2>
+        <button onClick={handleSave} className="admin-button admin-button-primary">Save Settings</button>
+      </div>
+      {saved && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>Settings saved successfully!</div>}
+      <div className="admin-settings-form">
+        <div className="admin-settings-field">
+          <label>Business Hours</label>
+          <input 
+            value={settings.businessHours}
+            onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
+          />
+        </div>
+        <div className="admin-settings-field">
+          <label>Fallback Option</label>
+          <select 
+            value={settings.fallbackOption}
+            onChange={(e) => setSettings({ ...settings, fallbackOption: e.target.value })}
+          >
+            <option>Continue with bot</option>
+            <option>Request callback</option>
+            <option>Send email</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // TicketsPage Component
 type TicketsPageProps = {
@@ -2010,12 +2020,12 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
           <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: '80px' }}>ID</th>
+                <th style={{ width: '366px' }}>ID</th>
                 <th style={{ minWidth: '200px' }}>Title</th>
-                <th style={{ width: '120px' }}>Status</th>
+                <th style={{ width: '100px' }}>Status</th>
                 <th style={{ width: '100px' }}>Priority</th>
                 <th style={{ width: '120px' }}>Created</th>
-                <th style={{ width: '140px' }}>Actions</th>
+                <th style={{ minWidth: '145px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2028,21 +2038,21 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
               ) : (
                 filteredTickets.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td style={{ width: '80px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
+                    <td style={{ width: '366px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
                     <td style={{ minWidth: '200px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {ticket.title}
                     </td>
-                    <td style={{ width: '120px' }}>
+                    <td style={{ width: '100px' }}>
                       <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ width: '100px' }}>
+                    <td style={{ width: '80px' }}>
                       <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
                         {ticket.priority}
                       </span>
                     </td>
-                    <td style={{ width: '120px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
+                    <td style={{ width: '100px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
                     <td style={{ width: '140px' }}>
@@ -2477,4 +2487,13 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
       </div>
     </div>
   );
+}
+
+// Mock Data Functions
+function mockAgents(): Agent[] {
+  return [
+    { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
+    { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
+    { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
+  ];
 }

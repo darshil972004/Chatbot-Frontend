@@ -452,6 +452,7 @@
   color: var(--admin-text-secondary);
   font-weight: 500;
   text-transform: uppercase;
+  text-align: center;
   letter-spacing: 0.025em;
 }
 
@@ -460,6 +461,7 @@
   font-weight: 700;
   color: var(--admin-text);
   line-height: 1;
+  text-align: center;
 }
 
 .admin-content-grid {
@@ -529,10 +531,11 @@
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);
   box-shadow: var(--admin-shadow);
-  padding: 24px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 70vh;
 }
 
 .admin-page-header {
@@ -612,13 +615,14 @@
 }
 
 .admin-button {
-  padding: 8px 12px;
+  padding: 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   background-color: #ffffff;
   transition: background-color 0.2s;
+  margin: 4px;
 }
 
 .admin-button:hover {
@@ -1038,7 +1042,8 @@
 }
 
 .admin-login-input {
-  padding: 6px 6px;
+  padding: 6px;
+  margin-left: 5px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 13px;
@@ -1554,10 +1559,6 @@ html, body {
   overflow: hidden;
 }
 
-/* Add bottom margin to prevent content clipping */
-.admin-agents-page {
-  padding-bottom: 10vh;
-}
 
 /* Tickets Page Improvements */
 .admin-tickets-container {
@@ -1570,7 +1571,7 @@ html, body {
 }
 
 .admin-tickets-table-wrapper {
-  max-height: 60vh;
+  height: 100%;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--admin-border) transparent;
@@ -1613,7 +1614,7 @@ html, body {
 
 /* Make tickets table buttons smaller */
 .admin-tickets-table-wrapper .admin-button {
-  padding: 6px 10px;
+  padding: 6px 11px;
   font-size: 12px;
   min-height: 28px;
 }
@@ -1644,18 +1645,20 @@ html, body {
 
 /* Agents Page Improvements */
 .admin-agents-container {
-  margin-top: 20px;
+  /* margin-top: -30%; */
+  width: 98%;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-lg);
+  border-radius:var(--admin-radius-lg);
   box-shadow: var(--admin-shadow);
   overflow: hidden;
-  padding: 0; /* Remove padding to let table take full width */
-  height: 61vh;
+  margin-left: 10px; 
+  height: 60vh;
 }
 
 .admin-agents-table-wrapper {
   width: 100%;
+  max-height: 70vh; /* set scrollable viewport height */
   height: 60vh;
   overflow-y: auto;
   overflow-x: auto;
