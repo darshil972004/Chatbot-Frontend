@@ -531,7 +531,7 @@
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);
   box-shadow: var(--admin-shadow);
-  padding: 24px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -615,14 +615,14 @@
 }
 
 .admin-button {
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
   background-color: #ffffff;
   transition: background-color 0.2s;
-  margin: 2px;
+  margin: 4px;
 }
 
 .admin-button:hover {
@@ -1614,7 +1614,7 @@ html, body {
 
 /* Make tickets table buttons smaller */
 .admin-tickets-table-wrapper .admin-button {
-  padding: 6px 10px;
+  padding: 6px 11px;
   font-size: 12px;
   min-height: 28px;
 }
