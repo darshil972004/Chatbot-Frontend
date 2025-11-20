@@ -562,7 +562,13 @@ export default function ChatbotWidget() {
               </div>
               <div className="cp-live-banner-subtitle">Ticket #{ticketId.slice(0, 8)}</div>
               {liveChatError ? <div className="cp-live-banner-error">{liveChatError}</div> : null}
-              <button className="cp-cancel-request-btn" style={{marginTop:8}} onClick={handleCancelRequest}>Cancel Request</button>
+              <button
+                className="cp-cancel-request-btn cp-btn cp-btn--danger"
+                style={{ marginTop: 4, padding: '0px 0px', borderRadius: '5px', background: 'linear-gradient(90deg, #e53935 0%, #ff9800 100%)', color: '#fff', fontWeight: 500, fontSize: '0.92rem', border: 'none', boxShadow: '0 1px 4px rgba(229,57,53,0.10)', transition: 'background 0.2s', minWidth: 'unset', lineHeight: 1.2 }}
+                onClick={handleCancelRequest}
+              >
+                Cancel Request
+              </button>
             </div>
           </div>
         )}
