@@ -688,34 +688,34 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     });
   };
 
-  async function toggleStatus(id: number) {
-    const agent = agents.find((a) => a.id === id);
-    if (!agent) return;
-    const newStatus = agent.status === 'online' ? 'offline' : 'online';
-    try {
-      // Optimistically update UI
-      setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-      );
+  // async function toggleStatus(id: number) {
+  //   const agent = agents.find((a) => a.id === id);
+  //   if (!agent) return;
+  //   const newStatus = agent.status === 'online' ? 'offline' : 'online';
+  //   try {
+  //     // Optimistically update UI
+  //     setAgents((prevAgents) =>
+  //       prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+  //     );
 
-      // Create status event to track the status change
-      await agentsApi.updateAgentStatus({
-        agent_id: id,
-        status: newStatus,
-        concurrent_load: 0,
-        details: { source: 'admin_panel_toggle' }
-      });
+  //     // Create status event to track the status change
+  //     await agentsApi.updateAgentStatus({
+  //       agent_id: id,
+  //       status: newStatus,
+  //       concurrent_load: 0,
+  //       details: { source: 'admin_panel_toggle' }
+  //     });
 
-      // Reload to get the latest status from backend
-      await reloadAgents();
-    } catch (err) {
-      // Revert optimistic update on error
-      setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
-      );
-      alert('Error updating agent status');
-    }
-  }
+  //     // Reload to get the latest status from backend
+  //     await reloadAgents();
+  //   } catch (err) {
+  //     // Revert optimistic update on error
+  //     setAgents((prevAgents) =>
+  //       prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
+  //     );
+  //     alert('Error updating agent status');
+  //   }
+  // }
 
   async function handleCreateAgent() {
     try {
@@ -818,10 +818,10 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     }
   }
 
-  function handleViewAgent(agent: Agent) {
-    setViewingAgent(agent);
-    setShowViewModal(true);
-  }
+  // function handleViewAgent(agent: Agent) {
+  //   setViewingAgent(agent);
+  //   setShowViewModal(true);
+  // }
 
   async function handleDeleteAgent(id: number) {
     if (window.confirm('Are you sure you want to delete this agent?')) {
@@ -983,7 +983,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     ))}
                   </div>
                 </label>
-                <label>
+                {/* <label>
                   Status
                   <select
                     value={formData.status}
@@ -995,7 +995,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     <option value="busy">Busy</option>
                     <option value="away">Away</option>
                   </select>
-                </label>
+                </label> */}
                 <label>
                   Max Concurrent Chats
                   <input
@@ -1142,8 +1142,8 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   <td style={{ width: '120px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
                   <td style={{ width: '160px' }}>
                     <div className="admin-table-actions">
-                      <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
-                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
+                      {/* <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
+                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button> */}
                       <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
                       <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
                     </div>
