@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import { updateAgentStatus } from '../api/agent'
-
 
 type AgentLoginProps = {
   onLogin: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
@@ -26,18 +24,6 @@ export default function AgentLogin({ onLogin }: AgentLoginProps) {
     setIsSubmitting(false);
     if (!result.success) {
       setError(result.message || "Invalid credentials");
-    } else {
-      // On successful login, set agent status to online
-      try {
-        // Extract agent ID from the result data (passed by App.tsx)
-        const agentInfo = typeof (result as any).data === 'object' ? (result as any).data : null;
-        if (agentInfo?.id) {
-          await updateAgentStatus(agentInfo.id, 'online', { source: 'agent_login_form' });
-        }
-      } catch (err) {
-        console.error('Failed to update agent status on login', err);
-        // Continue anyway, status will be set in AgentPanel
-      }
     }
   };
 

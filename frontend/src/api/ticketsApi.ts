@@ -37,13 +37,6 @@ export const ticketsApi = {
     const response = await apiClient.get(`/api/tickets/session/${sessionId}`);
     return response.data?.data || [];
   },
-
-  // Get tickets by agent
-  getTicketsByAgent: async (agentId: number, limit?: number, offset?: number): Promise<Ticket[]> => {
-    const params = { limit, offset };
-    const response = await apiClient.get(`/api/tickets/agent/${agentId}`, { params });
-    return response.data?.data || [];
-  },
 };
 
 // Ticket Agents API

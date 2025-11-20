@@ -1,8 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
-import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, updateAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
-import { ticketsApi } from '../api/ticketsApi'
+import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
 const DEFAULT_ROLE_LABEL = 'Technical Agent'
@@ -169,24 +168,16 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           console.log('Notifier message received:', msg)
           // Handle new ticket notifications
           if (msg.type === 'new_ticket') {
-            // Check if ticket is already in the list (avoid duplicates)
-            setSessions(prev => {
-              const exists = prev.some(s => s.id === msg.ticket_id)
-              if (exists) return prev
-              
-              return [{ 
-                id: msg.ticket_id, 
-                user: { name: msg.user_name || `User ${msg.user_id || 'Unknown'}`, email: msg.user_email || '' }, 
-                topic: msg.category || 'tech', 
-                status: 'waiting', 
-                unread: 1, 
-                lastMsgTime: 'now', 
-                startedAgo: 'just now', 
-                messages: [],
-                title: msg.prompt || 'New Ticket',
-                priority: 'medium'
-              }, ...prev]
-            })
+            setSessions(prev => [{ 
+              id: msg.ticket_id, 
+              user: { name: msg.user_name || 'User', email: msg.user_email || '' }, 
+              topic: msg.category || 'tech', 
+              status: 'waiting', 
+              unread: 1, 
+              lastMsgTime: 'now', 
+              startedAgo: 'just now', 
+              messages: [] 
+            }, ...prev])
             // Set active session id from backend ACTIVE_ROOMS via notifier (if agent has no active session)
             if (!activeSessionId && msg.ticket_id) {
               setActiveSessionId(msg.ticket_id)
@@ -201,73 +192,34 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       )
     }
 
-    // Fetch tickets assigned to this agent from backend
+    // Fetch current active rooms from backend to initialize session list
     (async () => {
-      if (!agent?.id) return
       try {
-        // Fetch tickets assigned to this agent
-        const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0)
-        if (Array.isArray(tickets) && tickets.length > 0) {
-          const mapped = tickets.map((ticket: any) => ({
-            id: ticket.id,
-            user: { 
-              name: `User ${ticket.user_id || 'Unknown'}`, 
-              email: '',
-              country: '',
-              pastIssues: 0
-            },
-            topic: ticket.category || 'tech',
-            status: ticket.status === 'open' || ticket.status === 'in_progress' ? 'assigned' : 
-                    ticket.status === 'waiting' ? 'waiting' : ticket.status || 'waiting',
+        const resp = await fetchActiveRooms()
+        if (resp && resp.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((r: any) => ({
+            id: r.ticket_id,
+            user: { name: r.user_id || 'User', email: '' },
+            topic: 'tech',
+            status: r.status || 'waiting',
             unread: 0,
-            lastMsgTime: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'now',
-            startedAgo: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'just now',
-            messages: [],
-            title: ticket.title,
-            description: ticket.description,
-            priority: ticket.priority
+            lastMsgTime: r.created_at || 'now',
+            startedAgo: r.created_at || 'just now',
+            messages: r.history || []
           }))
-          
           // Merge with any existing sessions, dedupe by id
           setSessions(prev => {
             const existingIds = new Set(prev.map(p => p.id))
             const merged = [...mapped, ...prev.filter(p=>!existingIds.has(p.id))]
             return merged
           })
-          
-          // If no active session, pick the most recent ticket
+          // If no active session, pick the most recent backend room
           if (!activeSessionId && mapped.length > 0) {
             setActiveSessionId(mapped[0].id)
           }
         }
       } catch (e) {
-        console.warn('Failed to fetch tickets by agent', e)
-        // Fallback to active rooms if tickets fetch fails
-        try {
-          const resp = await fetchActiveRooms()
-          if (resp && resp.success && Array.isArray(resp.data)) {
-            const mapped = resp.data.map((r: any) => ({
-              id: r.ticket_id,
-              user: { name: r.user_id || 'User', email: '' },
-              topic: 'tech',
-              status: r.status || 'waiting',
-              unread: 0,
-              lastMsgTime: r.created_at || 'now',
-              startedAgo: r.created_at || 'just now',
-              messages: r.history || []
-            }))
-            setSessions(prev => {
-              const existingIds = new Set(prev.map(p => p.id))
-              const merged = [...mapped, ...prev.filter(p=>!existingIds.has(p.id))]
-              return merged
-            })
-            if (!activeSessionId && mapped.length > 0) {
-              setActiveSessionId(mapped[0].id)
-            }
-          }
-        } catch (fallbackErr) {
-          console.warn('Failed to fetch active rooms as fallback', fallbackErr)
-        }
+        console.warn('Failed to fetch active rooms', e)
       }
     })()
 
@@ -369,18 +321,17 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
     setQuickReplySubmitting(true)
     try {
+      await createAgentQuickReply(agentProfile.id, {
+        category: quickReplyDraft.category.trim() || null,
+        template_text: quickReplyDraft.text.trim(),
+      })
+
       if (quickReplyDraft.id) {
-        // Update existing quick reply
-        await updateAgentQuickReply(agentProfile.id, quickReplyDraft.id, {
-          category: quickReplyDraft.category.trim() || null,
-          template_text: quickReplyDraft.text.trim(),
-        })
-      } else {
-        // Create new quick reply
-        await createAgentQuickReply(agentProfile.id, {
-          category: quickReplyDraft.category.trim() || null,
-          template_text: quickReplyDraft.text.trim(),
-        })
+        try {
+          await deleteAgentQuickReply(agentProfile.id, quickReplyDraft.id)
+        } catch (deleteErr) {
+          console.error('Failed to delete original quick reply while editing', deleteErr)
+        }
       }
 
       await loadQuickReplies(agentProfile.id)
@@ -434,18 +385,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     active: boolean;
   }
 
-  async function claimSession(sessionId: string|number){
-    const agent = retrieveAgentInfo()
-    if (!agent) return
-    
-    // Set agent status to busy immediately when claiming a session
-    try {
-      await updateAgentStatus(agent.id, 'busy', { source: 'agent_panel_claim_session', previous_status: status })
-      setStatus('busy')
-    } catch (err) {
-      console.error('Failed to mark agent busy when claiming session', err)
-    }
-
+  function claimSession(sessionId: string|number){
     if(wsRef.current && wsRef.current.readyState === WebSocket.OPEN){
       try{
         sendClaimAction(wsRef.current, sessionId)
@@ -459,18 +399,9 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
-  async function openChatForSession(sessionId: string|number){
+  function openChatForSession(sessionId: string|number){
     const agent = retrieveAgentInfo()
     if (!agent) return
-    
-    // Set agent status to busy immediately when opening a chat
-    try {
-      await updateAgentStatus(agent.id, 'busy', { source: 'agent_panel_open_chat', previous_status: status })
-      setStatus('busy')
-    } catch (err) {
-      console.error('Failed to mark agent busy when opening chat', err)
-    }
-
     if(chatWsRef.current) chatWsRef.current.close()
     chatWsRef.current = openAgentChatWS(
       sessionId,
@@ -501,18 +432,10 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   // End chat and allow user to chat with AI again
-  async function endChatSession(){
+  function endChatSession(){
     releaseChatSession();
-
-    const agent = retrieveAgentInfo()
-    if (agent?.id) {
-      try {
-        await updateAgentStatus(agent.id, 'online', { source: 'agent_panel_end_chat', previous_status: status })
-        setStatus('online')
-      } catch (err) {
-        console.error('Failed to mark agent online after ending chat', err)
-      }
-    }
+    // Optionally, you can add logic here to notify the frontend/chatbot widget to switch back to AI mode
+    // For example, you might trigger an event or update a shared state
     alert('Chat ended. User can now chat with AI again.');
   }
 
@@ -736,28 +659,17 @@ interface ConversationListItemProps {
   active: boolean;
 }
 function ConversationListItem({session, onOpen, onClaim, active}: ConversationListItemProps){
-  const displayTitle = session.title || session.topic || 'Ticket'
-  const displayStatus = session.status === 'assigned' || session.status === 'in_progress' ? 'assigned' : 
-                        session.status === 'open' ? 'open' : 
-                        session.status === 'waiting' ? 'waiting' : session.status || 'waiting'
-  
   return (
     <div className={`conversation-item${active ? ' active' : ''}`} onClick={onOpen} style={{cursor: 'pointer'}}>
       <div className="conversation-item-text">
         <div className="conversation-name">
-          {displayTitle} <span className="conversation-id">#{session.id}</span>
+          {session.user.name} <span className="conversation-id">#{session.id}</span>
         </div>
-        <div className="conversation-meta">
-          {session.priority && `${session.priority} • `}
-          {displayStatus} • {session.unread} new
-        </div>
+        <div className="conversation-meta">{session.topic} • {session.unread} new</div>
       </div>
       <div className="conversation-time">{session.lastMsgTime}</div>
-      {displayStatus === 'waiting' && (
-        <button className="claim-button" onClick={(e) => {
-          e.stopPropagation()
-          onClaim && onClaim()
-        }}>Claim</button>
+      {session.status === 'waiting' && (
+        <button className="claim-button" onClick={() => onClaim && onClaim()}>Claim</button>
       )}
     </div>
   )
@@ -788,7 +700,7 @@ function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps)
       <div className="chat-window-header">
         <div>
           <div className="chat-title">{session.user.name}</div>
-          <div className="chat-subtitle">{session.user.email} - {session.user.country}</div>
+          <div className="chat-subtitle">{session.user.email} • {session.user.country}</div>
         </div>
         <div className="chat-subtitle">Since {session.startedAgo}</div>
       </div>
