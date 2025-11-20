@@ -535,7 +535,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-bottom: 64vh;
+  padding-bottom: 30%;
+  height: 80%;
 }
 
 .admin-page-header {
@@ -1645,20 +1646,20 @@ html, body {
 
 /* Agents Page Improvements */
 .admin-agents-container {
-  margin-top: -63vh;
-  width: 72vw;
+  margin-top: -30%;
+  width: 98%;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
-  border-bottom-left-radius:var(--admin-radius-lg);
-  border-bottom-right-radius:var(--admin-radius-lg);
+  border-radius:var(--admin-radius-lg);
   box-shadow: var(--admin-shadow);
   overflow: hidden;
-  margin-left: 0px;
-  height: 63vh;
+  margin-left: 10px; 
+  height: 60%;
 }
 
 .admin-agents-table-wrapper {
   width: 100%;
+  max-height: 70vh; /* set scrollable viewport height */
   height: 60vh;
   overflow-y: auto;
   overflow-x: auto;
