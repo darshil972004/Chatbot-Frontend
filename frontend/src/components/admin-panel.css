@@ -615,14 +615,14 @@
 }
 
 .admin-button {
-  padding: 13px;
+  padding: 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 10px;
   cursor: pointer;
   background-color: #ffffff;
   transition: background-color 0.2s;
-  margin: 4px;
+  margin: 2px;
 }
 
 .admin-button:hover {

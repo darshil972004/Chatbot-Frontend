@@ -1148,8 +1148,8 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                       {a.status}
                     </span>
                   </td>
-                  <td style={{ width: '120px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
-                  <td style={{ width: '160px' }}>
+                  <td style={{ width: '80px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
+                  <td style={{ width: '220px' }}>
                     <div className="admin-table-actions">
                       {/* <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
                       <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button> */}
