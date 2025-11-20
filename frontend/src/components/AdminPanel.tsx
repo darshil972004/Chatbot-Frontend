@@ -612,8 +612,8 @@ function StatCard({ title, value, icon }: StatCardProps) {
     <div className="admin-stat-card">
       
       <div className="admin-stat-content">
-        <span className="admin-stat-title">{title} </span>
-        <span className="admin-stat-value">{value}</span>
+        <div className="admin-stat-title">{title}</div>
+        <div className="admin-stat-value">{value}</div>
       </div>
     </div>
   );
