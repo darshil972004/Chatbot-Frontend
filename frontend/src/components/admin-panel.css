@@ -460,6 +460,7 @@
   font-weight: 700;
   color: var(--admin-text);
   line-height: 1;
+  align-self: center;
 }
 
 .admin-content-grid {

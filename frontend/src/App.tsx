@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } f
 import { RecoilRoot } from 'recoil'
 import ChatbotWidget from './components/ChatbotWidget'
 import AdminLayout from './components/AdminPanel/AdminLayout'
-import ChatbotConfig from './components/AdminPanel/ChatbotConfig'
 import WorkflowManagement from './components/WorkflowManagement'
 import WorkflowList from './components/WorkflowList'
 import AdminPanel from './components/AdminPanel'
@@ -135,7 +134,7 @@ export default function App() {
           {/* Admin routes */}
           <Route path="/admin-panel" element={isAdmin ? <AdminLayout /> : <Navigate to="/admin" replace />}>
             <Route index element={<Navigate to="chatbot" replace />} />
-            <Route path="chatbot" element={<ChatbotConfig />} />
+            {/* <Route path="chatbot" element={<ChatbotConfig />} /> */}
             {/* Add more admin routes here as needed */}
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

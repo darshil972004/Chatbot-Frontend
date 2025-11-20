@@ -391,67 +391,67 @@ function Header({ onLogout, setRoute }: HeaderProps) {
     };
   }, [showMenu]);
 
-  return (
-    <header className="crm-header">
-      <div className="crm-header-container">
-        {/* Logo and Brand */}
-        <div className="crm-brand">
-          <div className="crm-logo">
-            🏢
-          </div>
-          <div className="crm-brand-text">
-            <h1 className="crm-title">Real Estate CRM</h1>
-            <span className="crm-subtitle">Admin Panel</span>
-          </div>
-        </div>
+  // return (
+  //   <header className="crm-header">
+  //     <div className="crm-header-container">
+  //       {/* Logo and Brand */}
+  //       <div className="crm-brand">
+  //         <div className="crm-logo">
+  //           🏢
+  //         </div>
+  //         <div className="crm-brand-text">
+  //           <h1 className="crm-title">Real Estate CRM</h1>
+  //           <span className="crm-subtitle">Admin Panel</span>
+  //         </div>
+  //       </div>
 
-        {/* Navigation */}
-        <nav className="crm-nav">
-          <button onClick={() => setRoute('dashboard')} className="crm-nav-link">Dashboard</button>
-          <button onClick={() => setRoute('agents')} className="crm-nav-link">Agents</button>
-          <button onClick={() => setRoute('tickets')} className="crm-nav-link">Tickets</button>
-          <button onClick={() => setRoute('analysis')} className="crm-nav-link">Analytics</button>
-        </nav>
+  //       {/* Navigation */}
+  //       <nav className="crm-nav">
+  //         <button onClick={() => setRoute('dashboard')} className="crm-nav-link">Dashboard</button>
+  //         <button onClick={() => setRoute('agents')} className="crm-nav-link">Agents</button>
+  //         <button onClick={() => setRoute('tickets')} className="crm-nav-link">Tickets</button>
+  //         <button onClick={() => setRoute('analysis')} className="crm-nav-link">Analytics</button>
+  //       </nav>
 
-        {/* User Menu */}
-        <div className="crm-user-menu" ref={menuRef}>
-          <button className="crm-user-button" onClick={() => setShowMenu(!showMenu)}>
-            <div className="crm-user-avatar">A</div>
-            <span className="crm-user-name">Admin</span>
-            <svg className="crm-dropdown-icon" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
+  //       {/* User Menu */}
+  //       <div className="crm-user-menu" ref={menuRef}>
+  //         <button className="crm-user-button" onClick={() => setShowMenu(!showMenu)}>
+  //           <div className="crm-user-avatar">A</div>
+  //           <span className="crm-user-name">Admin</span>
+  //           <svg className="crm-dropdown-icon" fill="currentColor" viewBox="0 0 20 20">
+  //             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+  //           </svg>
+  //         </button>
 
-          {showMenu && (
-            <div className="crm-dropdown-menu">
-              <div className="crm-dropdown-header">
-                <div className="crm-user-avatar">A</div>
-                <div>
-                  <div className="crm-dropdown-name">Administrator</div>
-                  <div className="crm-dropdown-email">admin@realestate.com</div>
-                </div>
-              </div>
-              <div className="crm-dropdown-divider"></div>
-              <button className="crm-dropdown-item" onClick={() => { setShowMenu(false); setRoute('settings'); }}>
-                <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Settings
-              </button>
-              <button className="crm-dropdown-item crm-dropdown-logout" onClick={() => { setShowMenu(false); onLogout(); }}>
-                <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Sign Out
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
-  );
+  //         {showMenu && (
+  //           <div className="crm-dropdown-menu">
+  //             <div className="crm-dropdown-header">
+  //               <div className="crm-user-avatar">A</div>
+  //               <div>
+  //                 <div className="crm-dropdown-name">Administrator</div>
+  //                 <div className="crm-dropdown-email">admin@realestate.com</div>
+  //               </div>
+  //             </div>
+  //             <div className="crm-dropdown-divider"></div>
+  //             <button className="crm-dropdown-item" onClick={() => { setShowMenu(false); setRoute('settings'); }}>
+  //               <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  //                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+  //                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  //               </svg>
+  //               Settings
+  //             </button>
+  //             <button className="crm-dropdown-item crm-dropdown-logout" onClick={() => { setShowMenu(false); onLogout(); }}>
+  //               <svg className="crm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  //                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+  //               </svg>
+  //               Sign Out
+  //             </button>
+  //           </div>
+  //         )}
+  //       </div>
+  //     </div>
+  //   </header>
+  // );
 }
 
 // Sidebar Component
@@ -688,34 +688,34 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     });
   };
 
-  // async function toggleStatus(id: number) {
-  //   const agent = agents.find((a) => a.id === id);
-  //   if (!agent) return;
-  //   const newStatus = agent.status === 'online' ? 'offline' : 'online';
-  //   try {
-  //     // Optimistically update UI
-  //     setAgents((prevAgents) =>
-  //       prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-  //     );
+  async function toggleStatus(id: number) {
+    const agent = agents.find((a) => a.id === id);
+    if (!agent) return;
+    const newStatus = agent.status === 'online' ? 'offline' : 'online';
+    try {
+      // Optimistically update UI
+      setAgents((prevAgents) =>
+        prevAgents.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+      );
 
-  //     // Create status event to track the status change
-  //     await agentsApi.updateAgentStatus({
-  //       agent_id: id,
-  //       status: newStatus,
-  //       concurrent_load: 0,
-  //       details: { source: 'admin_panel_toggle' }
-  //     });
+      // Create status event to track the status change
+      await agentsApi.updateAgentStatus({
+        agent_id: id,
+        status: newStatus,
+        concurrent_load: 0,
+        details: { source: 'admin_panel_toggle' }
+      });
 
-  //     // Reload to get the latest status from backend
-  //     await reloadAgents();
-  //   } catch (err) {
-  //     // Revert optimistic update on error
-  //     setAgents((prevAgents) =>
-  //       prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
-  //     );
-  //     alert('Error updating agent status');
-  //   }
-  // }
+      // Reload to get the latest status from backend
+      await reloadAgents();
+    } catch (err) {
+      // Revert optimistic update on error
+      setAgents((prevAgents) =>
+        prevAgents.map((a) => (a.id === id ? { ...a, status: agent.status } : a))
+      );
+      alert('Error updating agent status');
+    }
+  }
 
   async function handleCreateAgent() {
     try {
@@ -818,10 +818,10 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
     }
   }
 
-  // function handleViewAgent(agent: Agent) {
-  //   setViewingAgent(agent);
-  //   setShowViewModal(true);
-  // }
+  function handleViewAgent(agent: Agent) {
+    setViewingAgent(agent);
+    setShowViewModal(true);
+  }
 
   async function handleDeleteAgent(id: number) {
     if (window.confirm('Are you sure you want to delete this agent?')) {
@@ -983,7 +983,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     ))}
                   </div>
                 </label>
-                {/* <label>
+                <label>
                   Status
                   <select
                     value={formData.status}
@@ -995,7 +995,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     <option value="busy">Busy</option>
                     <option value="away">Away</option>
                   </select>
-                </label> */}
+                </label>
                 <label>
                   Max Concurrent Chats
                   <input
@@ -1142,8 +1142,8 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                   <td style={{ width: '120px', fontSize: '14px', textAlign: 'center' }}>{a.metrics.chatsToday}</td>
                   <td style={{ width: '160px' }}>
                     <div className="admin-table-actions">
-                      {/* <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
-                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button> */}
+                      <button onClick={() => handleViewAgent(a)} className="admin-button">View</button>
+                      <button onClick={() => toggleStatus(a.id)} className="admin-button">Toggle</button>
                       <button onClick={() => handleEditAgent(a)} className="admin-button">Edit</button>
                       <button onClick={() => handleDeleteAgent(a.id)} className="admin-button admin-button-danger">Delete</button>
                     </div>

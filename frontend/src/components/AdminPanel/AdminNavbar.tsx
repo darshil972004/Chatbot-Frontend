@@ -6,10 +6,10 @@ const AdminNavbar: React.FC = () => {
   return (
     <header className="admin-navbar">
       <div className="admin-navbar__inner">
-        <Link to="/" className="admin-navbar__brand">
+        <div className="admin-navbar__brand">
           <img src={logo} alt="RealEstate CRM" className="admin-navbar__logo" />
           <span className="admin-navbar__brandName">RealEstate CRM</span>
-        </Link>
+        </div>
 
         <div className="admin-navbar__title">
           <h1>Chatbot Administration</h1>
