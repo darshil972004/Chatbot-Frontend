@@ -1114,11 +1114,8 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             </div>
           </div>
         )}
-
-      </div>
-
-      <div className="admin-agents-container">
-        <div className="admin-agents-table-wrapper admin-table-scroll">
+        <div className="admin-tickets-container admin-tab-card">
+        <div className="admin-tickets-table-wrapper admin-table-scroll">
           <table className="admin-table">
             <thead>
               <tr>
@@ -1165,6 +1162,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );
