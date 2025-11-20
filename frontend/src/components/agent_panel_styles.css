@@ -587,6 +587,22 @@
   transform: translateY(-2px);
 }
 
+.conversation-item.ticket-waiting {
+  border-color: #38bdf8;
+  background: #e0f2fe;
+}
+
+.conversation-item.ticket-open {
+  border-color: #fbbf24;
+  background: #fef9c3;
+}
+
+.conversation-item.ticket-closed {
+  border-color: #c084fc;
+  background: #f3e8ff;
+  opacity: 0.85;
+}
+
 .conversation-item-text {
   display: flex;
   flex-direction: column;
@@ -609,22 +625,60 @@
   color: #94a3b8;
 }
 
-.claim-button {
+.conversation-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.conversation-btn {
   border: none;
   border-radius: 8px;
   padding: 6px 12px;
-  background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
-  color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
-.claim-button:hover {
+.conversation-btn.btn-claim {
+  background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+  color: #fff;
+}
+
+.conversation-btn.btn-send {
+  background: #fbbf24;
+  color: #422006;
+}
+
+.conversation-btn.btn-end {
+  background: #ef4444;
+  color: #fff;
+}
+
+.conversation-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.conversation-btn:hover:not(:disabled) {
   opacity: 0.9;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
   transform: translateY(-1px);
+}
+
+.conversation-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-closed {
+  background: #c084fc;
+  color: #4c1d95;
 }
 
 .preview-placeholder {
@@ -663,6 +717,35 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.chat-loading,
+.chat-placeholder {
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 8px 0;
+}
+
+.chat-closed-banner {
+  border: 1px dashed #c084fc;
+  border-radius: 12px;
+  padding: 10px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  text-align: center;
+  font-weight: 600;
+}
+
+.chat-closed-actions {
+  padding: 12px;
+  border: 1px dashed #c084fc;
+  border-radius: 12px;
+  background: #faf5ff;
+}
+
+.chat-messages-closed {
+  opacity: 0.9;
 }
 
 .chat-message {
@@ -722,6 +805,11 @@
   font-weight: 600;
   padding: 8px 16px;
   cursor: pointer;
+}
+
+.send-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .end-chat-button{

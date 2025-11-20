@@ -2,10 +2,37 @@ import React, {useCallback, useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
 import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, updateAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
-import { ticketsApi } from '../api/ticketsApi'
+import { ticketsApi, ticketMessagesApi } from '../api/ticketsApi'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
 const DEFAULT_ROLE_LABEL = 'Technical Agent'
+
+const CLOSED_STATUSES = ['closed', 'resolved', 'cancelled']
+const OPEN_STATUSES = ['open', 'in_progress', 'assigned', 'escalated']
+
+function normalizeStatus(status?: string | null) {
+  return (status || '').toLowerCase()
+}
+
+function isClosedStatus(status?: string | null) {
+  return CLOSED_STATUSES.includes(normalizeStatus(status))
+}
+
+function isWaitingStatus(status?: string | null) {
+  return normalizeStatus(status) === 'waiting'
+}
+
+function isOpenStatus(status?: string | null) {
+  const normalized = normalizeStatus(status)
+  return OPEN_STATUSES.includes(normalized)
+}
+
+function getConversationStatusClass(status?: string | null) {
+  if (isWaitingStatus(status)) return 'ticket-waiting'
+  if (isClosedStatus(status)) return 'ticket-closed'
+  if (isOpenStatus(status)) return 'ticket-open'
+  return ''
+}
 
 function formatRoleLabel(role?: string): string {
   if (!role || typeof role !== 'string') {
@@ -66,6 +93,76 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     text: '',
   })
   const [quickReplySubmitting, setQuickReplySubmitting] = useState<boolean>(false)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [wsConnected, setWsConnected] = useState<boolean>(false)
+
+  // Persist active chat session to localStorage
+  const saveActiveChatSession = useCallback((ticketId: string | number | null) => {
+    if (ticketId) {
+      window.localStorage.setItem('agent_active_chat_session', String(ticketId));
+    } else {
+      window.localStorage.removeItem('agent_active_chat_session');
+    }
+  }, []);
+
+  // Retrieve active chat session from localStorage
+  const getActiveChatSession = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem('agent_active_chat_session');
+  }, []);
+
+  // Auto-reconnect WebSocket with exponential backoff
+  const reconnectChatWS = useCallback(async (sessionId: string | number, maxRetries = 5) => {
+    const agent = retrieveAgentInfo();
+    if (!agent?.id) return;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Attempting to reconnect to chat WS (attempt ${attempt}/${maxRetries})`);
+        
+        if (chatWsRef.current) chatWsRef.current.close();
+        
+        chatWsRef.current = openAgentChatWS(
+          sessionId,
+          agent.id,
+          agent.display_name || agent.username || 'Agent',
+          (msg) => {
+            console.log('Chat message (reconnected):', msg);
+            if (msg.type === 'agent_joined' || msg.type === 'agent_claimed') return;
+            setSessions(prev => prev.map(s => s.id == sessionId ? {
+              ...s,
+              messages: [...s.messages, { sender: msg.type === 'text' || !msg.type ? 'user' : 'system', text: msg.text || JSON.stringify(msg), ts: Date.now() }]
+            } : s));
+          },
+          (err) => {
+            console.error('Chat WS error:', err);
+            setWsConnected(false);
+          }
+        );
+
+        // Wait a bit for the connection to establish
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (chatWsRef.current?.readyState === WebSocket.OPEN) {
+          console.log('Chat WS reconnected successfully');
+          setWsConnected(true);
+          return; // Success
+        }
+      } catch (err) {
+        console.error(`Reconnect attempt ${attempt} failed:`, err);
+      }
+
+      if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s, 8s
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    console.warn('Failed to reconnect after max retries');
+    setWsConnected(false);
+  }, []);
 
   const loadQuickReplies = useCallback(async (agentIdentifier: number | string) => {
     if (!agentIdentifier && agentIdentifier !== 0) {
@@ -83,6 +180,40 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       setQuickRepliesError(message)
     } finally {
       setQuickRepliesLoading(false)
+    }
+  }, [])
+
+  const loadTicketMessages = useCallback(async (ticketId: string | number) => {
+    if (!ticketId) return
+    setSessions(prev =>
+      prev.map(session =>
+        session.id === ticketId ? { ...session, loadingMessages: true } : session
+      )
+    )
+    try {
+      const messages = await ticketMessagesApi.getTicketMessages(String(ticketId), 200, 0)
+      const formatted = Array.isArray(messages)
+        ? messages.map(msg => ({
+            sender: (msg.sender_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
+            text: msg.content || '',
+            ts: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+          }))
+        : []
+
+      setSessions(prev =>
+        prev.map(session =>
+          session.id === ticketId
+            ? { ...session, messages: formatted, messagesLoaded: true, loadingMessages: false }
+            : session
+        )
+      )
+    } catch (err) {
+      console.error('Failed to load ticket messages', err)
+      setSessions(prev =>
+        prev.map(session =>
+          session.id === ticketId ? { ...session, loadingMessages: false } : session
+        )
+      )
     }
   }, [])
 
@@ -161,37 +292,12 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       setQuickReplyTemplates([])
     }
 
-    // Connect notifier websocket for agent notifications (new tickets, claims)
+    // Connect notifier websocket for agent notifications (ticket claims)
     if (agent && agent.id) {
       wsRef.current = openAgentNotifierWS(
         agent.id,
         (msg) => {
           console.log('Notifier message received:', msg)
-          // Handle new ticket notifications
-          if (msg.type === 'new_ticket') {
-            // Check if ticket is already in the list (avoid duplicates)
-            setSessions(prev => {
-              const exists = prev.some(s => s.id === msg.ticket_id)
-              if (exists) return prev
-              
-              return [{ 
-                id: msg.ticket_id, 
-                user: { name: msg.user_name || `User ${msg.user_id || 'Unknown'}`, email: msg.user_email || '' }, 
-                topic: msg.category || 'tech', 
-                status: 'waiting', 
-                unread: 1, 
-                lastMsgTime: 'now', 
-                startedAgo: 'just now', 
-                messages: [],
-                title: msg.prompt || 'New Ticket',
-                priority: 'medium'
-              }, ...prev]
-            })
-            // Set active session id from backend ACTIVE_ROOMS via notifier (if agent has no active session)
-            if (!activeSessionId && msg.ticket_id) {
-              setActiveSessionId(msg.ticket_id)
-            }
-          }
           // Handle ticket claimed notifications
           if (msg.type === 'ticket_claimed') {
             setSessions(prev => prev.map(s => s.id === msg.ticket_id ? { ...s, status: 'assigned' } : s))
@@ -223,6 +329,8 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
             lastMsgTime: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'now',
             startedAgo: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'just now',
             messages: [],
+            messagesLoaded: false,
+            loadingMessages: false,
             title: ticket.title,
             description: ticket.description,
             priority: ticket.priority
@@ -254,7 +362,9 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               unread: 0,
               lastMsgTime: r.created_at || 'now',
               startedAgo: r.created_at || 'just now',
-              messages: r.history || []
+              messages: r.history || [],
+              messagesLoaded: Array.isArray(r.history) && r.history.length > 0,
+              loadingMessages: false
             }))
             setSessions(prev => {
               const existingIds = new Set(prev.map(p => p.id))
@@ -277,6 +387,17 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       if(chatWsRef.current) chatWsRef.current.close()
     }
   },[agentId, loggedOut, loadQuickReplies])
+
+  // On mount, check if there's an active chat session to reconnect to
+  useEffect(() => {
+    if (loggedOut) return;
+
+    const activeChatSession = getActiveChatSession();
+    if (activeChatSession) {
+      console.log(`Reconnecting to active chat session: ${activeChatSession}`);
+      reconnectChatWS(activeChatSession);
+    }
+  }, []); // Only run on mount
 
   function handleWS(msg: any){
     // handle incoming messages: new assignment, user msg, system
@@ -304,13 +425,34 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
-  function openSession(id: string|number){
+  async function openSession(id: string|number){
     setActiveSessionId(id)
-    // mark read, fetch history if necessary
+    const session = sessions.find(s => s.id === id)
+    if (session && !session.messagesLoaded && !session.loadingMessages) {
+      await loadTicketMessages(id)
+    }
+  }
+
+  async function handleResumeChat(sessionId: string | number) {
+    await openSession(sessionId)
+    await openChatForSession(sessionId)
+  }
+
+  async function handleEndChatFromList(sessionId: string | number) {
+    await openSession(sessionId)
+    if (activeChatTicketId !== sessionId) {
+      await openChatForSession(sessionId)
+    }
+    await endChatSession(sessionId)
   }
 
   function sendMessageToSession(sessionId: string|number, text: string){
     // Send via chat websocket if connected
+    const targetSession = sessions.find(s => s.id == sessionId)
+    if (!targetSession || isClosedStatus(targetSession.status)) {
+      alert('Ticket is closed. You cannot send messages.')
+      return
+    }
     if(activeChatTicketId == sessionId && chatWsRef.current){
       sendChatMessage(chatWsRef.current, text)
     }
@@ -479,14 +621,39 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       (msg) => {
         console.log('Chat message:', msg)
         if(msg.type === 'agent_joined' || msg.type === 'agent_claimed') return
+        if(msg.type === 'message_history' && msg.message) {
+          const historyEntry = msg.message
+          setSessions(prev => prev.map(s => s.id == sessionId ? {
+            ...s,
+            messages: [
+              ...s.messages,
+              {
+                sender: (historyEntry.sender_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
+                text: historyEntry.content || '',
+                ts: historyEntry.created_at ? new Date(historyEntry.created_at).getTime() : Date.now()
+              }
+            ],
+            messagesLoaded: true
+          } : s))
+          return
+        }
         setSessions(prev => prev.map(s => s.id == sessionId ? {
           ...s,
           messages: [...s.messages, { sender: msg.type === 'text' || !msg.type ? 'user' : 'system', text: msg.text || JSON.stringify(msg), ts: Date.now() }]
         } : s))
       },
-      (err) => console.error('Chat error:', err)
+      (err) => {
+        console.error('Chat error:', err)
+        // On connection error, attempt to reconnect
+        if (chatWsRef.current?.readyState === WebSocket.CLOSED) {
+          console.log('Chat WS closed unexpectedly, attempting reconnect...');
+          reconnectChatWS(sessionId);
+        }
+      }
     )
     setActiveChatTicketId(sessionId)
+    saveActiveChatSession(sessionId)
+    setWsConnected(true)
   }
 
   function releaseChatSession(){
@@ -495,13 +662,15 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       chatWsRef.current.close()
       chatWsRef.current = null
       setActiveChatTicketId(null)
+      saveActiveChatSession(null)
     }
     // Clear active session when releasing
     setActiveSessionId(null)
   }
 
   // End chat and allow user to chat with AI again
-  async function endChatSession(){
+  async function endChatSession(ticketId?: string | number){
+    const closingTicketId = ticketId ?? activeChatTicketId
     releaseChatSession();
 
     const agent = retrieveAgentInfo()
@@ -513,6 +682,11 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         console.error('Failed to mark agent online after ending chat', err)
       }
     }
+
+    if (closingTicketId) {
+      setSessions(prev => prev.map(s => s.id == closingTicketId ? { ...s, status: 'closed' } : s))
+    }
+
     alert('Chat ended. User can now chat with AI again.');
   }
 
@@ -648,14 +822,27 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           <div className="card-heading">Conversations</div>
           <div className="conversation-list">
             {sessions.map(s => (
-              <ConversationListItem key={s.id} session={s} onOpen={() => openSession(s.id)} onClaim={() => claimSession(s.id)} active={s.id===activeSessionId} />
+              <ConversationListItem
+                key={s.id}
+                session={s}
+                onOpen={() => openSession(s.id)}
+                onClaim={() => claimSession(s.id)}
+                onResume={() => handleResumeChat(s.id)}
+                onEnd={() => handleEndChatFromList(s.id)}
+                active={s.id===activeSessionId}
+              />
             ))}
           </div>
         </section>
 
         <section className="agent-card grid-preview">
           {activeSession ? (
-            <ChatWindow session={activeSession} onSend={sendMessageToSession} quickReplies={quickReplyOptions} onEndChat={endChatSession} />
+            <ChatWindow
+              session={activeSession}
+              onSend={sendMessageToSession}
+              quickReplies={quickReplyOptions}
+              onEndChat={endChatSession}
+            />
           ) : (
             <div className="preview-placeholder">Select a conversation to begin</div>
           )}
@@ -733,52 +920,74 @@ interface ConversationListItemProps {
   session: any;
   onOpen: () => void;
   onClaim?: () => void;
+  onResume?: () => void;
+  onEnd?: () => void;
   active: boolean;
 }
-function ConversationListItem({session, onOpen, onClaim, active}: ConversationListItemProps){
+function ConversationListItem({session, onOpen, onClaim, onResume, onEnd, active}: ConversationListItemProps){
   const displayTitle = session.title || session.topic || 'Ticket'
-  const displayStatus = session.status === 'assigned' || session.status === 'in_progress' ? 'assigned' : 
-                        session.status === 'open' ? 'open' : 
-                        session.status === 'waiting' ? 'waiting' : session.status || 'waiting'
-  
+  const waiting = isWaitingStatus(session.status)
+  const closed = isClosedStatus(session.status)
+  const open = isOpenStatus(session.status)
+  const statusClass = getConversationStatusClass(session.status)
+
   return (
-    <div className={`conversation-item${active ? ' active' : ''}`} onClick={onOpen} style={{cursor: 'pointer'}}>
+    <div className={`conversation-item ${statusClass}${active ? ' active' : ''}`} onClick={onOpen} style={{cursor: 'pointer'}}>
       <div className="conversation-item-text">
         <div className="conversation-name">
           {displayTitle} <span className="conversation-id">#{session.id}</span>
         </div>
         <div className="conversation-meta">
           {session.priority && `${session.priority} • `}
-          {displayStatus} • {session.unread} new
+          {normalizeStatus(session.status) || 'waiting'} • {session.unread} new
+        </div>
+        <div className="conversation-actions">
+          {waiting && (
+            <button className="conversation-btn btn-claim" onClick={(e) => {
+              e.stopPropagation()
+              onClaim && onClaim()
+            }}>Claim</button>
+          )}
+          {open && (
+            <>
+              <button className="conversation-btn btn-send" onClick={(e) => {
+                e.stopPropagation()
+                onResume && onResume()
+              }}>Send Msg</button>
+              <button className="conversation-btn btn-end" onClick={(e) => {
+                e.stopPropagation()
+                onEnd && onEnd()
+              }}>End Chat</button>
+            </>
+          )}
+          {closed && (
+            <span className="conversation-badge badge-closed">Closed</span>
+          )}
         </div>
       </div>
       <div className="conversation-time">{session.lastMsgTime}</div>
-      {displayStatus === 'waiting' && (
-        <button className="claim-button" onClick={(e) => {
-          e.stopPropagation()
-          onClaim && onClaim()
-        }}>Claim</button>
-      )}
     </div>
   )
 }
 
 interface ChatWindowProps {
   session: any;
-  onSend: (sessionId: number, text: string) => void;
+  onSend: (sessionId: string | number, text: string) => void;
   quickReplies: string[];
-  onEndChat?: () => void;
+  onEndChat?: (sessionId: string | number) => void;
 }
 function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps){
   const [input, setInput] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
+  const isClosed = isClosedStatus(session.status)
+  const messages = Array.isArray(session.messages) ? session.messages : []
 
   useEffect(()=>{
     if(boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
-  }, [session.messages.length])
+  }, [messages.length, session.loadingMessages, session.status])
 
   function send(){
-    if(!input.trim()) return
+    if(!input.trim() || isClosed) return
     onSend(session.id, input.trim())
     setInput('')
   }
@@ -793,34 +1002,46 @@ function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps)
         <div className="chat-subtitle">Since {session.startedAgo}</div>
       </div>
 
-      <div ref={boxRef} className="chat-messages">
-        {session.messages.map((m: any,i: number)=> (
+      <div ref={boxRef} className={`chat-messages${isClosed ? ' chat-messages-closed' : ''}`}>
+        {session.loadingMessages && (
+          <div className="chat-loading">Loading ticket conversation…</div>
+        )}
+        {messages.map((m: any,i: number)=> (
           <div key={i} className={`chat-message ${m.sender === 'agent' ? 'agent' : 'user'}`}> 
             <div className="chat-message-sender">{m.sender === 'agent' ? 'Agent' : 'User'}</div>
             <div>{m.text}</div>
             <div className="chat-message-time">{new Date(m.ts).toLocaleTimeString()}</div>
           </div>
         ))}
+        {isClosed && (
+          <div className="chat-closed-banner">Ticket is closed. Messaging is disabled.</div>
+        )}
       </div>
 
-      <div className="chat-input-row">
-        <select onChange={e=>setInput(e.target.value)} value={input} className="chat-select">
-          <option value="">Quick reply…</option>
-          {quickReplies.map((q: string,i: number)=> (
-            <option key={i} value={q}>{q}</option>
-          ))}
-        </select>
-        <input
-          className="chat-input"
-          value={input}
-          onChange={e=>setInput(e.target.value)}
-          placeholder="Type a reply..."
-          onKeyDown={(e)=> e.key==='Enter' && send()}
-        />
-        <button onClick={send} className="send-button">Send</button>
-        {/* End Chat button for agent to end chat and allow user to chat with AI again */}
-        <button onClick={onEndChat} className="end-chat-button">End Chat</button>
-      </div>
+      {isClosed ? (
+        <div className="chat-closed-actions">
+          <p className="card-placeholder">You cannot send messages on a closed ticket.</p>
+        </div>
+      ) : (
+        <div className="chat-input-row">
+          <select onChange={e=>setInput(e.target.value)} value={input} className="chat-select">
+            <option value="">Quick reply…</option>
+            {quickReplies.map((q: string,i: number)=> (
+              <option key={i} value={q}>{q}</option>
+            ))}
+          </select>
+          <input
+            className="chat-input"
+            value={input}
+            onChange={e=>setInput(e.target.value)}
+            placeholder="Type a reply..."
+            onKeyDown={(e)=> e.key==='Enter' && send()}
+          />
+          <button onClick={send} className="send-button" disabled={!input.trim()}>Send</button>
+          {/* End Chat button for agent to end chat and allow user to chat with AI again */}
+          <button onClick={() => onEndChat && onEndChat(session.id)} className="end-chat-button">End Chat</button>
+        </div>
+      )}
     </div>
   )
 }
