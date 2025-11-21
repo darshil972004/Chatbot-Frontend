@@ -46,7 +46,10 @@ export const ticketsApi = {
   },
 
   closeTicket: async (ticketId: string, remark?: string): Promise<void> => {
-    await apiClient.post(`/api/ticketss/${ticketId}/close`,  remark || "no remark");
+    await apiClient.put('/api/tickets', {
+      id: ticketId,
+      status: 'closed',
+    });
   },
 };
 

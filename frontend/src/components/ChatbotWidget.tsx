@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
+import { ticketsApi } from '../api/ticketsApi'
 import { v4 as uuidv4 } from 'uuid';
 
 // Extend ChatMessage to support optional blog property (array)
@@ -16,7 +17,30 @@ function uid() {
 
 export default function ChatbotWidget() {
   // Handler for cancel request
-  function handleCancelRequest() {
+  async function handleCancelRequest() {
+    if (ticketId) {
+      try {
+        await ticketsApi.closeTicket(ticketId, 'User cancelled live agent request');
+      } catch (err) {
+        console.error('Failed to close ticket on cancel request', err);
+      }
+
+      // Let the agent know the user cancelled (if the websocket is still connected)
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        try {
+          wsRef.current.send(
+            JSON.stringify({
+              type: 'message',
+              text: 'User cancelled the live agent request.',
+              sender: 'user',
+              ts: Date.now(),
+            })
+          );
+        } catch (err) {
+          console.error('Failed to notify agent about cancellation', err);
+        }
+      }
+    }
     addSystemMessage('Your live agent request has been cancelled. You can continue chatting with the AI assistant.');
     resetLiveAgentSession();
   }
