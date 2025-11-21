@@ -669,8 +669,15 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   // End chat and allow user to chat with AI again
-  async function endChatSession(ticketId?: string | number){
+  async function endChatSession(ticketId: string | number){
     const closingTicketId = ticketId ?? activeChatTicketId
+    if (closingTicketId) {
+      try {
+        await ticketsApi.closeTicket(closingTicketId.toString()); // Call the new API to close the ticket
+      } catch (err) {
+        console.error('Failed to close ticket:', err)
+      }
+    }
     releaseChatSession();
 
     const agent = retrieveAgentInfo()

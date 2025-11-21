@@ -44,6 +44,10 @@ export const ticketsApi = {
     const response = await apiClient.get(`/api/tickets/agent/${agentId}`, { params });
     return response.data?.data || [];
   },
+
+  closeTicket: async (ticketId: string, remark?: string): Promise<void> => {
+    await apiClient.post(`/api/ticketss/${ticketId}/close`,  remark || "no remark");
+  },
 };
 
 // Ticket Agents API
