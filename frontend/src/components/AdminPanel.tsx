@@ -1988,7 +1988,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
             <option value="waiting">Waiting</option>
-            <option value="resolved">Resolved</option>
+            {/* <option value="resolved">Resolved</option> */}
             <option value="closed">Closed</option>
           </select>
           <select
@@ -2487,13 +2487,4 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
       </div>
     </div>
   );
-}
-
-// Mock Data Functions
-function mockAgents(): Agent[] {
-  return [
-    { id: 1, username: 'rakesh', password: 'pass123', name: 'Rakesh', role: 'technical', status: 'online', currentSessionId: null, metrics: { chatsToday: 12, avgResponse: 5 }, skills: [] },
-    { id: 2, username: 'maya', password: 'pass456', name: 'Maya', role: 'sales', status: 'online', currentSessionId: 101, metrics: { chatsToday: 8, avgResponse: 7 }, skills: [] },
-    { id: 3, username: 'arjun', password: 'pass789', name: 'Arjun', role: 'support', status: 'offline', currentSessionId: null, metrics: { chatsToday: 4, avgResponse: 12 }, skills: [] },
-  ];
 }
