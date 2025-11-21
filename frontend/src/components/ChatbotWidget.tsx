@@ -249,117 +249,151 @@ export default function ChatbotWidget() {
     }
   }, [userId, isInitialized]);
 
-  // Connect to live agent websocket when a ticket is active
+  // Connect to live agent websocket when a ticket is active.
+  // This effect also auto-reconnects if the connection drops unexpectedly
+  // (for example, when the agent reloads their page).
   useEffect(() => {
     if (!ticketId) return;
 
     const base = WS_BASE.replace(/\/$/, '');
     const wsUrl = `${base}/ws/chat/${ticketId}/user`;
+
     let isActive = true;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    ws.onopen = () => {
-      try {
-        ws.send(JSON.stringify({ type: 'init', user_id: userId }));
-      } catch {}
-      setAgentStatus((prev) => prev || 'waiting');
-      setLiveChatError(null);
-      if (pendingLiveQueue.current.length > 0) {
-        const queued = [...pendingLiveQueue.current];
-        pendingLiveQueue.current = [];
-        queued.forEach((messageText) => {
-          try {
-            ws.send(JSON.stringify({ type: 'message', text: messageText, sender: 'user', ts: Date.now() }));
-          } catch (err) {
-            console.error('Failed to flush queued live agent message', err);
-            pendingLiveQueue.current.unshift(messageText);
-          }
-        });
-      }
-    };
+    const connectWebSocket = () => {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      if (!isActive) return;
-      const raw = event.data;
-      let payload: any = null;
-      if (typeof raw === 'string') {
+      ws.onopen = () => {
         try {
-          payload = JSON.parse(raw);
-        } catch {
-          payload = null;
-        }
-      }
+          ws.send(JSON.stringify({ type: 'init', user_id: userId }));
+        } catch {}
+        setAgentStatus((prev) => prev || 'waiting');
+        setLiveChatError(null);
 
-      const handleIncomingText = (text: string, role: ChatRole = 'agent') => {
-        if (!text) return;
-        addMessage({ id: uid(), role, text });
-        // If agent replied, clear typing indicator
-        if (role === 'agent') setLoading(false);
+        // Flush any queued messages
+        if (pendingLiveQueue.current.length > 0) {
+          const queued = [...pendingLiveQueue.current];
+          pendingLiveQueue.current = [];
+          queued.forEach((messageText) => {
+            try {
+              ws.send(JSON.stringify({ type: 'message', text: messageText, sender: 'user', ts: Date.now() }));
+            } catch (err) {
+              console.error('Failed to flush queued live agent message', err);
+              pendingLiveQueue.current.unshift(messageText);
+            }
+          });
+        }
       };
 
-      if (payload && typeof payload === 'object') {
-        if (payload.type === 'message' && typeof payload.text === 'string') {
-          const role = payload.sender === 'user' ? 'user' : 'agent';
-          handleIncomingText(payload.text, role as ChatRole);
-          return;
+      ws.onmessage = (event) => {
+        if (!isActive) return;
+        const raw = event.data;
+        let payload: any = null;
+        if (typeof raw === 'string') {
+          try {
+            payload = JSON.parse(raw);
+          } catch {
+            payload = null;
+          }
         }
 
-        if (!payload.type && typeof payload.text === 'string') {
-          handleIncomingText(payload.text);
-          return;
+        const handleIncomingText = (text: string, role: ChatRole = 'agent') => {
+          if (!text) return;
+          addMessage({ id: uid(), role, text });
+          // If agent replied, clear typing indicator
+          if (role === 'agent') setLoading(false);
+        };
+
+        if (payload && typeof payload === 'object') {
+          if (payload.type === 'message' && typeof payload.text === 'string') {
+            const role = payload.sender === 'user' ? 'user' : 'agent';
+            handleIncomingText(payload.text, role as ChatRole);
+            return;
+          }
+
+          if (!payload.type && typeof payload.text === 'string') {
+            handleIncomingText(payload.text);
+            return;
+          }
+
+          switch (payload.type) {
+            case 'init_ack':
+              return;
+            case 'agent_claimed':
+              setAgentStatus('waiting');
+              addSystemMessage('A live agent has claimed your ticket. They will join shortly.');
+              return;
+            case 'agent_joined':
+              setAgentStatus('connected');
+              setAgentName(payload.agent_name || 'Live Agent');
+              addSystemMessage(`${payload.agent_name || 'A live agent'} joined the conversation.`);
+              return;
+            case 'agent_released':
+              addSystemMessage('The live agent wrapped up the session. Switching back to the AI assistant.');
+              resetLiveAgentSession();
+              return;
+            case 'agent_disconnected':
+              // Agent temporarily disconnected (for example, they reloaded the page).
+              // Keep the ticket so we can reconnect when the agent comes back.
+              addSystemMessage('The live agent connection was interrupted. Waiting for reconnection. You can continue with the AI assistant in the meantime.');
+              setAgentStatus('waiting');
+              return;
+            case 'agent_claim_failed':
+            case 'error':
+              setLiveChatError(payload.message || 'Live agent channel error.');
+              return;
+            default:
+              if (typeof payload.text === 'string') {
+                handleIncomingText(payload.text);
+              }
+              return;
+          }
         }
 
-        switch (payload.type) {
-          case 'init_ack':
-            return;
-          case 'agent_claimed':
-            setAgentStatus('waiting');
-            addSystemMessage('A live agent has claimed your ticket. They will join shortly.');
-            return;
-          case 'agent_joined':
-            setAgentStatus('connected');
-            setAgentName(payload.agent_name || 'Live Agent');
-            addSystemMessage(`${payload.agent_name || 'A live agent'} joined the conversation.`);
-            return;
-          case 'agent_released':
-            addSystemMessage('The live agent wrapped up the session. Switching back to the AI assistant.');
-            resetLiveAgentSession();
-            return;
-          case 'agent_disconnected':
-            addSystemMessage('The live agent connection was lost. You can continue with the AI assistant.');
-            resetLiveAgentSession();
-            return;
-          case 'agent_claim_failed':
-          case 'error':
-            setLiveChatError(payload.message || 'Live agent channel error.');
-            return;
-          default:
-            if (typeof payload.text === 'string') {
-              handleIncomingText(payload.text);
+        if (typeof raw === 'string') {
+          handleIncomingText(raw);
+        }
+      };
+
+      ws.onerror = () => {
+        if (!isActive) return;
+        setLiveChatError('Live agent channel encountered a connection issue.');
+      };
+
+      ws.onclose = (event) => {
+        wsRef.current = null;
+
+        // If we still have an active ticket and this wasn't a clean close,
+        // try to reconnect a few times. This keeps the user connected
+        // even if the agent reloads their page.
+        if (isActive && ticketId && !event.wasClean && reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts += 1;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 8000);
+          reconnectTimeout = setTimeout(() => {
+            if (isActive && ticketId) {
+              connectWebSocket();
             }
-            return;
+          }, delay);
         }
-      }
-
-      if (typeof raw === 'string') {
-        handleIncomingText(raw);
-      }
+      };
     };
 
-    ws.onerror = () => {
-      if (!isActive) return;
-      setLiveChatError('Live agent channel encountered a connection issue.');
-    };
-
-    ws.onclose = () => {
-      wsRef.current = null;
-    };
+    // Initial connection
+    connectWebSocket();
 
     return () => {
       isActive = false;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
       try {
-        ws.close();
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
       } catch {}
       wsRef.current = null;
     };
