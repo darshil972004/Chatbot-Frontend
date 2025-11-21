@@ -95,6 +95,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const [quickReplySubmitting, setQuickReplySubmitting] = useState<boolean>(false)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [wsConnected, setWsConnected] = useState<boolean>(false)
+  const sessionRestoredRef = useRef<boolean>(false)
 
   // Persist active chat session to localStorage
   const saveActiveChatSession = useCallback((ticketId: string | number | null) => {
@@ -115,6 +116,10 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const reconnectChatWS = useCallback(async (sessionId: string | number, maxRetries = 5) => {
     const agent = retrieveAgentInfo();
     if (!agent?.id) return;
+
+    // Set active chat ticket ID before reconnecting
+    setActiveChatTicketId(sessionId);
+    saveActiveChatSession(sessionId);
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -139,6 +144,14 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
             setWsConnected(false);
           }
         );
+
+        // Set connection state when opened
+        if (chatWsRef.current) {
+          chatWsRef.current.addEventListener('open', () => {
+            console.log('Chat WS reconnected successfully');
+            setWsConnected(true);
+          });
+        }
 
         // Wait a bit for the connection to establish
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -314,33 +327,68 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         // Fetch tickets assigned to this agent
         const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0)
         if (Array.isArray(tickets) && tickets.length > 0) {
-          const mapped = tickets.map((ticket: any) => ({
-            id: ticket.id,
-            user: { 
-              name: `User ${ticket.user_id || 'Unknown'}`, 
-              email: '',
-              country: '',
-              pastIssues: 0
-            },
-            topic: ticket.category || 'tech',
-            status: ticket.status === 'open' || ticket.status === 'in_progress' ? 'assigned' : 
-                    ticket.status === 'waiting' ? 'waiting' : ticket.status || 'waiting',
-            unread: 0,
-            lastMsgTime: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'now',
-            startedAgo: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'just now',
-            messages: [],
-            messagesLoaded: false,
-            loadingMessages: false,
-            title: ticket.title,
-            description: ticket.description,
-            priority: ticket.priority
-          }))
+          const mapped = tickets.map((ticket: any) => {
+            // Check if this ticket is the saved active session
+            const savedSessionId = getActiveChatSession();
+            const isSavedSession = savedSessionId && String(ticket.id) === String(savedSessionId);
+            
+            // Preserve the actual ticket status from backend, but normalize for UI
+            let normalizedStatus = ticket.status || 'waiting';
+            if (normalizedStatus === 'open' || normalizedStatus === 'in_progress' || normalizedStatus === 'assigned') {
+              normalizedStatus = 'assigned';
+            } else if (normalizedStatus === 'waiting') {
+              normalizedStatus = 'waiting';
+            } else if (isClosedStatus(normalizedStatus)) {
+              // If this is the saved active session, don't trust closed status from backend
+              // It might be stale - keep it as assigned to allow restore
+              if (isSavedSession) {
+                console.log('Saved active session has closed status in backend, but preserving as assigned for restore');
+                normalizedStatus = 'assigned';
+              } else {
+                // Keep closed statuses as-is for other tickets
+                normalizedStatus = normalizedStatus;
+              }
+            } else {
+              // For unknown statuses, default to waiting (not closed)
+              normalizedStatus = 'waiting';
+            }
+            
+            return {
+              id: ticket.id,
+              user: { 
+                name: `User ${ticket.user_id || 'Unknown'}`, 
+                email: '',
+                country: '',
+                pastIssues: 0
+              },
+              topic: ticket.category || 'tech',
+              status: normalizedStatus,
+              unread: 0,
+              lastMsgTime: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'now',
+              startedAgo: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'just now',
+              messages: [],
+              messagesLoaded: false,
+              loadingMessages: false,
+              title: ticket.title,
+              description: ticket.description,
+              priority: ticket.priority
+            };
+          })
           
           // Merge with any existing sessions, dedupe by id
+          // Preserve existing session status if it's active (not closed)
           setSessions(prev => {
             const existingIds = new Set(prev.map(p => p.id))
-            const merged = [...mapped, ...prev.filter(p=>!existingIds.has(p.id))]
-            return merged
+            const merged = mapped.map(newSession => {
+              const existing = prev.find(p => p.id === newSession.id)
+              // If existing session is active (not closed), preserve its status
+              if (existing && !isClosedStatus(existing.status) && isClosedStatus(newSession.status)) {
+                console.log('Preserving active session status for ticket:', newSession.id);
+                return { ...newSession, status: existing.status }
+              }
+              return newSession
+            })
+            return [...merged, ...prev.filter(p=>!existingIds.has(p.id))]
           })
           
           // If no active session, pick the most recent ticket
@@ -384,20 +432,177 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     return ()=>{
       isMounted = false
       if(wsRef.current) wsRef.current.close()
-      if(chatWsRef.current) chatWsRef.current.close()
+      // Only close chatWsRef if agent explicitly ends chat
+      // Do not close chatWsRef on page reload, so connection persists
+      // if(chatWsRef.current) chatWsRef.current.close()
     }
   },[agentId, loggedOut, loadQuickReplies])
 
-  // On mount, check if there's an active chat session to reconnect to
+  // Restore active chat session from localStorage after page reload
   useEffect(() => {
-    if (loggedOut) return;
-
-    const activeChatSession = getActiveChatSession();
-    if (activeChatSession) {
-      console.log(`Reconnecting to active chat session: ${activeChatSession}`);
-      reconnectChatWS(activeChatSession);
+    if (loggedOut || sessionRestoredRef.current) return;
+    
+    const savedSessionId = getActiveChatSession();
+    if (!savedSessionId) {
+      sessionRestoredRef.current = true; // Mark as processed even if no session
+      return;
     }
-  }, []); // Only run on mount
+
+    const agent = retrieveAgentInfo();
+    if (!agent?.id) return;
+
+    // Wait for sessions to be loaded before restoring
+    const restoreSession = async () => {
+      // Check if the session exists in the sessions list
+      const session = sessions.find(s => String(s.id) === String(savedSessionId));
+      
+      if (session) {
+        // Only skip restore if session is explicitly closed in UI (not from backend check)
+        // Trust localStorage - if user was in a chat, restore it
+        if (isClosedStatus(session.status)) {
+          console.log('Session is marked as closed in UI, skipping restore');
+          // But don't clear from storage yet - might be a false positive
+          // Only clear if we're absolutely sure
+          sessionRestoredRef.current = true;
+          return;
+        }
+        
+        console.log('Restoring active chat session:', savedSessionId, 'Session status:', session.status);
+        sessionRestoredRef.current = true; // Mark as restored to prevent multiple restorations
+        
+        // Set as active session FIRST before any async operations
+        setActiveSessionId(savedSessionId);
+        
+        // Ensure session status is not closed (defensive check)
+        setSessions(prev => prev.map(s => {
+          if (s.id == savedSessionId && isClosedStatus(s.status)) {
+            // If somehow marked as closed, restore to assigned
+            console.log('Session was marked closed, restoring to assigned status');
+            return { ...s, status: 'assigned' };
+          }
+          return s;
+        }));
+        
+        // Load messages if not already loaded
+        if (!session.messagesLoaded && !session.loadingMessages) {
+          await loadTicketMessages(savedSessionId);
+        }
+        
+        // Reconnect to the chat WebSocket
+        await reconnectChatWS(savedSessionId);
+      } else if (sessions.length > 0) {
+        // Sessions are loaded but saved session not found
+        // Try to fetch the ticket directly from backend
+        try {
+          const ticket = await ticketsApi.getTicket(String(savedSessionId));
+          if (ticket && !isClosedStatus(ticket.status)) {
+            // Ticket exists and is not closed, add it to sessions
+            console.log('Ticket found in backend, adding to sessions:', savedSessionId);
+            let normalizedStatus: string = ticket.status || 'waiting';
+            if (normalizedStatus === 'open' || normalizedStatus === 'in_progress') {
+              normalizedStatus = 'assigned';
+            } else if (normalizedStatus === 'waiting') {
+              normalizedStatus = 'waiting';
+            } else {
+              normalizedStatus = 'assigned'; // Default to assigned for active chats
+            }
+            
+            const newSession = {
+              id: ticket.id,
+              user: { 
+                name: `User ${ticket.user_id || 'Unknown'}`, 
+                email: '',
+                country: '',
+                pastIssues: 0
+              },
+              topic: ticket.category || 'tech',
+              status: normalizedStatus,
+              unread: 0,
+              lastMsgTime: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'now',
+              startedAgo: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'just now',
+              messages: [],
+              messagesLoaded: false,
+              loadingMessages: false,
+              title: ticket.title,
+              description: ticket.description,
+              priority: ticket.priority
+            };
+            
+            setSessions(prev => {
+              const exists = prev.some(s => s.id == savedSessionId);
+              if (!exists) {
+                return [...prev, newSession];
+              }
+              return prev;
+            });
+            
+            setActiveSessionId(savedSessionId);
+            await loadTicketMessages(savedSessionId);
+            await reconnectChatWS(savedSessionId);
+            sessionRestoredRef.current = true;
+            return;
+          } else if (ticket && isClosedStatus(ticket.status)) {
+            console.log('Ticket is closed on backend, clearing from storage');
+            saveActiveChatSession(null);
+            sessionRestoredRef.current = true;
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch ticket from backend, clearing from storage', err);
+        }
+        
+        // If we get here, session not found and couldn't restore from backend
+        console.log('Saved session not found in sessions list, clearing from storage');
+        saveActiveChatSession(null);
+        sessionRestoredRef.current = true;
+      }
+    };
+
+    // Only restore if we have sessions loaded
+    // Wait a bit to ensure sessions are fully loaded and statuses are set
+    const timeoutId = setTimeout(() => {
+      if (sessions.length > 0) {
+        restoreSession();
+      } else {
+        // If still no sessions after delay, mark as processed
+        sessionRestoredRef.current = true;
+      }
+    }, 1500); // Increased delay to ensure sessions are fully loaded
+
+    return () => clearTimeout(timeoutId);
+  }, [sessions.length, loggedOut, getActiveChatSession, saveActiveChatSession, reconnectChatWS, loadTicketMessages])
+
+  // Handle WebSocket reconnection on unexpected disconnection
+  useEffect(() => {
+    if (!activeChatTicketId || !chatWsRef.current) return;
+
+    const ws = chatWsRef.current;
+    
+    const handleClose = () => {
+      // Only reconnect if it wasn't explicitly closed (end chat)
+      // Check if the session is still active
+      const session = sessions.find(s => s.id === activeChatTicketId);
+      if (session && !isClosedStatus(session.status)) {
+        console.log('Chat WS closed unexpectedly, attempting to reconnect...');
+        reconnectChatWS(activeChatTicketId);
+      }
+    };
+
+    const handleError = () => {
+      console.error('Chat WS error, will attempt reconnect on close');
+      setWsConnected(false);
+    };
+
+    ws.addEventListener('close', handleClose);
+    ws.addEventListener('error', handleError);
+
+    return () => {
+      ws.removeEventListener('close', handleClose);
+      ws.removeEventListener('error', handleError);
+    };
+  }, [activeChatTicketId, reconnectChatWS, sessions])
+
+  // ...existing code...
 
   function handleWS(msg: any){
     // handle incoming messages: new assignment, user msg, system
@@ -561,10 +766,18 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         console.error('Failed to mark agent offline on logout', err)
       }
     }
+    // Close all connections on logout
+    if(chatWsRef.current) {
+      chatWsRef.current.close()
+      chatWsRef.current = null
+    }
     setLoggedOut(true)
     setStatus('offline')
     setSessions([])
     setActiveSessionId(null)
+    setActiveChatTicketId(null)
+    saveActiveChatSession(null)
+    sessionRestoredRef.current = false // Reset for next login
     clearAgentInfo()
     if (onLogout) onLogout()
   }
@@ -613,7 +826,17 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       console.error('Failed to mark agent busy when opening chat', err)
     }
 
-    if(chatWsRef.current) chatWsRef.current.close()
+    // Only close existing connection if it's for a different session
+    if(chatWsRef.current && activeChatTicketId !== sessionId) {
+      chatWsRef.current.close()
+    }
+    
+    // If already connected to this session, don't reconnect
+    if(chatWsRef.current && activeChatTicketId === sessionId && chatWsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Already connected to this session');
+      return;
+    }
+
     chatWsRef.current = openAgentChatWS(
       sessionId,
       agent.id,
@@ -644,16 +867,20 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       },
       (err) => {
         console.error('Chat error:', err)
-        // On connection error, attempt to reconnect
-        if (chatWsRef.current?.readyState === WebSocket.CLOSED) {
-          console.log('Chat WS closed unexpectedly, attempting reconnect...');
-          reconnectChatWS(sessionId);
-        }
+        setWsConnected(false)
       }
     )
+    
+    // Set connection state when opened
+    if (chatWsRef.current) {
+      chatWsRef.current.addEventListener('open', () => {
+        console.log('Chat WS opened successfully');
+        setWsConnected(true);
+      });
+    }
+    
     setActiveChatTicketId(sessionId)
     saveActiveChatSession(sessionId)
-    setWsConnected(true)
   }
 
   function releaseChatSession(){
@@ -669,6 +896,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   // End chat and allow user to chat with AI again
+
   async function endChatSession(ticketId: string | number){
     const closingTicketId = ticketId ?? activeChatTicketId
     if (closingTicketId) {
@@ -678,20 +906,30 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         console.error('Failed to close ticket:', err)
       }
     }
+
     releaseChatSession();
 
-    const agent = retrieveAgentInfo()
+    const agent = retrieveAgentInfo();
     if (agent?.id) {
       try {
-        await updateAgentStatus(agent.id, 'online', { source: 'agent_panel_end_chat', previous_status: status })
-        setStatus('online')
+        await updateAgentStatus(agent.id, 'online', { source: 'agent_panel_end_chat', previous_status: status });
+        setStatus('online');
       } catch (err) {
-        console.error('Failed to mark agent online after ending chat', err)
+        console.error('Failed to mark agent online after ending chat', err);
       }
     }
 
+    // Persist ticket closed status to backend if API available
+    try {
+      if (closingTicketId && ticketsApi?.updateTicket) {
+        await ticketsApi.updateTicket({ id: String(closingTicketId), status: 'closed' });
+      }
+    } catch (err) {
+      console.warn('Failed to persist closed status to backend', err);
+    }
+
     if (closingTicketId) {
-      setSessions(prev => prev.map(s => s.id == closingTicketId ? { ...s, status: 'closed' } : s))
+      setSessions(prev => prev.map(s => s.id == closingTicketId ? { ...s, status: 'closed' } : s));
     }
 
     alert('Chat ended. User can now chat with AI again.');
