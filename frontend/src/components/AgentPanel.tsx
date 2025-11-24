@@ -430,155 +430,77 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   },[agentId, loggedOut, loadQuickReplies])
 
-  useTicketUpdates(async (event) => {
-  const agent = retrieveAgentInfo()
-  // Do nothing if not logged in
+ useTicketUpdates(async (event) => {
+  const agent = retrieveAgentInfo();
   if (!agent?.id) return;
 
-  // Make sure the SSE broadcast is FOR THIS AGENT only
-  // -------------------------
-  // 1️⃣ If assigned_agent_id exists
-  // -------------------------
+  // 1️⃣ If assigned_agent_id exists → must match logged-in agent
   if (event.assigned_agent_id) {
     if (Number(event.assigned_agent_id) !== Number(agent.id)) {
-      console.log(
-        "Ignoring SSE event for another agent:",
-        event.assigned_agent_id
-      );
+      console.log("Ignoring SSE event for another agent:", event.assigned_agent_id);
       return;
     }
   } 
-  // -------------------------
-  // 2️⃣ If assigned_agent_id does NOT exist
-  // Check if ticket_id exists in current sessions
-  // -------------------------
+  // 2️⃣ If assigned_agent_id missing → event must belong to a ticket in current session list
   else {
     const existsInCurrentList = sessions.some(
       (session) => String(session.id) === String(event.ticket_id)
     );
 
     if (!existsInCurrentList) {
-      console.log(
-        "Ignoring SSE event: ticket not in current agent list:",
-        event.ticket_id
-      );
+      console.log("Ignoring SSE event: ticket not in current agent list:", event.ticket_id);
       return;
     }
   }
 
-  // If we reach here → event is relevant and must be processed
-  console.log("SSE EVENT IS RELATED TO THIS AGENT SO CONTINUING :", event);
+  console.log("SSE event relevant to this agent:", event);
 
-  // Continue with your heavy refresh logic...
+  // 3️⃣ Always trust backend completely and refresh ticket list
+  try {
+    const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0);
 
-  // Process relevant events only
-  if (
-    true
-  ) {
-    console.log("Processing SSE event:", event);
+    if (Array.isArray(tickets)) {
+      const mapped = tickets.map((ticket: any) => ({
+        id: ticket.id,
+        user: {
+          name: `User ${ticket.user_id || "Unknown"}`,
+          email: "",
+          country: "",
+          pastIssues: 0,
+        },
+        topic: ticket.category || "tech",
+        status: ticket.status, // ← NO more overriding, TRUST backend
+        unread: 0,
+        lastMsgTime: ticket.created_at
+          ? new Date(ticket.created_at).toLocaleString()
+          : "now",
+        startedAgo: ticket.created_at
+          ? new Date(ticket.created_at).toLocaleString()
+          : "just now",
+        messages: [],
+        messagesLoaded: false,
+        loadingMessages: false,
+        title: ticket.title,
+        description: ticket.description,
+        priority: ticket.priority,
+      }));
 
-    try {
-      // Fetch tickets assigned to this agent
-      const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0);
+      // 4️⃣ Replace/merge sessions based on backend truth
+      setSessions((prev) => {
+        const existingIds = new Set(mapped.map((p) => p.id));
+        return [...mapped, ...prev.filter((p) => !existingIds.has(p.id))];
+      });
 
-      if (Array.isArray(tickets) && tickets.length > 0) {
-        const mapped = tickets.map((ticket: any) => {
-          const savedSessionId = getActiveChatSession();
-          const isSavedSession =
-            savedSessionId && String(ticket.id) === String(savedSessionId);
-
-          
-
-          return {
-            id: ticket.id,
-            user: {
-              name: `User ${ticket.user_id || "Unknown"}`,
-              email: "",
-              country: "",
-              pastIssues: 0,
-            },
-            topic: ticket.category || "tech",
-            status: ticket.status,
-            unread: 0,
-            lastMsgTime: ticket.created_at
-              ? new Date(ticket.created_at).toLocaleString()
-              : "now",
-            startedAgo: ticket.created_at
-              ? new Date(ticket.created_at).toLocaleString()
-              : "just now",
-            messages: [],
-            messagesLoaded: false,
-            loadingMessages: false,
-            title: ticket.title,
-            description: ticket.description,
-            priority: ticket.priority,
-          };
-        });
-
-        // Merge + ensure uniqueness + preserve active statuses
-        setSessions((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-
-          const merged = mapped.map((newSession) => {
-            const existing = prev.find((p) => p.id === newSession.id);
-            if (
-              existing &&
-              !isClosedStatus(existing.status) &&
-              isClosedStatus(newSession.status)
-            ) {
-              console.log(
-                "Preserving active session's previous status for ticket:",
-                newSession.id
-              );
-              return { ...newSession, status: existing.status };
-            }
-            return newSession;
-          });
-
-          return [...merged, ...prev.filter((p) => !existingIds.has(p.id))];
-        });
-
-        // Auto-select most recent session if none is active
-        if (!activeSessionId && mapped.length > 0) {
-          setActiveSessionId(mapped[0].id);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch tickets by agent", e);
-
-      // Fallback: load active rooms
-      try {
-        const resp = await fetchActiveRooms();
-
-        if (resp?.success && Array.isArray(resp.data)) {
-          const mapped = resp.data.map((r: any) => ({
-            id: r.ticket_id,
-            user: { name: r.user_id || "User", email: "" },
-            topic: "tech",
-            status: r.status || "waiting",
-            unread: 0,
-            lastMsgTime: r.created_at || "now",
-            startedAgo: r.created_at || "just now",
-            messages: r.history || [],
-            messagesLoaded: Array.isArray(r.history) && r.history.length > 0,
-            loadingMessages: false,
-          }));
-
-          setSessions((prev) => {
-            const existingIds = new Set(prev.map((p) => p.id));
-            return [...mapped, ...prev.filter((p) => !existingIds.has(p.id))];
-          });
-
-          if (!activeSessionId && mapped.length > 0) {
-            setActiveSessionId(mapped[0].id);
-          }
-        }
-      } catch (fallbackErr) {
-        console.warn("Failed to fetch active rooms as fallback", fallbackErr);
+      // 5️⃣ Auto-select first ticket if none active
+      if (!activeSessionId && mapped.length > 0) {
+        setActiveSessionId(mapped[0].id);
       }
     }
+  } catch (e) {
+    console.warn("Failed to fetch tickets by agent", e);
   }
 });
+
 
 
   // Restore active chat session from localStorage after page reload
