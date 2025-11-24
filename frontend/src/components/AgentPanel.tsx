@@ -106,6 +106,16 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const [availableAgents, setAvailableAgents] = useState<any[]>([])
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
   const [transferLoading, setTransferLoading] = useState<boolean>(false)
+  
+  // Notification state
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    type: string;
+    ticket_id?: string;
+    timestamp: number;
+    read: boolean;
+  }>>([])
+  const [showNotifications, setShowNotifications] = useState<boolean>(false)
 
   // Persist active chat session to localStorage
   const saveActiveChatSession = useCallback((ticketId: string | number | null) => {
@@ -454,6 +464,21 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   console.log("SSE event relevant to this agent:", event);
+
+  // Add notification for this event
+  const newNotification = {
+    id: `${event.type}_${event.ticket_id}_${Date.now()}`,
+    type: event.type,
+    ticket_id: event.ticket_id,
+    timestamp: Date.now(),
+    read: false
+  };
+  
+  setNotifications(prev => {
+    // Keep only latest 10 notifications, add new one at the beginning
+    const updated = [newNotification, ...prev.slice(0, 9)];
+    return updated;
+  });
 
   // 3️⃣ Always trust backend completely and refresh ticket list
   try {
@@ -911,6 +936,29 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
+  // Notification functions
+  function dismissNotification(notificationId: string) {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId))
+  }
+
+  function markAllAsRead() {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  }
+
+  function getUnreadCount() {
+    return notifications.filter(n => !n.read).length
+  }
+
+  function formatTimestamp(timestamp: number) {
+    const now = Date.now()
+    const diff = now - timestamp
+    
+    if (diff < 60000) return 'Just now'
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+    return new Date(timestamp).toLocaleDateString()
+  }
+
   interface ConversationListItemProps {
     session: any;
     onOpen: () => void;
@@ -1106,7 +1154,73 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           </div>
 
           <div className="admin-navbar__meta">
-            {/* Removed Last reviewed */}
+            {/* Notifications */}
+            <div className="notification-container">
+              <button 
+                className="notification-bell"
+                onClick={() => {
+                  setShowNotifications(!showNotifications)
+                  markAllAsRead()
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {getUnreadCount() > 0 && (
+                  <span className="notification-badge">{getUnreadCount()}</span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="notification-dropdown">
+                  <div className="notification-header">
+                    <h4>Notifications</h4>
+                    <button 
+                      className="notification-close"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="notification-list">
+                    {notifications.length === 0 ? (
+                      <div className="notification-empty">No notifications</div>
+                    ) : (
+                      notifications.slice(0, 3).map(notification => (
+                        <div 
+                          key={notification.id}
+                          className={`notification-item ${!notification.read ? 'unread' : ''}`}
+                        >
+                          <div className="notification-content">
+                            <div className="notification-title">{notification.type}</div>
+                            {notification.ticket_id && (
+                              <div className="notification-ticket">Ticket #{notification.ticket_id}</div>
+                            )}
+                            <div className="notification-time">
+                              {formatTimestamp(notification.timestamp)}
+                            </div>
+                          </div>
+                          <button 
+                            className="notification-dismiss"
+                            onClick={() => dismissNotification(notification.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {notifications.length > 3 && (
+                    <div className="notification-footer">
+                      <div className="notification-more">
+                        +{notifications.length - 3} more notifications
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
