@@ -84,7 +84,7 @@ export default function WorkflowNode({ data, selected, id }: NodeProps<WorkflowN
           <p className="node-subtext">Awaits user input</p>
         )}
 
-        {(data.type === 'button-list' || data.type === 'dropdown' || data.type === 'dropdown' ) && data.options && (
+        {(data.type === 'button-list' || data.type === 'dropdown' || data.type === 'checklist') && data.options && (
           <div className="node-options">
             {data.options.map((option) => (
               <div key={option.id} className="node-option-item">

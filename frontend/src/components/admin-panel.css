@@ -1579,7 +1579,8 @@ html, body {
 }
 
 .admin-tickets-table-wrapper .admin-table {
-  margin-bottom: 16px; /* Ensure last item is fully visible when scrolled */
+    margin-bottom: 16px;
+    text-align: center;
 }
 
 /* Make tickets table headers sticky */
@@ -2128,11 +2129,13 @@ html, body {
 
 .admin-tickets-table-wrapper .admin-table thead th {
   height: 6vh;
-  font-size: 10px;
+  font-size: 14px;
   padding: 6px 3px;
   line-height: 1.1;
   background: var(--admin-surface);
   border-bottom: 2px solid var(--admin-border);
+  color: #000000;
+  font-family: 'Segoe UI'; 
 }
 
 /* Responsive Design for Tickets */
