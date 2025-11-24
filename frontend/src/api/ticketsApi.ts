@@ -63,7 +63,7 @@ export const ticketAgentsApi = {
 
   // Update ticket agent
   updateTicketAgent: async (agentData: TicketAgentUpdateRequest): Promise<void> => {
-    await apiClient.put('/api/ticket-agents', agentData);
+    await apiClient.post('/api/ticket-agents', agentData);
   },
 
   // Remove agent from ticket

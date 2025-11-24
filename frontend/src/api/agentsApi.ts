@@ -61,6 +61,30 @@ export const agentsApi = {
     const response = await apiClient.post('/api/agent-login', { username, password });
     return response.data?.data;
   },
+
+  // Get all available agents (not offline)
+  getAvailableAgents: async (): Promise<Agent[]> => {
+    const agents = await apiClient.get('/api/agents');
+    const allAgents = agents.data?.data || [];
+    // Filter out offline agents - we'll need to check their current status
+    const availableAgents = [];
+    
+    for (const agent of allAgents) {
+      try {
+        const statusResponse = await apiClient.get(`/api/agents/${agent.id}/current-status`);
+        const currentStatus = statusResponse.data?.data?.status;
+        // Only include agents that are not offline
+        if (currentStatus && currentStatus !== 'offline') {
+          availableAgents.push(agent);
+        }
+      } catch (error) {
+        // If we can't get status, assume they are offline and exclude them
+        continue;
+      }
+    }
+    
+    return availableAgents;
+  },
 };
 
 // Skills API
