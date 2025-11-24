@@ -535,8 +535,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 70vh;
+  height: 70vh;       /* fixed height */
+  overflow-y: auto;   /* enable scroll */
+  overflow-x: hidden; /* optional: hide horizontal scroll */
 }
+
 
 .admin-page-header {
   display: flex;

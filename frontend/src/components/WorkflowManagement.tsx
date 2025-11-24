@@ -833,7 +833,7 @@ export default function WorkflowManagement() {
       </div>
 
       {/* Goes to Step (Direct Children Only) */}
-      {selectedNode && (
+      {/* {selectedNode && (
         <div className="workflow-direct-children" style={{ margin: '16px 0', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <h4 style={{ margin: '0 0 8px 0', fontWeight: 600 }}>Goes to Step (Direct Children Only)</h4>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
@@ -847,7 +847,7 @@ export default function WorkflowManagement() {
             ))}
           </ul>
         </div>
-      )}
+      )} */}
 
       {/* Data Modal */}
       {showDataModal && workflowData && (
