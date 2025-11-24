@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
 import { ticketsApi } from '../api/ticketsApi'
+import { ticketFeedbackApi } from '../api/ticketsApi'
 import { v4 as uuidv4 } from 'uuid';
 
 // Extend ChatMessage to support optional blog property (array)
@@ -700,20 +701,32 @@ export default function ChatbotWidget() {
           <button
             className="cp-feedback-submit cp-btn"
             style={{ marginTop: 16, background: '#2563eb', color: '#fff', fontWeight: 500, border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 16 }}
-            onClick={() => {
-              if (feedbackRating < 1 || feedbackRating > 5) {
-                setFeedbackError('Please rate the agent (1-5 stars)');
-                return;
-              }
-              setFeedbackError('');
-              setShowFeedback(false);
-              // Optionally: send feedback to backend here
-              addSystemMessage('Thank you for your feedback! You can now continue chatting with the AI assistant.');
-            }}
-            disabled={feedbackRating < 1 || feedbackRating > 5}
-          >
-            Submit Feedback
-          </button>
+              onClick={async () => {
+                if (feedbackRating < 1 || feedbackRating > 5) {
+                  setFeedbackError('Please rate the agent (1-5 stars)');
+                  return;
+                }
+                setFeedbackError('');
+                setShowFeedback(false);
+                // Send feedback to backend (so it appears in admin panel)
+                try {
+                  if (ticketId) {
+                    await ticketFeedbackApi.createTicketFeedback({
+                      ticket_id: ticketId,
+                      rating: feedbackRating,
+                      comment: feedbackNote,
+                    });
+                  }
+                } catch (err) {
+                  // Optionally show error to user
+                  addSystemMessage('Failed to submit feedback, but you can continue chatting.');
+                }
+                addSystemMessage('Thank you for your feedback! You can now continue chatting with the AI assistant.');
+              }}
+              disabled={feedbackRating < 1 || feedbackRating > 5}
+            >
+              Submit Feedback
+            </button>
         </div>
       );
     }
