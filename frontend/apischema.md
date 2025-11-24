@@ -246,410 +246,6 @@
         ]
       }
     },
-    "/api/sequence-groups": {
-      "get": {
-        "summary": "Get Sequence Groups Api",
-        "description": "Get sequence groups with their items.\n\n- **group_id**: (Optional) Filter by specific group ID. Default -1 returns all groups.",
-        "operationId": "get_sequence_groups_api_api_sequence_groups_get",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "group_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "Group ID to filter by. Use -1 for all groups",
-              "default": -1,
-              "title": "Group Id"
-            },
-            "description": "Group ID to filter by. Use -1 for all groups"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/only-sequence-groups": {
-      "get": {
-        "summary": "Get Sequence Groups Api",
-        "description": "Get sequence groups Only\n\n- **group_id**: (Optional) Filter by specific group ID. Default -1 returns all groups.",
-        "operationId": "get_sequence_groups_api_api_only_sequence_groups_get",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "group_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "Group ID to filter by. Use -1 for all groups",
-              "default": -1,
-              "title": "Group Id"
-            },
-            "description": "Group ID to filter by. Use -1 for all groups"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/sequence-items/position": {
-      "patch": {
-        "summary": "Update Sequence Item Position Api",
-        "description": "Update the position of a sequence item and reorder other items accordingly.\n\n- **group_id**: ID of the sequence group\n- **old_position**: Current position of the item (1-based index)\n- **new_position**: New position for the item (1-based index)",
-        "operationId": "update_sequence_item_position_api_api_sequence_items_position_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSequencePositionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/create-Group-Item": {
-      "post": {
-        "summary": "Create Group And Items Api",
-        "description": "Add new group and item",
-        "operationId": "create_group_and_items_api_api_create_Group_Item_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SequenceCreateGroupandItem"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/create-items": {
-      "post": {
-        "summary": "Create Items Api",
-        "description": "Add items",
-        "operationId": "create_items_api_api_create_items_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SequenceItemforOldGroup"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/delete-sequence-group": {
-      "delete": {
-        "summary": "Delete Sequence Group Api",
-        "description": "Delete sequence group",
-        "operationId": "delete_sequence_group_api_api_delete_sequence_group_delete",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/deleteSequenceGroup"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/delete-sequence-item": {
-      "delete": {
-        "summary": "Delete Sequence Item Api",
-        "description": "Delete sequence item",
-        "operationId": "delete_sequence_item_api_api_delete_sequence_item_delete",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/deleteSequenceItem"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/update-sequence-group": {
-      "patch": {
-        "summary": "Update Sequence Group Api",
-        "description": "Update sequence group",
-        "operationId": "update_sequence_group_api_api_update_sequence_group_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/updateSequenceGroup"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/update-sequence-item": {
-      "patch": {
-        "summary": "Update Sequence Item Api",
-        "description": "Update sequence item",
-        "operationId": "update_sequence_item_api_api_update_sequence_item_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/updateSequenceItem"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
     "/workflow_save": {
       "post": {
         "summary": "Save Workflow",
@@ -1374,6 +970,220 @@
         }
       }
     },
+    "/api/agents/{agent_id}/quick-replies": {
+      "get": {
+        "summary": "Get Agent Quick Replies Api",
+        "description": "Get quick reply templates for an agent",
+        "operationId": "get_agent_quick_replies_api_api_agents__agent_id__quick_replies_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add Agent Quick Reply Api",
+        "description": "Add a quick reply template for an agent",
+        "operationId": "add_agent_quick_reply_api_api_agents__agent_id__quick_replies_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickReplyCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{agent_id}/quick-replies/{reply_id}": {
+      "delete": {
+        "summary": "Delete Agent Quick Reply Api",
+        "description": "Delete a quick reply template for an agent",
+        "operationId": "delete_agent_quick_reply_api_api_agents__agent_id__quick_replies__reply_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "reply_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Reply Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Agent Quick Reply Api",
+        "description": "Update a quick reply template for an agent",
+        "operationId": "update_agent_quick_reply_api_api_agents__agent_id__quick_replies__reply_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "reply_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Reply Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickReplyUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/agent-skills/{agent_id}/{skill_id}": {
       "delete": {
         "summary": "Delete Agent Skill Api",
@@ -1595,6 +1405,54 @@
             "OAuth2PasswordBearer": []
           }
         ]
+      }
+    },
+    "/api/tickets/{ticket_id}/accept/{agent_id}": {
+      "post": {
+        "summary": "Accept Ticket Api",
+        "operationId": "accept_ticket_api_api_tickets__ticket_id__accept__agent_id__post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/conversations": {
@@ -2658,6 +2516,70 @@
         }
       }
     },
+    "/api/tickets/agent/{agent_id}": {
+      "get": {
+        "summary": "Get Tickets By Agent Api",
+        "description": "Get tickets assigned to a specific agent",
+        "operationId": "get_tickets_by_agent_api_api_tickets_agent__agent_id__get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Maximum number of tickets to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of tickets to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Number of tickets to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of tickets to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ticket-agents/{ticket_id}": {
       "get": {
         "summary": "Get Ticket Agents Api",
@@ -3007,7 +2929,7 @@
     "/api/ticket-feedback": {
       "put": {
         "summary": "Update Ticket Feedback Api",
-        "description": "Update feedback",
+        "description": "Update ticket feedback",
         "operationId": "update_ticket_feedback_api_api_ticket_feedback_put",
         "requestBody": {
           "content": {
@@ -3198,6 +3120,62 @@
         }
       }
     },
+    "/api/ticketss/{ticket_id}/close": {
+      "post": {
+        "summary": "Close Ticket Api",
+        "operationId": "close_ticket_api_api_ticketss__ticket_id__close_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Remark"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ticket-events/ticket/{ticket_id}": {
       "get": {
         "summary": "Get Ticket Events By Ticket Api",
@@ -3260,6 +3238,30 @@
             }
           }
         }
+      }
+    },
+    "/api/active-rooms": {
+      "get": {
+        "summary": "Get Active Rooms",
+        "description": "Return a snapshot of current ACTIVE_ROOMS for agent UI to initialize state.",
+        "operationId": "get_active_rooms_api_active_rooms_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
       }
     }
   },
@@ -4216,6 +4218,58 @@
         ],
         "title": "QueryRequest"
       },
+      "QuickReplyCreateRequest": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "template_text": {
+            "type": "string",
+            "title": "Template Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template_text"
+        ],
+        "title": "QuickReplyCreateRequest"
+      },
+      "QuickReplyUpdateRequest": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "template_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Text"
+          }
+        },
+        "type": "object",
+        "title": "QuickReplyUpdateRequest"
+      },
       "SaveWorkflowRequest": {
         "properties": {
           "workflow_id": {
@@ -4299,92 +4353,6 @@
           "success"
         ],
         "title": "SaveWorkflowResponse"
-      },
-      "SequenceCreateGroupandItem": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SequenceItemforNewGroup"
-            },
-            "type": "array",
-            "title": "Items",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "SequenceCreateGroupandItem"
-      },
-      "SequenceItemforNewGroup": {
-        "properties": {
-          "item_name": {
-            "type": "string",
-            "title": "Item Name"
-          },
-          "item_sequence_position": {
-            "type": "integer",
-            "title": "Item Sequence Position"
-          },
-          "item_response_type": {
-            "type": "string",
-            "title": "Item Response Type"
-          },
-          "options": {
-            "type": "object",
-            "title": "Options"
-          },
-          "req_parameters": {
-            "type": "object",
-            "title": "Req Parameters"
-          }
-        },
-        "type": "object",
-        "required": [
-          "item_name",
-          "item_sequence_position",
-          "item_response_type",
-          "options",
-          "req_parameters"
-        ],
-        "title": "SequenceItemforNewGroup"
-      },
-      "SequenceItemforOldGroup": {
-        "properties": {
-          "group_id": {
-            "type": "integer",
-            "title": "Group Id"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SequenceItemforNewGroup"
-            },
-            "type": "array",
-            "title": "Items",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "group_id"
-        ],
-        "title": "SequenceItemforOldGroup"
       },
       "SetActiveWorkflowRequest": {
         "properties": {
@@ -4834,29 +4802,6 @@
         ],
         "title": "TokenRequest"
       },
-      "UpdateSequencePositionRequest": {
-        "properties": {
-          "group_id": {
-            "type": "integer",
-            "title": "Group Id"
-          },
-          "old_position": {
-            "type": "integer",
-            "title": "Old Position"
-          },
-          "new_position": {
-            "type": "integer",
-            "title": "New Position"
-          }
-        },
-        "type": "object",
-        "required": [
-          "group_id",
-          "old_position",
-          "new_position"
-        ],
-        "title": "UpdateSequencePositionRequest"
-      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -4889,135 +4834,6 @@
           "type"
         ],
         "title": "ValidationError"
-      },
-      "deleteSequenceGroup": {
-        "properties": {
-          "group_id": {
-            "type": "integer",
-            "title": "Group Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "group_id"
-        ],
-        "title": "deleteSequenceGroup"
-      },
-      "deleteSequenceItem": {
-        "properties": {
-          "item_id": {
-            "type": "integer",
-            "title": "Item Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "item_id"
-        ],
-        "title": "deleteSequenceItem"
-      },
-      "updateSequenceGroup": {
-        "properties": {
-          "group_id": {
-            "type": "integer",
-            "title": "Group Id"
-          },
-          "group_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Group Name"
-          },
-          "group_description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Group Description"
-          }
-        },
-        "type": "object",
-        "required": [
-          "group_id"
-        ],
-        "title": "updateSequenceGroup"
-      },
-      "updateSequenceItem": {
-        "properties": {
-          "item_id": {
-            "type": "integer",
-            "title": "Item Id"
-          },
-          "item_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Item Name"
-          },
-          "item_sequence_position": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Item Sequence Position"
-          },
-          "item_response_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Item Response Type"
-          },
-          "options": {
-            "anyOf": [
-              {
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Options"
-          },
-          "req_parameters": {
-            "anyOf": [
-              {
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Req Parameters"
-          }
-        },
-        "type": "object",
-        "required": [
-          "item_id"
-        ],
-        "title": "updateSequenceItem"
       }
     },
     "securitySchemes": {

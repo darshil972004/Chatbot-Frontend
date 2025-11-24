@@ -2,9 +2,12 @@ import React, {useCallback, useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
 import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, updateAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
-import { ticketsApi, ticketMessagesApi } from '../api/ticketsApi'
+import { ticketsApi, ticketMessagesApi, ticketAgentsApi } from '../api/ticketsApi'
+import { agentsApi } from '../api/agentsApi'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
+import { useTicketUpdates } from '../api/sse/sse'
+
 const DEFAULT_ROLE_LABEL = 'Technical Agent'
 
 const CLOSED_STATUSES = ['closed', 'resolved', 'cancelled']
@@ -96,6 +99,13 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [wsConnected, setWsConnected] = useState<boolean>(false)
   const sessionRestoredRef = useRef<boolean>(false)
+  
+  // Transfer state
+  const [showTransferPopup, setShowTransferPopup] = useState<boolean>(false)
+  const [transferTicketId, setTransferTicketId] = useState<string | number | null>(null)
+  const [availableAgents, setAvailableAgents] = useState<any[]>([])
+  const [selectedAgent, setSelectedAgent] = useState<any>(null)
+  const [transferLoading, setTransferLoading] = useState<boolean>(false)
 
   // Persist active chat session to localStorage
   const saveActiveChatSession = useCallback((ticketId: string | number | null) => {
@@ -333,25 +343,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
             const isSavedSession = savedSessionId && String(ticket.id) === String(savedSessionId);
             
             // Preserve the actual ticket status from backend, but normalize for UI
-            let normalizedStatus = ticket.status || 'waiting';
-            if (normalizedStatus === 'open' || normalizedStatus === 'in_progress' || normalizedStatus === 'assigned') {
-              normalizedStatus = 'assigned';
-            } else if (normalizedStatus === 'waiting') {
-              normalizedStatus = 'waiting';
-            } else if (isClosedStatus(normalizedStatus)) {
-              // If this is the saved active session, don't trust closed status from backend
-              // It might be stale - keep it as assigned to allow restore
-              if (isSavedSession) {
-                console.log('Saved active session has closed status in backend, but preserving as assigned for restore');
-                normalizedStatus = 'assigned';
-              } else {
-                // Keep closed statuses as-is for other tickets
-                normalizedStatus = normalizedStatus;
-              }
-            } else {
-              // For unknown statuses, default to waiting (not closed)
-              normalizedStatus = 'waiting';
-            }
+            let normalizedStatus = ticket.status;
             
             return {
               id: ticket.id,
@@ -438,6 +430,157 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   },[agentId, loggedOut, loadQuickReplies])
 
+  useTicketUpdates(async (event) => {
+  const agent = retrieveAgentInfo()
+  // Do nothing if not logged in
+  if (!agent?.id) return;
+
+  // Make sure the SSE broadcast is FOR THIS AGENT only
+  // -------------------------
+  // 1️⃣ If assigned_agent_id exists
+  // -------------------------
+  if (event.assigned_agent_id) {
+    if (Number(event.assigned_agent_id) !== Number(agent.id)) {
+      console.log(
+        "Ignoring SSE event for another agent:",
+        event.assigned_agent_id
+      );
+      return;
+    }
+  } 
+  // -------------------------
+  // 2️⃣ If assigned_agent_id does NOT exist
+  // Check if ticket_id exists in current sessions
+  // -------------------------
+  else {
+    const existsInCurrentList = sessions.some(
+      (session) => String(session.id) === String(event.ticket_id)
+    );
+
+    if (!existsInCurrentList) {
+      console.log(
+        "Ignoring SSE event: ticket not in current agent list:",
+        event.ticket_id
+      );
+      return;
+    }
+  }
+
+  // If we reach here → event is relevant and must be processed
+  console.log("SSE EVENT IS RELATED TO THIS AGENT SO CONTINUING :", event);
+
+  // Continue with your heavy refresh logic...
+
+  // Process relevant events only
+  if (
+    true
+  ) {
+    console.log("Processing SSE event:", event);
+
+    try {
+      // Fetch tickets assigned to this agent
+      const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0);
+
+      if (Array.isArray(tickets) && tickets.length > 0) {
+        const mapped = tickets.map((ticket: any) => {
+          const savedSessionId = getActiveChatSession();
+          const isSavedSession =
+            savedSessionId && String(ticket.id) === String(savedSessionId);
+
+          
+
+          return {
+            id: ticket.id,
+            user: {
+              name: `User ${ticket.user_id || "Unknown"}`,
+              email: "",
+              country: "",
+              pastIssues: 0,
+            },
+            topic: ticket.category || "tech",
+            status: ticket.status,
+            unread: 0,
+            lastMsgTime: ticket.created_at
+              ? new Date(ticket.created_at).toLocaleString()
+              : "now",
+            startedAgo: ticket.created_at
+              ? new Date(ticket.created_at).toLocaleString()
+              : "just now",
+            messages: [],
+            messagesLoaded: false,
+            loadingMessages: false,
+            title: ticket.title,
+            description: ticket.description,
+            priority: ticket.priority,
+          };
+        });
+
+        // Merge + ensure uniqueness + preserve active statuses
+        setSessions((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+
+          const merged = mapped.map((newSession) => {
+            const existing = prev.find((p) => p.id === newSession.id);
+            if (
+              existing &&
+              !isClosedStatus(existing.status) &&
+              isClosedStatus(newSession.status)
+            ) {
+              console.log(
+                "Preserving active session's previous status for ticket:",
+                newSession.id
+              );
+              return { ...newSession, status: existing.status };
+            }
+            return newSession;
+          });
+
+          return [...merged, ...prev.filter((p) => !existingIds.has(p.id))];
+        });
+
+        // Auto-select most recent session if none is active
+        if (!activeSessionId && mapped.length > 0) {
+          setActiveSessionId(mapped[0].id);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch tickets by agent", e);
+
+      // Fallback: load active rooms
+      try {
+        const resp = await fetchActiveRooms();
+
+        if (resp?.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((r: any) => ({
+            id: r.ticket_id,
+            user: { name: r.user_id || "User", email: "" },
+            topic: "tech",
+            status: r.status || "waiting",
+            unread: 0,
+            lastMsgTime: r.created_at || "now",
+            startedAgo: r.created_at || "just now",
+            messages: r.history || [],
+            messagesLoaded: Array.isArray(r.history) && r.history.length > 0,
+            loadingMessages: false,
+          }));
+
+          setSessions((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            return [...mapped, ...prev.filter((p) => !existingIds.has(p.id))];
+          });
+
+          if (!activeSessionId && mapped.length > 0) {
+            setActiveSessionId(mapped[0].id);
+          }
+        }
+      } catch (fallbackErr) {
+        console.warn("Failed to fetch active rooms as fallback", fallbackErr);
+      }
+    }
+  }
+});
+
+
   // Restore active chat session from localStorage after page reload
   useEffect(() => {
     if (loggedOut || sessionRestoredRef.current) return;
@@ -498,14 +641,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           if (ticket && !isClosedStatus(ticket.status)) {
             // Ticket exists and is not closed, add it to sessions
             console.log('Ticket found in backend, adding to sessions:', savedSessionId);
-            let normalizedStatus: string = ticket.status || 'waiting';
-            if (normalizedStatus === 'open' || normalizedStatus === 'in_progress') {
-              normalizedStatus = 'assigned';
-            } else if (normalizedStatus === 'waiting') {
-              normalizedStatus = 'waiting';
-            } else {
-              normalizedStatus = 'assigned'; // Default to assigned for active chats
-            }
+            let normalizedStatus: string = ticket.status;
             
             const newSession = {
               id: ticket.id,
@@ -782,10 +918,84 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     if (onLogout) onLogout()
   }
 
+  // Transfer functions
+  async function loadAvailableAgents() {
+    try {
+      const agents = await agentsApi.getAvailableAgents()
+      const currentAgent = retrieveAgentInfo()
+      // Filter out current agent from available agents
+      const filteredAgents = agents.filter(agent => agent.id !== currentAgent?.id)
+      setAvailableAgents(filteredAgents)
+    } catch (err) {
+      console.error('Failed to load available agents:', err)
+      setAvailableAgents([])
+    }
+  }
+
+  function openTransferPopup(ticketId: string | number) {
+    setTransferTicketId(ticketId)
+    setShowTransferPopup(true)
+    setSelectedAgent(null)
+    loadAvailableAgents()
+  }
+
+  function closeTransferPopup() {
+    setShowTransferPopup(false)
+    setTransferTicketId(null)
+    setSelectedAgent(null)
+    setAvailableAgents([])
+  }
+
+  async function handleTransfer() {
+    if (!selectedAgent || !transferTicketId) return
+    
+    setTransferLoading(true)
+    try {
+      const agent = retrieveAgentInfo()
+      
+      // Update ticket agent assignment
+      await ticketAgentsApi.updateTicketAgent({
+        ticket_id: String(transferTicketId),
+        assigned_agent_id: selectedAgent.id,
+        actor_id: agent?.id
+      })
+
+      // Update the session status to show it's transferred
+      setSessions(prev => prev.map(session => 
+        session.id === transferTicketId 
+          ? { ...session, status: 'assigned', transferred: true }
+          : session
+      ))
+
+      // If this was the active chat, close it and remove from active
+      if (activeSessionId === transferTicketId) {
+        setActiveSessionId(null)
+        setActiveChatTicketId(null)
+        saveActiveChatSession(null)
+        if(chatWsRef.current) {
+          chatWsRef.current.close()
+          chatWsRef.current = null
+        }
+      }
+
+      // Show success message
+      alert('Ticket transferred successfully!')
+      closeTransferPopup()
+    } catch (err) {
+      console.error('Transfer failed:', err)
+      alert('Failed to transfer ticket. Please try again.')
+    } finally {
+      setTransferLoading(false)
+    }
+  }
+
   interface ConversationListItemProps {
     session: any;
     onOpen: () => void;
     onClaim?: () => void;
+    onResume?: () => void;
+    onEnd?: () => void;
+    onTransfer?: () => void;
     active: boolean;
   }
 
@@ -1072,6 +1282,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                 onClaim={() => claimSession(s.id)}
                 onResume={() => handleResumeChat(s.id)}
                 onEnd={() => handleEndChatFromList(s.id)}
+                onTransfer={() => openTransferPopup(s.id)}
                 active={s.id===activeSessionId}
               />
             ))}
@@ -1155,6 +1366,66 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           </div>
         </section>
       </div>
+
+      {/* Transfer Popup */}
+      {showTransferPopup && (
+        <div className="transfer-modal">
+          <div className="transfer-modal-content">
+            <div className="transfer-modal-header">
+              <h3>Transfer Ticket #{transferTicketId}</h3>
+              <button className="transfer-modal-close" onClick={closeTransferPopup}>×</button>
+            </div>
+            <div className="transfer-modal-body">
+              <p>Select an agent to transfer this ticket to:</p>
+              {availableAgents.length === 0 ? (
+                <p className="transfer-no-agents">No available agents found.</p>
+              ) : (
+                <div className="transfer-agent-list">
+                  {availableAgents.map(agent => (
+                    <div
+                      key={agent.id}
+                      className={`transfer-agent-item ${selectedAgent?.id === agent.id ? 'selected' : ''}`}
+                      onClick={() => setSelectedAgent(agent)}
+                    >
+                      <div className="transfer-agent-info">
+                        <div className="transfer-agent-name">
+                          {agent.display_name || agent.username}
+                        </div>
+                        <div className="transfer-agent-email">{agent.email}</div>
+                        {agent.role && <div className="transfer-agent-role">{agent.role}</div>}
+                      </div>
+                      <div className="transfer-agent-radio">
+                        <input
+                          type="radio"
+                          name="agent"
+                          checked={selectedAgent?.id === agent.id}
+                          onChange={() => setSelectedAgent(agent)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="transfer-modal-footer">
+              <button
+                className="transfer-btn-cancel"
+                onClick={closeTransferPopup}
+                disabled={transferLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="transfer-btn-confirm"
+                onClick={handleTransfer}
+                disabled={!selectedAgent || transferLoading}
+              >
+                {transferLoading ? 'Transferring...' : 'Transfer Ticket'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1165,9 +1436,10 @@ interface ConversationListItemProps {
   onClaim?: () => void;
   onResume?: () => void;
   onEnd?: () => void;
+  onTransfer?: () => void;
   active: boolean;
 }
-function ConversationListItem({session, onOpen, onClaim, onResume, onEnd, active}: ConversationListItemProps){
+function ConversationListItem({session, onOpen, onClaim, onResume, onEnd, onTransfer, active}: ConversationListItemProps){
   const displayTitle = session.title || session.topic || 'Ticket'
   const waiting = isWaitingStatus(session.status)
   const closed = isClosedStatus(session.status)
@@ -1197,6 +1469,10 @@ function ConversationListItem({session, onOpen, onClaim, onResume, onEnd, active
                 e.stopPropagation()
                 onResume && onResume()
               }}>Send Msg</button>
+              <button className="conversation-btn btn-transfer" onClick={(e) => {
+                e.stopPropagation()
+                onTransfer && onTransfer()
+              }}>Transfer</button>
               <button className="conversation-btn btn-end" onClick={(e) => {
                 e.stopPropagation()
                 onEnd && onEnd()

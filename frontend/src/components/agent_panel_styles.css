@@ -654,6 +654,16 @@
   color: #422006;
 }
 
+.conversation-btn.btn-transfer {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+.conversation-btn.btn-transfer:hover:not(:disabled) {
+  background: #7c3aed;
+  opacity: 0.9;
+}
+
 .conversation-btn.btn-end {
   background: #ef4444;
   color: #fff;
@@ -981,6 +991,198 @@
 
 .conversation-list::-webkit-scrollbar-thumb,
 .chat-messages::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.transfer-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.transfer-modal-content {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.15);
+  padding: 24px;
+  min-width: 480px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.transfer-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.transfer-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.transfer-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.transfer-modal-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.transfer-modal-body {
+  margin-bottom: 24px;
+}
+
+.transfer-modal-body p {
+  margin: 0 0 16px 0;
+  color: #475569;
+  font-size: 14px;
+}
+
+.transfer-no-agents {
+  color: #94a3b8;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.transfer-agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.transfer-agent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.transfer-agent-item:hover {
+  border-color: #c7d2fe;
+  background: #f8fafc;
+}
+
+.transfer-agent-item.selected {
+  border-color: #8b5cf6;
+  background: #f3f4f6;
+}
+
+.transfer-agent-info {
+  flex: 1;
+}
+
+.transfer-agent-name {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.transfer-agent-email {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.transfer-agent-role {
+  font-size: 12px;
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+.transfer-agent-radio {
+  margin-left: 12px;
+}
+
+.transfer-agent-radio input[type="radio"] {
+  accent-color: #8b5cf6;
+}
+
+.transfer-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.transfer-btn-cancel,
+.transfer-btn-confirm {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.transfer-btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.transfer-btn-cancel:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.transfer-btn-confirm {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+.transfer-btn-confirm:hover:not(:disabled) {
+  background: #7c3aed;
+}
+
+.transfer-btn-cancel:disabled,
+.transfer-btn-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.transfer-agent-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transfer-agent-list::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 999px;
 }
