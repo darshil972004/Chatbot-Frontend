@@ -70,6 +70,11 @@ export default function ChatbotWidget() {
   const [agentStatus, setAgentStatus] = useState<'waiting' | 'connected' | 'released' | null>(null);
   const [agentName, setAgentName] = useState<string | null>(null);
   const [liveChatError, setLiveChatError] = useState<string | null>(null);
+  // Feedback form state
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState<number>(0);
+  const [feedbackNote, setFeedbackNote] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
 
   // Track if user is currently chatting with agent
   const isAgentActive = Boolean(ticketId && agentStatus === 'connected');
@@ -110,9 +115,22 @@ export default function ChatbotWidget() {
       setAgentStatus(null);
       setAgentName(null);
       setLiveChatError(null);
+      // Do NOT show feedback form here; will be handled by effect below
     },
     []
   );
+  // Show feedback form only after agent chat ends (not on every reset)
+  const prevAgentStatus = useRef(agentStatus);
+  useEffect(() => {
+    // If agentStatus transitions from 'connected' to null or 'released', show feedback
+    if (prevAgentStatus.current === 'connected' && (agentStatus === null || agentStatus === 'released')) {
+      setShowFeedback(true);
+      setFeedbackRating(0);
+      setFeedbackNote('');
+      setFeedbackError('');
+    }
+    prevAgentStatus.current = agentStatus;
+  }, [agentStatus]);
 
   const emitLiveMessage = useCallback((text: string) => {
     const payload = JSON.stringify({ type: 'message', text, sender: 'user', ts: Date.now() });
@@ -631,7 +649,8 @@ export default function ChatbotWidget() {
               </button>
             </div>
 
-            <div className="cp-chatbot__body" ref={listRef}>
+              <div className="cp-chatbot__body" ref={listRef}>
+  {/* Inline feedback form as a chat message */}
         {ticketId && (
           <div className="cp-live-banner">
             <div className={`cp-live-dot ${agentStatus === 'connected' ? 'is-online' : 'is-waiting'}`} />
@@ -653,7 +672,51 @@ export default function ChatbotWidget() {
             </div>
           </div>
         )}
-        {messages.map((m) => {
+  {messages.map((m, idx) => {
+    // Insert feedback form as a chat message after agent chat ends
+    if (showFeedback && idx === messages.length - 1) {
+      return (
+        <div key="feedback-form" className="cp-msg cp-msg--system" style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, margin: '16px 0', padding: 16 }}>
+          <div className="cp-feedback-title">How was your experience with the live agent?</div>
+          <div className="cp-feedback-rating" style={{ margin: '8px 0' }}>
+            {[1,2,3,4,5].map((star) => (
+              <span
+                key={star}
+                className={`cp-feedback-star${feedbackRating >= star ? ' cp-feedback-star--active' : ''}`}
+                style={{ cursor: 'pointer', fontSize: 28, color: feedbackRating >= star ? '#fbbf24' : '#d1d5db' }}
+                onClick={() => setFeedbackRating(star)}
+                aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+              >★</span>
+            ))}
+          </div>
+          <div style={{ color: '#ef4444', fontSize: 13, minHeight: 18 }}>{feedbackError}</div>
+          <textarea
+            className="cp-feedback-note"
+            placeholder="Add a note (optional)"
+            value={feedbackNote}
+            onChange={e => setFeedbackNote(e.target.value)}
+            style={{ width: '100%', minHeight: 60, marginTop: 12, borderRadius: 6, border: '1px solid #e5e7eb', padding: 8, fontSize: 15 }}
+          />
+          <button
+            className="cp-feedback-submit cp-btn"
+            style={{ marginTop: 16, background: '#2563eb', color: '#fff', fontWeight: 500, border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 16 }}
+            onClick={() => {
+              if (feedbackRating < 1 || feedbackRating > 5) {
+                setFeedbackError('Please rate the agent (1-5 stars)');
+                return;
+              }
+              setFeedbackError('');
+              setShowFeedback(false);
+              // Optionally: send feedback to backend here
+              addSystemMessage('Thank you for your feedback! You can now continue chatting with the AI assistant.');
+            }}
+            disabled={feedbackRating < 1 || feedbackRating > 5}
+          >
+            Submit Feedback
+          </button>
+        </div>
+      );
+    }
           // Show form summary for user message
           if (m.role === 'user' && m.text.includes(':')) {
             const fields = m.text.split(',').map(f => {
