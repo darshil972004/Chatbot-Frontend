@@ -74,6 +74,8 @@ type Ticket = {
   category?: string;
   created_at: string;
   updated_at: string;
+  agent_id?: number | null;
+  agent_name?: string;
 };
 
 const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
@@ -2020,11 +2022,12 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
           <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: '366px' }}>ID</th>
-                <th style={{ minWidth: '200px' }}>Title</th>
+                <th style={{ width: '200px' }}>ID</th>
+                <th style={{ minWidth: '100px' }}>Title</th>
+                <th style={{ minWidth: '100px' }}>Agent</th>
                 <th style={{ width: '100px' }}>Status</th>
                 <th style={{ width: '100px' }}>Priority</th>
-                <th style={{ width: '120px' }}>Created</th>
+                <th style={{ width: '150px' }}>Created</th>
                 <th style={{ minWidth: '145px' }}>Actions</th>
               </tr>
             </thead>
@@ -2038,9 +2041,12 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
               ) : (
                 filteredTickets.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td style={{ width: '366px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
-                    <td style={{ minWidth: '200px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ minWidth: '200px', width: '366px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
+                    <td style={{ minWidth: '20px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {ticket.title}
+                    </td>
+                    <td style={{ minWidth: '100px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ticket.agent_name}
                     </td>
                     <td style={{ width: '100px' }}>
                       <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
