@@ -496,32 +496,27 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
   };
 
   return (
-    <div className="admin-sidebar">
-      <div className="admin-sidebar-card">
-        <ul className="admin-sidebar-list">
-          {item('dashboard', 'Dashboard', null)}
-          {item('tickets', 'Tickets', null)}
-          {item('agents', `Agents (${onlineCount} online)`, null)}
-          {item('analysis', 'Analysis', null)}
-          {item('conversations', 'Conversations', null)}
-          {item('alerts', 'Alerts', null)}
-          {item('skills', 'Skills', null)}
-          {/* Settings button removed, now only accessible from header dropdown */}
-          {item('workflows', 'Workflows', null)}
-        </ul>
-      </div>
-    </div>
+    <ul className="admin-sidebar-list">
+      {item('dashboard', 'Dashboard', null)}
+      {item('tickets', 'Tickets', null)}
+      {item('agents', `Agents (${onlineCount} online)`, null)}
+      {item('analysis', 'Analysis', null)}
+      {item('conversations', 'Conversations', null)}
+      {item('alerts', 'Alerts', null)}
+      {item('skills', 'Skills', null)}
+      {/* Settings button removed, now only accessible from header dropdown */}
+      {item('workflows', 'Workflows', null)}
+    </ul>
   );
 }
 
-// Dashboard Component
 type DashboardProps = {
   agents: Agent[];
 };
 
 function Dashboard({ agents }: DashboardProps) {
   const totalAgents = agents.length;
-  const activeAgents = agents.filter((a) => a.status !== 'offline').length;
+  const activeAgents = agents.filter((a: Agent) => a.status !== 'offline').length;
 
   // Sort agents by chats today and take top 5
   const topAgents = [...agents]
@@ -536,7 +531,8 @@ function Dashboard({ agents }: DashboardProps) {
         <div className="dashboard-stats-compact">
           <StatCard title="Total Agents" value={totalAgents} icon="👥" />
           <StatCard title="Active Agents" value={activeAgents} icon="⚡" />
-          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} icon="🟢" />
+          <StatCard title="Online Agents" value={agents.filter((a: Agent) => a.status === 'online').length} icon="🟢" />
+
         </div>
 
         {/* Compact Status Overview */}
@@ -547,28 +543,32 @@ function Dashboard({ agents }: DashboardProps) {
               <div className="status-icon">🟢</div>
               <div className="status-content">
                 <div className="status-label">Online</div>
-                <div className="status-value">{agents.filter(a => a.status === 'online').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'online').length}</div>
+
               </div>
             </div>
             <div className="status-item">
               <div className="status-icon">🔴</div>
               <div className="status-content">
                 <div className="status-label">Offline</div>
-                <div className="status-value">{agents.filter(a => a.status === 'offline').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'offline').length}</div>
+
               </div>
             </div>
             <div className="status-item">
               <div className="status-icon">🟠</div>
               <div className="status-content">
                 <div className="status-label">Busy</div>
-                <div className="status-value">{agents.filter(a => a.status === 'busy').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'busy').length}</div>
+
               </div>
             </div>
             <div className="status-item">
               <div className="status-icon">🟣</div>
               <div className="status-content">
                 <div className="status-label">Away</div>
-                <div className="status-value">{agents.filter(a => a.status === 'away').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'away').length}</div>
+
               </div>
             </div>
           </div>
@@ -2051,50 +2051,75 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
         </div>
       </div>
 
-      <div className="admin-tickets-container admin-tab-card">
-        <div className="admin-tickets-table-wrapper admin-table-scroll">
+      <div className="admin-tickets-container">
+        <div className="admin-tickets-table-wrapper">
           <table className="admin-table">
+            <colgroup>
+              <col style={{ width: '200px' }} />
+              <col style={{ minWidth: '200px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '160px' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th style={{ width: '366px' }}>ID</th>
-                <th style={{ minWidth: '200px' }}>Title</th>
-                <th style={{ width: '100px' }}>Status</th>
-                <th style={{ width: '100px' }}>Priority</th>
-                <th style={{ width: '120px' }}>Created</th>
-                <th style={{ minWidth: '145px' }}>Actions</th>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Agent</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Created</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                    <div className="admin-empty-state">No tickets found</div>
+                  <td colSpan={7} className="py-8 text-center">
+                    <div className="admin-empty-state text-gray-500">No tickets found</div>
                   </td>
                 </tr>
               ) : (
                 filteredTickets.map((ticket) => (
-                  <tr key={ticket.id}>
-                    <td style={{ width: '366px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
-                    <td style={{ minWidth: '200px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {ticket.id}
+                    </td>
+                    <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
                       {ticket.title}
                     </td>
-                    <td style={{ width: '100px' }}>
+                    <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {ticket.agent_name || 'Unassigned'}
+                    </td>
+                    <td>
                       <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ width: '80px' }}>
+                    <td>
                       <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
                         {ticket.priority}
                       </span>
                     </td>
-                    <td style={{ width: '100px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
+                    <td className="text-sm text-gray-600 whitespace-nowrap">
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
-                    <td style={{ width: '140px' }}>
+                    <td>
                       <div className="admin-table-actions">
-                        <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
-                        <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
+                        <button 
+                          onClick={() => handleViewTicket(ticket)} 
+                          className="admin-button admin-button-primary text-xs px-3 py-1.5"
+                        >
+                          View
+                        </button>
+                        <button 
+                          onClick={() => handleAssignTicket(ticket.id)} 
+                          className="admin-button admin-button-secondary text-xs px-3 py-1.5"
+                        >
+                          Assign
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -2268,7 +2293,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
     <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Conversations</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px',flexDirection: 'row',flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <input
               type="checkbox"
@@ -2299,9 +2324,17 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
         </div>
       </div>
 
-      <div className="admin-tab-card">
-        <div className="admin-table-scroll">
+      <div className="admin-conversations-container">
+        <div className="admin-conversations-table-wrapper">
           <table className="admin-table">
+            <colgroup>
+              <col style={{ width: '200px' }} />
+              <col style={{ minWidth: '150px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '200px' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Session ID</th>
@@ -2309,7 +2342,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                 <th>Status</th>
                 <th>Messages</th>
                 <th>Created</th>
-                <th>Actions</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2324,7 +2357,11 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                   <tr key={conv.id}>
                     <td>{conv.session_id}</td>
                     <td>{conv.user_id || 'N/A'}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{conv.status || 'N/A'}</td>
+                    <td style={{ textTransform: 'capitalize' }}>
+                      <span className="admin-status-badge">
+                        {conv.status || 'N/A'}
+                      </span>
+                    </td>
                     <td>{conversationMessages.length || 0}</td>
                     <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
                     <td>
