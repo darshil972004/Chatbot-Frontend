@@ -112,4 +112,11 @@ export const conversationDetailsApi = {
     const response = await apiClient.get(`/api/conversation-details/by-agent/${agentId}`, { params });
     return response.data?.data || [];
   },
+
+  // Get conversation details by ticket ID
+  getConversationDetailsByTicket: async (ticketId: string | number, limit?: number, offset?: number): Promise<ChatMessage[]> => {
+    const params = { limit, offset };
+    const response = await apiClient.get(`/api/conversation-details/by-ticket/${ticketId}`, { params });
+    return response.data?.data || [];
+  },
 };

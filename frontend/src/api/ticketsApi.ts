@@ -51,6 +51,18 @@ export const ticketsApi = {
       status: 'closed',
     });
   },
+
+  // Get conversation details by ticket ID
+  getConversationDetailsByTicketId: async (ticketId: string): Promise<any[]> => {
+    try {
+      // Direct call to the backend endpoint for conversation details by ticket ID
+      const response = await apiClient.get(`/api/conversation-details/by-ticket/${ticketId}`);
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Failed to get conversation details by ticket ID:', error);
+      return [];
+    }
+  },
 };
 
 // Ticket Agents API

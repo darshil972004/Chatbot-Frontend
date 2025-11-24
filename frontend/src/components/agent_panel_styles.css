@@ -1402,3 +1402,35 @@
       "shortcuts";
   }
 }
+
+/* History Button Styles */
+.history-button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.history-button:hover:not(:disabled) {
+  background: #4f46e5;
+}
+
+.history-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.chat-history-placeholder {
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 6px;
+  margin: 8px 0;
+  border: 1px solid #e2e8f0;
+}
