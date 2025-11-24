@@ -63,7 +63,7 @@ export default function ChatbotWidget() {
   const wsRef = useRef<WebSocket | null>(null);
   const pendingLiveQueue = useRef<string[]>([]);
   const [pendingOptions, setPendingOptions] = useState<string[]>([]);
-  const [pendingMode, setPendingMode] = useState<'button-list' | 'dropdown' | 'form' | null>(null);
+  const [pendingMode, setPendingMode] = useState<'button-list' | 'dropdown' | 'form' | 'checklist' | null>(null);
   const [selectedOption, setSelectedOption] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -235,7 +235,7 @@ export default function ChatbotWidget() {
               setPendingOptions(opts);
               setPendingMode('form');
               (window as any).cpFormHeading = formHeading;
-            } else if ((rType === 'button-list' || rType === 'dropdown') && Array.isArray(opts) && opts.length > 0) {
+            } else if ((rType === 'button-list' || rType === 'dropdown' || rType === 'checklist') && Array.isArray(opts) && opts.length > 0) {
               setPendingOptions(opts);
               setPendingMode(rType);
             }
@@ -533,9 +533,13 @@ export default function ChatbotWidget() {
       setPendingOptions(opts);
       setPendingMode('form');
       (window as any).cpFormHeading = formHeading; // for passing heading to FormOptions
-    } else if ((rType === 'button-list' || rType === 'dropdown') && Array.isArray(optsRaw) && optsRaw.length > 0) {
+    } else if ((rType === 'button-list' || rType === 'dropdown' || rType === 'checklist') && Array.isArray(optsRaw) && optsRaw.length > 0) {
       setPendingOptions(optsRaw);
       setPendingMode(rType);
+    }
+    if ((rType === 'checklist') && Array.isArray(optsRaw) && optsRaw.length > 0) {
+      setPendingOptions(optsRaw);
+      setPendingMode('checklist');
     }
 
     const ticketIdFromRes = (res.data as any)?.ticket_id;
@@ -824,6 +828,9 @@ export default function ChatbotWidget() {
             }}
           />
         )}
+        {!loading && pendingOptions.length > 0 && pendingMode === 'checklist' && (
+          <ChecklistOptions options={pendingOptions} onSubmit={async (checked: string[]) => { await handleSend(checked.join(', ')); }} />
+        )}
             </div>
 
             <div className="cp-chatbot__footer cp-footer-col">
@@ -1059,6 +1066,37 @@ function FormOptions({ options, heading, onSubmit }: { options: any[]; heading?:
           </button>
         </div>
       </form>
+  );
+}
+
+type ChecklistOptionsProps = {
+  options: Array<{ text?: string } | string>;
+  onSubmit: (checked: string[]) => void;
+};
+
+function ChecklistOptions({ options, onSubmit }: ChecklistOptionsProps) {
+  const opts = Array.isArray(options) ? options : [];
+  const [checked, setChecked] = useState<string[]>([]);
+  const handleToggle = (value: string) => {
+    setChecked((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+  return (
+    <div className="cp-options cp-options--checklist">
+      {opts.map((opt) => {
+        const val = typeof opt === 'string' ? opt : opt.text || '';
+        return (
+          <label key={val} className="cp-option-check">
+            <input type="checkbox" checked={checked.includes(val)} onChange={() => handleToggle(val)} />
+            <span>{val}</span>
+          </label>
+        );
+      })}
+      <button className="cp-option" disabled={checked.length === 0} onClick={() => onSubmit(checked)}>
+        Submit
+      </button>
+    </div>
   );
 }
 

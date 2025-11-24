@@ -39,6 +39,7 @@ const componentPalette: ComponentPaletteItem[] = [
   { id: 'button-list', type: 'button-list', label: 'Button List', icon: '☰' },
   { id: 'text-input', type: 'text-input', label: 'Text Input', icon: 'T' },
   { id: 'dropdown', type: 'dropdown', label: 'Dropdown', icon: '▼' },
+  { id: 'checklist', type: 'checklist', label: 'Checklist', icon: '☑️' },
   { id: 'message', type: 'message', label: 'Message', icon: '💬' },
   { id: 'form', type: 'form', label: 'Get User Details', icon: '👤' },
   // { id: 'set-data', type: 'set-data', label: 'Set Data', icon: '📊' },
@@ -48,10 +49,37 @@ const componentPalette: ComponentPaletteItem[] = [
 ];
 
 export default function WorkflowManagement() {
+  // Track selected edge for deletion
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  // Helper to get direct children (next steps) of a node
+  const getDirectChildren = (nodeId: string) => {
+    return edges
+      .filter(edge => edge.source === nodeId)
+      .map(edge => nodes.find(n => n.id === edge.target))
+      .filter((n): n is typeof nodes[number] => n !== undefined);
+  };
   const { workflowId: routeWorkflowId } = useParams<{ workflowId?: string }>();
   const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Handler for edge click
+  const handleEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    event.stopPropagation();
+    setSelectedEdge(edge);
+  }, []);
+
+  // Handler for edge deletion (Delete/Backspace)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedEdge) {
+        setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
+        setSelectedEdge(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEdge, setEdges]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
@@ -83,6 +111,7 @@ export default function WorkflowManagement() {
       'text-input': 'Please type your question:',
       'button-list': 'Please select an option:',
       'dropdown': 'Please select from dropdown:',
+      'checklist': 'Please select from option:',
       'message': 'Enter your message:',
       'form': 'Get user information:',
       'set-data': 'Set data value:',
@@ -154,8 +183,8 @@ export default function WorkflowManagement() {
                 if (nodeData.type === 'form') {
                   // For form nodes, parse as formFields
                   formFields = parsed;
-                } else if (nodeData.type === 'button-list' || nodeData.type === 'dropdown') {
-                  // For button-list and dropdown, parse as options
+                } else if (nodeData.type === 'button-list' || nodeData.type === 'dropdown' || nodeData.type === 'checklist') {
+                  // For button-list, dropdown, and checklist, parse as options
                   // Ensure nextStepId is preserved
                   options = parsed.map((opt: any) => ({
                     id: opt.id,
@@ -205,6 +234,21 @@ export default function WorkflowManagement() {
 
         setNodes(loadedNodes);
         setEdges(loadedEdges);
+        // Select the first connected node (start node) as default
+        // Find nodes with no incoming edges
+        const inDegree = new Map<string, number>();
+        loadedNodes.forEach(node => inDegree.set(node.id, 0));
+        loadedEdges.forEach(edge => {
+          inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
+        });
+        const startNodes = loadedNodes.filter(node => (inDegree.get(node.id) || 0) === 0);
+        if (startNodes.length > 0) {
+          setSelectedNode(startNodes[0]);
+        } else if (loadedNodes.length > 0) {
+          setSelectedNode(loadedNodes[0]);
+        } else {
+          setSelectedNode(null);
+        }
       } else {
         alert(`Failed to load workflow: ${result.error || 'Unknown error'}`);
         navigate('/workflows');
@@ -263,7 +307,7 @@ export default function WorkflowManagement() {
           type: componentType,
           prompt: defaultPrompt,
           question_text: defaultPrompt,
-            options: (componentType === 'button-list' || componentType === 'dropdown') 
+            options: (componentType === 'button-list' || componentType === 'dropdown' || componentType === 'checklist') 
             ? [{ id: 1, text: 'Option 1', nextStepId: undefined }] 
             : [],
           formFields: componentType === 'form'
@@ -274,7 +318,19 @@ export default function WorkflowManagement() {
         },
       };
 
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => {
+        const updated = nds.concat(newNode);
+        // After adding, select the first node with no incoming edges as default
+        const inDegree = new Map<string, number>();
+        updated.forEach(node => inDegree.set(node.id, 0));
+        // Edges are not updated here, so just select the first node if only one exists
+        if (updated.length === 1) {
+          setSelectedNode(newNode);
+        } else {
+          setSelectedNode(updated[0]);
+        }
+        return updated;
+      });
     };
 
     const handleDragOver = (event: Event) => {
@@ -413,7 +469,7 @@ export default function WorkflowManagement() {
           if (Array.isArray(node.data.formFields)) {
             options_json = JSON.stringify(node.data.formFields);
           }
-        } else if (node.data.type === 'button-list' || node.data.type === 'dropdown') {
+        } else if (node.data.type === 'button-list' || node.data.type === 'dropdown' || node.data.type === 'checklist') {
           // Button-list and dropdown: save options (only if not empty)
           if (node.data.options && node.data.options.length > 0) {
             options_json = JSON.stringify(node.data.options);
@@ -524,7 +580,7 @@ export default function WorkflowManagement() {
           };
           
           // Always update based on node type - use edited values directly
-          if (editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown') {
+          if (editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown' || editingNode.data.type === 'checklist') {
             updatedData.options = editOptions;
           }
           
@@ -625,26 +681,17 @@ export default function WorkflowManagement() {
 
   // Add selected category options to editOptions
   const handleAddSelectedCategoryOptions = () => {
-    const newOptions: OptionConfig[] = [];
-    Array.from(selectedCategoryOptions).forEach(optionId => {
-      const option = categoryOptions.find(opt => opt.id === optionId);
-      if (option) {
-        newOptions.push({ id: Date.now() + optionId, text: option.text });
-      }
-    });
-
-    // Merge with existing options, avoiding duplicates
-    const existingTexts = new Set(editOptions.map(opt => opt.text.toLowerCase()));
-    const uniqueNewOptions = newOptions.filter(opt => !existingTexts.has(opt.text.toLowerCase()));
-
-    // Get the next available ID
-    const maxId = editOptions.length > 0 ? Math.max(...editOptions.map(o => o.id)) : 0;
-    const optionsWithIds: OptionConfig[] = uniqueNewOptions.map((opt, idx) => ({
-      ...opt,
-      id: maxId + idx + 1
-    }));
-
-    setEditOptions([...editOptions, ...optionsWithIds]);
+    // Only add the selected options from the database, remove all previous options
+    const selected = Array.from(selectedCategoryOptions)
+      .map((optionId, idx) => {
+        const option = categoryOptions.find(opt => opt.id === optionId);
+        if (option) {
+          return { id: idx + 1, text: option.text };
+        }
+        return null;
+      })
+      .filter(Boolean) as OptionConfig[];
+    setEditOptions(selected);
     setShowCategoryOptionsModal(false);
     setSelectedCategoryOptions(new Set());
     setCategoryOptions([]);
@@ -761,6 +808,7 @@ export default function WorkflowManagement() {
           nodeTypes={nodeTypes}
           fitView={!isLoading}
           className="react-flow-canvas"
+          onEdgeClick={handleEdgeClick}
         >
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <Controls />
@@ -783,6 +831,23 @@ export default function WorkflowManagement() {
           />
         </ReactFlow>
       </div>
+
+      {/* Goes to Step (Direct Children Only) */}
+      {selectedNode && (
+        <div className="workflow-direct-children" style={{ margin: '16px 0', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontWeight: 600 }}>Goes to Step (Direct Children Only)</h4>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+            {getDirectChildren(selectedNode.id).length === 0 && (
+              <li style={{ color: '#888' }}>(No direct children)</li>
+            )}
+            {getDirectChildren(selectedNode.id).map((child) => (
+              <li key={child.id} style={{ marginBottom: 4 }}>
+                <strong>{child.data.label || child.data.type}</strong> <span style={{ color: '#666' }}>({child.id})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Data Modal */}
       {showDataModal && workflowData && (
@@ -865,7 +930,7 @@ export default function WorkflowManagement() {
                 />
               </div>
 
-              {(editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown') && (
+              {(editingNode.data.type === 'button-list' || editingNode.data.type === 'dropdown' || editingNode.data.type === 'checklist') && (
                 <div className="edit-form-group">
                   <div className="edit-options-header">
                     <label>Buttons</label>
@@ -935,10 +1000,16 @@ export default function WorkflowManagement() {
                                 }}
                                 className="edit-next-step-select"
                               >
-                                <option value="">Please select an option:</option>
-                                {connectedNodes.length === 0 && (
-                                  <option value="" disabled>No next step (ends workflow)</option>
+                                {/* Placeholder ONLY when no value is selected */}
+                                {!option.nextStepId && (
+                                  <option value="" hidden>
+                                    {connectedNodes.length > 0
+                                      ? connectedNodes[0].label
+                                      : "Please select an option:"}
+                                  </option>
                                 )}
+
+                                {/* Actual options */}
                                 {connectedNodes.map((node) => (
                                   <option key={node.id} value={node.id}>
                                     {node.label}
