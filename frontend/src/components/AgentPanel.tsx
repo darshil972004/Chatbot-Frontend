@@ -91,11 +91,19 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const [quickReplyTemplates, setQuickReplyTemplates] = useState<AgentQuickReply[]>([])
   const [quickRepliesLoading, setQuickRepliesLoading] = useState<boolean>(false)
   const [quickRepliesError, setQuickRepliesError] = useState<string | null>(null)
-  const [quickReplyDraft, setQuickReplyDraft] = useState<{ id: number | null; category: string; text: string }>({
-    id: null,
-    category: '',
-    text: '',
-  })
+  const [quickReplyDraft, setQuickReplyDraft] = useState<{
+    id: number | null;
+    category: string;
+    text: string;
+    formFields: { id: number; label: string; type: string; required: boolean }[];
+  }>(
+    {
+      id: null,
+      category: '',
+      text: '',
+      formFields: [],
+    }
+  )
   const [quickReplySubmitting, setQuickReplySubmitting] = useState<boolean>(false)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [wsConnected, setWsConnected] = useState<boolean>(false)
@@ -804,7 +812,16 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       sendChatMessage(chatWsRef.current, text)
     }
     // Add to local session messages for display
-    const agentMessage = {type: "message", sender:'agent', text, ts: Date.now()}
+    let displayText = text
+    try {
+      const parsed = JSON.parse(text)
+      if (parsed && typeof parsed === 'object' && parsed.type === 'form_quick_reply') {
+        displayText = parsed.heading || 'Form sent'
+      }
+    } catch {
+      // Not JSON, keep original text
+    }
+    const agentMessage = {type: "message", sender:'agent', text: displayText, ts: Date.now()}
     setSessions(prev => prev.map(s => s.id == sessionId ? {...s, messages: [...s.messages, agentMessage]} : s))
     
     // Also update conversationHistory to keep ChatWindow in sync
@@ -840,14 +857,24 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }
 
   function resetQuickReplyDraft() {
-    setQuickReplyDraft({ id: null, category: '', text: '' })
+    setQuickReplyDraft({ id: null, category: '', text: '', formFields: [] })
   }
 
   function startQuickReplyEdit(reply: AgentQuickReply) {
+    const existingFields = Array.isArray((reply as any).form_schema?.fields)
+      ? (reply as any).form_schema.fields.map((f: any, idx: number) => ({
+          id: idx + 1,
+          label: f.label || '',
+          type: f.type || 'text',
+          required: Boolean(f.required),
+        }))
+      : []
+
     setQuickReplyDraft({
       id: reply.id,
       category: reply.category || '',
       text: reply.template_text,
+      formFields: existingFields,
     })
   }
 
@@ -863,6 +890,22 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       alert('Please enter a quick reply message.')
       return
     }
+
+    let formSchema: any | undefined
+    if (quickReplyDraft.category === 'Form') {
+      const validFields = quickReplyDraft.formFields.filter(f => f.label.trim())
+      if (validFields.length === 0) {
+        alert('Please add at least one form field or choose a different category.')
+        return
+      }
+      formSchema = {
+        fields: validFields.map(f => ({
+          label: f.label.trim(),
+          type: f.type || 'text',
+          required: f.required,
+        })),
+      }
+    }
     setQuickReplySubmitting(true)
     try {
       if (quickReplyDraft.id) {
@@ -870,12 +913,14 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         await updateAgentQuickReply(agentProfile.id, quickReplyDraft.id, {
           category: quickReplyDraft.category.trim() || null,
           template_text: quickReplyDraft.text.trim(),
+          form_schema: formSchema,
         })
       } else {
         // Create new quick reply
         await createAgentQuickReply(agentProfile.id, {
           category: quickReplyDraft.category.trim() || null,
           template_text: quickReplyDraft.text.trim(),
+          form_schema: formSchema,
         })
       }
 
@@ -1439,7 +1484,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
   const activeSession = sessions.find(s => s.id == activeSessionId)
   const waitingCount = sessions.filter((s: any)=>s.status==='waiting').length
-  const quickReplyOptions = quickReplyTemplates.map(reply => reply.template_text)
+  const quickReplyOptions = quickReplyTemplates
 
   if (loggedOut) {
     return <AgentLogin onLogin={async (loginData: any) => {
@@ -1680,7 +1725,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                 <option value="">Select Category</option>
                 <option value="Greetings">Greetings</option>
                 <option value="Thank You">Thank You</option>
-                {/* <option value="Form">Form</option> */}
+                <option value="Form">Form</option>
               </select>
               <textarea
                 className="quick-reply-textarea"
@@ -1691,6 +1736,92 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                 rows={2}
                 required
               />
+              {quickReplyDraft.category === 'Form' && (
+                <div className="quick-reply-form-builder">
+                  <div className="quick-reply-form-builder-header">Form fields</div>
+                  {quickReplyDraft.formFields.map(field => (
+                    <div key={field.id} className="quick-reply-form-field-row">
+                      <input
+                        className="quick-reply-input"
+                        placeholder="Field label (e.g. Name, Email)"
+                        value={field.label}
+                        onChange={e =>
+                          setQuickReplyDraft(prev => ({
+                            ...prev,
+                            formFields: prev.formFields.map(f =>
+                              f.id === field.id ? { ...f, label: e.target.value } : f
+                            ),
+                          }))}
+                        disabled={quickReplySubmitting}
+                      />
+                      <select
+                        className="quick-reply-input quick-reply-form-type"
+                        value={field.type}
+                        onChange={e =>
+                          setQuickReplyDraft(prev => ({
+                            ...prev,
+                            formFields: prev.formFields.map(f =>
+                              f.id === field.id ? { ...f, type: e.target.value } : f
+                            ),
+                          }))}
+                        disabled={quickReplySubmitting}
+                      >
+                        <option value="text">Text</option>
+                        <option value="email">Email</option>
+                        <option value="number">Number</option>
+                        <option value="phone">Phone</option>
+                      </select>
+                      <label className="quick-reply-form-required">
+                        <input
+                          type="checkbox"
+                          checked={field.required}
+                          onChange={e =>
+                            setQuickReplyDraft(prev => ({
+                              ...prev,
+                              formFields: prev.formFields.map(f =>
+                                f.id === field.id ? { ...f, required: e.target.checked } : f
+                              ),
+                            }))}
+                          disabled={quickReplySubmitting}
+                        />
+                        Required
+                      </label>
+                      <button
+                        type="button"
+                        className="quick-reply-delete-field"
+                        onClick={() =>
+                          setQuickReplyDraft(prev => ({
+                            ...prev,
+                            formFields: prev.formFields.filter(f => f.id !== field.id),
+                          }))}
+                        disabled={quickReplySubmitting}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="quick-reply-add-field"
+                    onClick={() =>
+                      setQuickReplyDraft(prev => ({
+                        ...prev,
+                        formFields: [
+                          ...prev.formFields,
+                          {
+                            id: (prev.formFields[prev.formFields.length - 1]?.id || 0) + 1,
+                            label: '',
+                            type: 'text',
+                            required: false,
+                          },
+                        ],
+                      }))}
+                    disabled={quickReplySubmitting}
+                  >
+                    + Add field
+                  </button>
+                </div>
+              )}
             </div>
             <div className="quick-reply-actions-row">
               <button type="submit" className="profile-btn modal-btn" disabled={quickReplySubmitting}>
@@ -1860,7 +1991,7 @@ function ConversationListItem({session, onOpen, onClaim, onResume, onEnd, onTran
 interface ChatWindowProps {
   session: any;
   onSend: (sessionId: string | number, text: string) => void;
-  quickReplies: string[];
+  quickReplies: AgentQuickReply[];
   onEndChat?: (sessionId: string | number) => void;
   onClaimChat?: (sessionId: string | number) => void;
   conversationHistory?: any[];
@@ -1874,6 +2005,7 @@ interface ChatWindowRef {
 const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend, quickReplies, onEndChat, onClaimChat, conversationHistory = [], loadingHistory = false}, ref) => {
   const [input, setInput] = useState('')
   const [allMessages, setAllMessages] = useState<any[]>([])
+  const [selectedQuickReplyId, setSelectedQuickReplyId] = useState<string>('')
   const boxRef = useRef<HTMLDivElement>(null)
   const isClosed = isClosedStatus(session.status)
 
@@ -1900,6 +2032,54 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend,
     if(!input.trim() || isClosed) return
     onSend(session.id, input.trim())
     setInput('')
+  }
+
+  function handleQuickReplyChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value
+    if (!value) {
+      setSelectedQuickReplyId('')
+      return
+    }
+
+    setSelectedQuickReplyId(value)
+
+    const replyId = Number(value)
+    const reply = quickReplies.find(r => r.id === replyId)
+    if (!reply) {
+      return
+    }
+
+    const category = (reply.category || '').toLowerCase()
+
+    // For form-type quick replies, send a JSON payload that the widget can render as a real form
+    if (category === 'form' && reply.form_schema && Array.isArray((reply as any).form_schema.fields)) {
+      const fields = (reply as any).form_schema.fields as any[]
+      const title = reply.template_text || 'Form'
+      const formFields = fields.map((f: any, idx: number) => ({
+        label: typeof f.label === 'string' ? f.label : `Field ${idx + 1}`,
+        type: typeof f.type === 'string' ? f.type : 'text',
+        required: !!f.required,
+      }))
+
+      const payload = {
+        type: 'form_quick_reply',
+        heading: title,
+        fields: formFields,
+      }
+
+      const message = JSON.stringify(payload)
+
+      if (message && !isClosed) {
+        onSend(session.id, message)
+      }
+
+      // Reset selection after sending
+      setSelectedQuickReplyId('')
+      return
+    }
+
+    // For non-form quick replies, just populate the input so agent can edit before sending
+    setInput(reply.template_text || '')
   }
 
   return (
@@ -1944,10 +2124,10 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend,
         </div>
       ) : (
         <div className="chat-input-row">
-          <select onChange={e=>setInput(e.target.value)} value={input} className="chat-select">
+          <select onChange={handleQuickReplyChange} value={selectedQuickReplyId} className="chat-select">
             <option value="">Quick reply…</option>
-            {quickReplies.map((q: string,i: number)=> (
-              <option key={i} value={q}>{q}</option>
+            {quickReplies.map((q) => (
+              <option key={q.id} value={q.id}>{q.template_text}</option>
             ))}
           </select>
           <input

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
 import { ticketsApi } from '../api/ticketsApi'
 import { ticketFeedbackApi } from '../api/ticketsApi'
+import { retrieveAgentInfo,  updateAgentStatus } from '../api/agent'
+
 import { v4 as uuidv4 } from 'uuid';
 
 // Extend ChatMessage to support optional blog property (array)
@@ -24,6 +26,15 @@ export default function ChatbotWidget() {
         await ticketsApi.closeTicket(ticketId, 'User cancelled live agent request');
       } catch (err) {
         console.error('Failed to close ticket on cancel request', err);
+      }
+      const agent = retrieveAgentInfo();
+      if (agent?.id) {
+        try {
+          await updateAgentStatus(agent.id, 'online', { source: 'agent_panel_end_chat', previous_status: status });
+          setStatus('online');
+        } catch (err) {
+          console.error('Failed to mark agent online after ending chat', err);
+        }
       }
 
       // Let the agent know the user cancelled (if the websocket is still connected)
@@ -77,7 +88,7 @@ export default function ChatbotWidget() {
   const [feedbackRating, setFeedbackRating] = useState<number>(0);
   const [feedbackNote, setFeedbackNote] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
-
+  const [status, setStatus] = useState<string>('offline') // online, away, busy, offline
   // Track if user is currently chatting with agent
   const isAgentActive = Boolean(ticketId && agentStatus === 'connected');
 
@@ -133,6 +144,15 @@ export default function ChatbotWidget() {
     }
     prevAgentStatus.current = agentStatus;
   }, [agentStatus]);
+
+  // When feedback is shown, clear ticketId so cp-live-banner is hidden
+  useEffect(() => {
+    if (showFeedback && ticketId) {
+      // Wait a short moment to allow feedback form to render, then clear ticketId
+      const timeout = setTimeout(() => setTicketId(null), 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [showFeedback, ticketId]);
 
   const emitLiveMessage = useCallback((text: string) => {
     const payload = JSON.stringify({ type: 'message', text, sender: 'user', ts: Date.now() });
@@ -353,6 +373,15 @@ export default function ChatbotWidget() {
         };
 
         if (payload && typeof payload === 'object') {
+          // Handle form quick reply sent by agent
+          if (payload.type === 'form_quick_reply' && Array.isArray(payload.fields)) {
+            const heading = payload.heading || 'Form'
+            setPendingOptions(payload.fields)
+            setPendingMode('form')
+            ;(window as any).cpFormHeading = heading
+            return
+          }
+
           if (payload.type === 'message' && typeof payload.text === 'string') {
             const role = payload.sender === 'user' ? 'user' : 'agent';
             handleIncomingText(payload.text, role as ChatRole);

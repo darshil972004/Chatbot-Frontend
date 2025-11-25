@@ -1008,6 +1008,116 @@
   margin-bottom: 8px;
 }
 
+/* Quick Reply Form Builder (Form category) */
+.quick-reply-form-builder {
+  margin-top: 6px;
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-reply-form-builder-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.quick-reply-form-field-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.quick-reply-form-field-row .quick-reply-input {
+  width: 100%;
+}
+
+.quick-reply-form-type,
+.quick-reply-form-required,
+.quick-reply-delete-field {
+  font-size: 12px;
+}
+
+.quick-reply-form-required {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #475569;
+}
+
+.quick-reply-delete-field {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.quick-reply-delete-field:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.quick-reply-add-field {
+  margin-top: 2px;
+  align-self: flex-start;
+  border: 1px dashed #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #ffffff;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.quick-reply-add-field:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+@media (min-width: 480px) {
+  .quick-reply-form-field-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 6px;
+  }
+
+  .quick-reply-form-field-row > .quick-reply-input + .quick-reply-input,
+  .quick-reply-form-field-row > .quick-reply-input + .quick-reply-form-type {
+    margin-top: 0;
+  }
+
+  .quick-reply-form-field-row > .quick-reply-input + .quick-reply-form-type,
+  .quick-reply-form-type,
+  .quick-reply-form-required,
+  .quick-reply-delete-field {
+    margin-top: 0;
+  }
+
+  .quick-reply-form-field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .quick-reply-form-field-row > .quick-reply-input {
+    grid-column: 1 / -1;
+  }
+
+  .quick-reply-form-field-row > .quick-reply-form-type,
+  .quick-reply-form-field-row > .quick-reply-form-required,
+  .quick-reply-form-field-row > .quick-reply-delete-field {
+    display: inline-flex;
+  }
+}
+
 /* Scrollbar styling */
 .conversation-list::-webkit-scrollbar,
 .chat-messages::-webkit-scrollbar {
