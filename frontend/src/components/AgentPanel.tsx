@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
 import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, updateAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
@@ -100,6 +100,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [wsConnected, setWsConnected] = useState<boolean>(false)
   const sessionRestoredRef = useRef<boolean>(false)
+  const chatWindowRef = useRef<ChatWindowRef>(null)
   
   // Transfer state
   const [showTransferPopup, setShowTransferPopup] = useState<boolean>(false)
@@ -236,6 +237,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       const messages = await conversationDetailsApi.getConversationDetailsByTicket(ticketId, 200, 0)
       const formatted = Array.isArray(messages)
         ? messages.map(msg => ({
+            type: "message",
             sender: (msg.responder_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
             text: msg.output || msg.prompt || '',
             ts: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
@@ -249,6 +251,12 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
             : session
         )
       )
+      
+      // Also update conversationHistory state to keep ChatWindow in sync
+      setConversationHistory(prev => ({
+        ...prev,
+        [String(ticketId)]: formatted
+      }))
     } catch (err) {
       console.error('Failed to load ticket messages', err)
       setSessions(prev =>
@@ -804,7 +812,14 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       sendChatMessage(chatWsRef.current, text)
     }
     // Add to local session messages for display
-    setSessions(prev => prev.map(s => s.id == sessionId ? {...s, messages: [...s.messages, {sender:'agent', text, ts: Date.now()}]} : s))
+    const agentMessage = {type: "message", sender:'agent', text, ts: Date.now()}
+    setSessions(prev => prev.map(s => s.id == sessionId ? {...s, messages: [...s.messages, agentMessage]} : s))
+    
+    // Also update conversationHistory to keep ChatWindow in sync
+    setConversationHistory(prev => ({
+      ...prev,
+      [String(sessionId)]: [...(prev[String(sessionId)] || []), agentMessage]
+    }))
   }
 
   function quickReply(sessionId: string|number, tpl: string){
@@ -1055,74 +1070,245 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
-  async function openChatForSession(sessionId: string|number){
-    const agent = retrieveAgentInfo()
-    if (!agent) return
+  // async function openChatForSession(sessionId: string|number){
+  //   const agent = retrieveAgentInfo()
+  //   if (!agent) return
     
-    // Set agent status to busy immediately when opening a chat
-    try {
-      await updateAgentStatus(agent.id, 'busy', { source: 'agent_panel_open_chat', previous_status: status })
-      setStatus('busy')
-    } catch (err) {
-      console.error('Failed to mark agent busy when opening chat', err)
-    }
+  //   // Set agent status to busy immediately when opening a chat
+  //   try {
+  //     await updateAgentStatus(agent.id, 'busy', { source: 'agent_panel_open_chat', previous_status: status })
+  //     setStatus('busy')
+  //   } catch (err) {
+  //     console.error('Failed to mark agent busy when opening chat', err)
+  //   }
 
-    // Only close existing connection if it's for a different session
-    if(chatWsRef.current && activeChatTicketId !== sessionId) {
-      chatWsRef.current.close()
-    }
+  //   // Only close existing connection if it's for a different session
+  //   if(chatWsRef.current && activeChatTicketId !== sessionId) {
+  //     chatWsRef.current.close()
+  //   }
     
-    // If already connected to this session, don't reconnect
-    if(chatWsRef.current && activeChatTicketId === sessionId && chatWsRef.current.readyState === WebSocket.OPEN) {
-      console.log('Already connected to this session');
-      return;
-    }
+  //   // If already connected to this session, don't reconnect
+  //   if(chatWsRef.current && activeChatTicketId === sessionId && chatWsRef.current.readyState === WebSocket.OPEN) {
+  //     console.log('Already connected to this session');
+  //     return;
+  //   }
 
-    chatWsRef.current = openAgentChatWS(
-      sessionId,
-      agent.id,
-      agent.display_name || agent.username || 'Agent',
-      (msg) => {
-        console.log('Chat message:', msg)
-        if(msg.type === 'agent_joined' || msg.type === 'agent_claimed') return
-        if(msg.type === 'message_history' && msg.message) {
-          const historyEntry = msg.message
-          setSessions(prev => prev.map(s => s.id == sessionId ? {
-            ...s,
-            messages: [
-              ...s.messages,
-              {
-                sender: (historyEntry.sender_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
-                text: historyEntry.content || '',
-                ts: historyEntry.created_at ? new Date(historyEntry.created_at).getTime() : Date.now()
-              }
-            ],
-            messagesLoaded: true
-          } : s))
-          return
-        }
-        setSessions(prev => prev.map(s => s.id == sessionId ? {
-          ...s,
-          messages: [...s.messages, { sender: msg.type === 'text' || !msg.type ? 'user' : 'system', text: msg.text || JSON.stringify(msg), ts: Date.now() }]
-        } : s))
-      },
-      (err) => {
-        console.error('Chat error:', err)
-        setWsConnected(false)
-      }
-    )
+  //   chatWsRef.current = openAgentChatWS(
+  //     sessionId,
+  //     agent.id,
+  //     agent.display_name || agent.username || 'Agent',
+  //     (msg) => {
+  //       console.log('Chat message:', msg)
+  //       if(msg.type === 'agent_joined' || msg.type === 'agent_claimed') return
+  //       if(msg.type === 'message_history' && msg.message) {
+  //         const historyEntry = msg.message
+  //         setSessions(prev => prev.map(s => s.id == sessionId ? {
+  //           ...s,
+  //           messages: [
+  //             ...s.messages,
+  //             {
+  //               type: "message",
+  //               sender: (historyEntry.sender_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
+  //               text: historyEntry.content || '',
+  //               ts: historyEntry.created_at ? new Date(historyEntry.created_at).getTime() : Date.now()
+  //             }
+  //           ],
+  //           messagesLoaded: true
+  //         } : s))
+  //         return
+  //       }
+        
+  //       // Handle new live messages from WebSocket
+  //       const liveMessage = {
+  //         type: "message",
+  //         sender: msg.sender === 'user' ? 'user' : 
+  //                msg.sender === 'agent' ? 'agent' :
+  //                (!msg.type || msg.type === 'text') ? 'agent' : 'user', 
+  //         text: msg.text || msg.content || JSON.stringify(msg), 
+  //         ts: msg.ts || msg.created_at ? new Date(msg.created_at).getTime() : Date.now()
+  //       }
+        
+  //       // Add live message to ChatWindow state
+  //       if (chatWindowRef.current) {
+  //         chatWindowRef.current.addLiveMessage(liveMessage)
+  //       }
+        
+  //       // Also update session state for consistency
+  //       setSessions(prev => prev.map(s => s.id == sessionId ? {
+  //         ...s,
+  //         messages: [...s.messages, liveMessage]
+  //       } : s))
+        
+  //       // Update conversationHistory to include the new live message
+  //       setConversationHistory(prev => ({
+  //         ...prev,
+  //         [String(sessionId)]: [...(prev[String(sessionId)] || []), liveMessage]
+  //       }))
+  //     },
+  //     (err) => {
+  //       console.error('Chat error:', err)
+  //       setWsConnected(false)
+  //     }
+  //   )
     
-    // Set connection state when opened
-    if (chatWsRef.current) {
-      chatWsRef.current.addEventListener('open', () => {
-        console.log('Chat WS opened successfully');
-        setWsConnected(true);
-      });
-    }
+  //   // Set connection state when opened
+  //   if (chatWsRef.current) {
+  //     chatWsRef.current.addEventListener('open', () => {
+  //       console.log('Chat WS opened successfully');
+  //       setWsConnected(true);
+  //     });
+  //   }
     
-    setActiveChatTicketId(sessionId)
-    saveActiveChatSession(sessionId)
+  //   setActiveChatTicketId(sessionId)
+  //   saveActiveChatSession(sessionId)
+  // }
+
+  async function openChatForSession(sessionId: string | number) {
+  const agent = retrieveAgentInfo();
+  if (!agent) return;
+
+  // Set agent status to busy
+  try {
+    await updateAgentStatus(agent.id, 'busy', {
+      source: 'agent_panel_open_chat',
+      previous_status: status,
+    });
+    setStatus('busy');
+  } catch (err) {
+    console.error('Failed to mark agent busy when opening chat', err);
   }
+
+  // Close WS if for different session
+  if (chatWsRef.current && activeChatTicketId !== sessionId) {
+    chatWsRef.current.close();
+  }
+
+  // Already connected?
+  if (
+    chatWsRef.current &&
+    activeChatTicketId === sessionId &&
+    chatWsRef.current.readyState === WebSocket.OPEN
+  ) {
+    console.log('Already connected to this session');
+    return;
+  }
+
+  chatWsRef.current = openAgentChatWS(
+    sessionId,
+    agent.id,
+    agent.display_name || agent.username || 'Agent',
+
+    // ================================
+    // 🔥 FINAL REAL FIXED HANDLER
+    // ================================
+    (msg) => {
+      console.log("🔥 UI HANDLER: RAW WS MESSAGE:", msg);
+
+      // 🔥 1) Normalize message (object or string)
+      let data: any = null;
+
+      if (typeof msg === "string") {
+        try {
+          data = JSON.parse(msg);
+        } catch (e) {
+          console.log("🔥 UI HANDLER: Agent raw text message:", msg);
+          data = { type: "message", sender: "agent", text: msg, ts: Date.now() };
+        }
+      } else if (typeof msg === "object" && msg !== null) {
+        console.log("🔥 UI HANDLER: WS message is already object:", msg);
+        data = msg; // user messages come here!!
+      } else {
+        console.warn("🔥 UI HANDLER: Unknown WS message format:", msg);
+        return;
+      }
+
+      console.log("🔥 UI HANDLER: PARSED DATA:", data);
+
+      // 🔥 IGNORE system events
+      if (data.type === "agent_joined" || data.type === "agent_claimed") {
+        console.log("🔥 UI HANDLER: Ignoring system event:", data.type);
+        return;
+      }
+
+      // 🔥 2) HISTORY BLOCK
+      if (data.type === "message_history" && data.message) {
+        const h = data.message;
+        const historyMsg = {
+          type: "message",
+          sender:
+            (h.sender_type || "").toLowerCase() === "agent" ? "agent" : "user",
+          text: h.content || "",
+          ts: h.created_at ? new Date(h.created_at).getTime() : Date.now(),
+        };
+
+        console.log("🔥 UI HANDLER: RENDER HISTORY:", historyMsg);
+
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id == sessionId
+              ? {
+                  ...s,
+                  messages: [...s.messages, historyMsg],
+                  messagesLoaded: true,
+                }
+              : s
+          )
+        );
+
+        return;
+      }
+
+      // 🔥 3) LIVE MESSAGE (USER OR AGENT)
+      const liveMessage = {
+        type: "message",
+        sender: data.sender === "user" ? "user" : "agent",
+        text: data.text || data.content || "",
+        ts: data.ts || (data.created_at ? new Date(data.created_at).getTime() : Date.now()),
+      };
+
+      console.log("🔥 UI HANDLER: RENDER LIVE MESSAGE:", liveMessage);
+
+      // UI add
+      if (chatWindowRef.current) {
+        chatWindowRef.current.addLiveMessage(liveMessage);
+      }
+
+      // Update in sessions list
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id == sessionId
+            ? { ...s, messages: [...s.messages, liveMessage] }
+            : s
+        )
+      );
+
+      // Update in conversationHistory
+      setConversationHistory((prev) => ({
+        ...prev,
+        [String(sessionId)]: [
+          ...(prev[String(sessionId)] || []),
+          liveMessage,
+        ],
+      }));
+    },
+
+    (err) => {
+      console.error("Chat error:", err);
+      setWsConnected(false);
+    }
+  );
+
+  if (chatWsRef.current) {
+    chatWsRef.current.addEventListener("open", () => {
+      console.log("Chat WS opened successfully");
+      setWsConnected(true);
+    });
+  }
+
+  setActiveChatTicketId(sessionId);
+  saveActiveChatSession(sessionId);
+}
+
 
   function releaseChatSession(){
     if(activeChatTicketId && chatWsRef.current){
@@ -1389,6 +1575,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         <section className="agent-card grid-preview">
           {activeSession ? (
             <ChatWindow
+              ref={chatWindowRef}
               session={activeSession}
               onSend={sendMessageToSession}
               quickReplies={quickReplyOptions}
@@ -1596,13 +1783,31 @@ interface ChatWindowProps {
   conversationHistory?: any[];
   loadingHistory?: boolean;
 }
-function ChatWindow({session, onSend, quickReplies, onEndChat, conversationHistory = [], loadingHistory = false}: ChatWindowProps){
+
+interface ChatWindowRef {
+  addLiveMessage: (message: any) => void;
+}
+
+const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend, quickReplies, onEndChat, conversationHistory = [], loadingHistory = false}, ref) => {
   const [input, setInput] = useState('')
+  const [allMessages, setAllMessages] = useState<any[]>([])
   const boxRef = useRef<HTMLDivElement>(null)
   const isClosed = isClosedStatus(session.status)
 
-  // Use only conversation history since we removed duplicate loading
-  const allMessages = conversationHistory
+  // Initialize allMessages with conversationHistory when it changes or component loads
+  useEffect(() => {
+    setAllMessages(conversationHistory)
+  }, [conversationHistory])
+
+  // Function to add new live messages from WebSocket
+  const addLiveMessage = useCallback((message: any) => {
+    setAllMessages(prev => [...prev, message])
+  }, [])
+
+  // Expose the addLiveMessage function to parent component
+  useImperativeHandle(ref, () => ({
+    addLiveMessage
+  }), [addLiveMessage])
 
   useEffect(()=>{
     if(boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
@@ -1669,7 +1874,9 @@ function ChatWindow({session, onSend, quickReplies, onEndChat, conversationHisto
       )}
     </div>
   )
-}
+})
+
+ChatWindow.displayName = 'ChatWindow'
 
 interface CustomerInfoPanelProps {
   user: any;

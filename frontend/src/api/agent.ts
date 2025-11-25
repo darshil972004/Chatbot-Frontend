@@ -191,6 +191,7 @@ export function sendClaimAction(ws: WebSocket, ticketId: string | number): void 
 /**
  * Open agent-side chat WebSocket for a ticket
  * Agent must send an init message first: {"type":"init","agent_id":"...","agent_name":"..."}
+ * Uses addEventListener for better React compatibility and prevents overwrites
  * @param ticketId ticket ID
  * @param agentId agent ID
  * @param agentName agent display name
@@ -210,8 +211,35 @@ export function openAgentChatWS(
 
   const ws = new WebSocket(wsUrl);
 
-  ws.onopen = () => {
-    console.log('Agent chat WS connected, sending init message');
+  // Store reference to the callback to prevent closure issues
+  const messageHandler = (event: MessageEvent) => {
+    console.log('🔥 WRAPPER: Raw WS event received:', event.data);
+    
+    try {
+      const payload = JSON.parse(event.data) as ChatMessage;
+      console.log('🔥 WRAPPER: JSON message parsed:', payload);
+      console.log('🔥 WRAPPER: Calling UI handler with JSON payload');
+      if (onMessage) {
+        onMessage(payload);
+      }
+    } catch (err) {
+      // Not JSON, treat as plain text message from agent
+      console.log('🔥 WRAPPER: Non-JSON message (agent text):', event.data);
+      const textPayload = { 
+        type: 'message', 
+        text: event.data, 
+        sender: 'agent',
+        ts: Date.now()
+      };
+      console.log('🔥 WRAPPER: Calling UI handler with text payload:', textPayload);
+      if (onMessage) {
+        onMessage(textPayload);
+      }
+    }
+  };
+
+  const openHandler = () => {
+    console.log('🔥 WRAPPER: Agent chat WS connected, sending init message');
     // Send agent init message
     const initMsg = {
       type: 'init',
@@ -221,33 +249,23 @@ export function openAgentChatWS(
     ws.send(JSON.stringify(initMsg));
   };
 
-  ws.onmessage = (event: MessageEvent) => {
-    try {
-      const payload = JSON.parse(event.data) as ChatMessage;
-      console.log('Agent chat WS message received:', payload);
-      if (onMessage) {
-        onMessage(payload);
-      }
-    } catch (err) {
-      // Not JSON, treat as plain text message from user
-      console.log('Non-JSON chat message:', event.data);
-      if (onMessage) {
-        onMessage({ type: 'text', text: event.data });
-      }
-    }
-  };
-
-  ws.onerror = (event: Event) => {
+  const errorHandler = (event: Event) => {
     const msg = 'Agent chat WS error';
-    console.error(msg, event);
+    console.error('🔥 WRAPPER:', msg, event);
     if (onError) {
       onError(msg);
     }
   };
 
-  ws.onclose = () => {
-    console.log('Agent chat WS closed');
+  const closeHandler = () => {
+    console.log('🔥 WRAPPER: Agent chat WS closed');
   };
+
+  // Use addEventListener instead of onmessage to prevent overwrites
+  ws.addEventListener('open', openHandler);
+  ws.addEventListener('message', messageHandler);
+  ws.addEventListener('error', errorHandler);
+  ws.addEventListener('close', closeHandler);
 
   return ws;
 }
