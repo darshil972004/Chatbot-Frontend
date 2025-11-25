@@ -1683,13 +1683,17 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
           <p className="card-subtitle">Add canned responses to speed up replies.</p>
           <form className="quick-reply-form" onSubmit={handleSaveQuickReply}>
             <div className="quick-reply-fields">
-              <input
+              <select
                 className="quick-reply-input"
-                placeholder="Category (optional)"
                 value={quickReplyDraft.category}
                 onChange={e => setQuickReplyDraft(prev => ({ ...prev, category: e.target.value }))}
                 disabled={quickReplySubmitting}
-              />
+              >
+                <option value="">Select Category</option>
+                <option value="Greetings">Greetings</option>
+                <option value="Thank You">Thank You</option>
+                {/* <option value="Form">Form</option> */}
+              </select>
               <textarea
                 className="quick-reply-textarea"
                 placeholder="Quick reply text"

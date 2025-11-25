@@ -57,6 +57,7 @@ export type AgentQuickReply = {
   id: number;
   category?: string | null;
   template_text: string;
+  form_schema?: any; // Add this line for form quick replies
   agent_id?: number;
   created_at?: string;
 };
@@ -498,6 +499,7 @@ export async function fetchAgentQuickReplies(agentId: number | string): Promise<
 type QuickReplyMutationPayload = {
   category?: string | null;
   template_text: string;
+  form_schema?: any; // Add this field as well
 };
 
 /**

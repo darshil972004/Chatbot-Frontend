@@ -68,6 +68,7 @@ export default function ChatbotWidget() {
   const [selectedOption, setSelectedOption] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [ticketId, setTicketId] = useState<string | null>(null);
+  const [feedbackTicketId, setFeedbackTicketId] = useState<string | null>(null);
   const [agentStatus, setAgentStatus] = useState<'waiting' | 'connected' | 'released' | null>(null);
   const [agentName, setAgentName] = useState<string | null>(null);
   const [liveChatError, setLiveChatError] = useState<string | null>(null);
@@ -375,10 +376,16 @@ export default function ChatbotWidget() {
               setAgentName(payload.agent_name || 'Live Agent');
               addSystemMessage(`${payload.agent_name || 'A live agent'} joined the conversation.`);
               return;
-            case 'agent_released':
+            case 'agent_released': {
+              const currentTicketId = ticketId;
+              if (currentTicketId) {
+                setFeedbackTicketId(currentTicketId);
+              }
               addSystemMessage('The live agent wrapped up the session. Switching back to the AI assistant.');
-              resetLiveAgentSession();
+              resetLiveAgentSession({ keepTicket: true });
+              setAgentStatus('released');
               return;
+            }
             case 'agent_disconnected':
               // Agent temporarily disconnected (for example, they reloaded the page).
               // Keep the ticket so we can reconnect when the agent comes back.
@@ -710,13 +717,15 @@ export default function ChatbotWidget() {
                 setShowFeedback(false);
                 // Send feedback to backend (so it appears in admin panel)
                 try {
-                  if (ticketId) {
+                  const targetTicketId = feedbackTicketId || ticketId;
+                  if (targetTicketId) {
                     await ticketFeedbackApi.createTicketFeedback({
-                      ticket_id: ticketId,
+                      ticket_id: targetTicketId,
                       rating: feedbackRating,
                       comment: feedbackNote,
                     });
                   }
+                  console.log('Submitting feedback', { ticketId: targetTicketId, feedbackRating, feedbackNote });
                 } catch (err) {
                   // Optionally show error to user
                   addSystemMessage('Failed to submit feedback, but you can continue chatting.');
