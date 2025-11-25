@@ -808,6 +808,10 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       alert('Ticket is closed. You cannot send messages.')
       return
     }
+    if (isWaitingStatus(targetSession.status)) {
+      alert('You must claim this ticket before sending messages.')
+      return
+    }
     if(activeChatTicketId == sessionId && chatWsRef.current){
       sendChatMessage(chatWsRef.current, text)
     }
@@ -1002,6 +1006,9 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       // Show success message
       alert('Ticket transferred successfully!')
       closeTransferPopup()
+      
+      // Refresh tickets to get updated list from backend
+      await refreshTickets()
     } catch (err) {
       console.error('Transfer failed:', err)
       alert('Failed to transfer ticket. Please try again.')
@@ -1010,7 +1017,77 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   }
 
-  // Notification functions
+  // Function to refresh tickets from backend
+  async function refreshTickets() {
+    const agent = retrieveAgentInfo();
+    if (!agent?.id) return;
+
+    try {
+      // Fetch tickets assigned to this agent
+      const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0);
+      if (Array.isArray(tickets) && tickets.length > 0) {
+        const mapped = tickets.map((ticket: any) => {
+          // Preserve the actual ticket status from backend, but normalize for UI
+          let normalizedStatus = ticket.status;
+          
+          return {
+            id: ticket.id,
+            user: { 
+              name: `User ${ticket.user_id || 'Unknown'}`, 
+              email: '',
+              country: '',
+              pastIssues: 0
+            },
+            topic: ticket.category || 'tech',
+            status: normalizedStatus,
+            unread: 0,
+            lastMsgTime: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'now',
+            startedAgo: ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'just now',
+            messages: [],
+            messagesLoaded: false,
+            loadingMessages: false,
+            title: ticket.title,
+            description: ticket.description,
+            priority: ticket.priority
+          };
+        });
+        
+        // Replace sessions with fresh data from backend
+        setSessions(mapped);
+        
+        // If no active session, pick the most recent ticket
+        if (!activeSessionId && mapped.length > 0) {
+          setActiveSessionId(mapped[0].id);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to refresh tickets', e);
+      // Fallback to active rooms if tickets fetch fails
+      try {
+        const resp = await fetchActiveRooms();
+        if (resp && resp.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((r: any) => ({
+            id: r.ticket_id,
+            user: { name: r.user_id || 'User', email: '' },
+            topic: 'tech',
+            status: r.status || 'waiting',
+            unread: 0,
+            lastMsgTime: r.created_at || 'now',
+            startedAgo: r.created_at || 'just now',
+            messages: r.history || [],
+            messagesLoaded: Array.isArray(r.history) && r.history.length > 0,
+            loadingMessages: false
+          }));
+          setSessions(mapped);
+          if (!activeSessionId && mapped.length > 0) {
+            setActiveSessionId(mapped[0].id);
+          }
+        }
+      } catch (fallbackErr) {
+        console.warn('Failed to fetch active rooms as fallback', fallbackErr);
+      }
+    }
+  }
   function dismissNotification(notificationId: string) {
     setNotifications(prev => prev.filter(n => n.id !== notificationId))
   }
@@ -1062,6 +1139,9 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         sendClaimAction(wsRef.current, sessionId)
         openChatForSession(sessionId)
         setSessions((prev: any[]) => prev.map(s => s.id == sessionId ? { ...s, status: 'assigned' } : s))
+        
+        // Refresh tickets to get updated list from backend
+        await refreshTickets()
       }catch(e){
         console.error('Failed to claim session', e)
       }
@@ -1333,6 +1413,9 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       }
     }
     releaseChatSession();
+    
+    // Refresh tickets to get updated list from backend
+    await refreshTickets()
 
     const agent = retrieveAgentInfo();
     if (agent?.id) {
@@ -1555,7 +1638,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
         </section>
 
         <section className="agent-card grid-conversations">
-          <div className="card-heading">Conversations</div>
+          <div className="card-heading">Tickets</div>
           <div className="conversation-list">
             {sessions.map(s => (
               <ConversationListItem
@@ -1580,6 +1663,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               onSend={sendMessageToSession}
               quickReplies={quickReplyOptions}
               onEndChat={endChatSession}
+              onClaimChat={claimSession}
               conversationHistory={conversationHistory[String(activeSession.id)] || []}
               loadingHistory={loadingHistory[String(activeSession.id)] || false}
             />
@@ -1780,6 +1864,7 @@ interface ChatWindowProps {
   onSend: (sessionId: string | number, text: string) => void;
   quickReplies: string[];
   onEndChat?: (sessionId: string | number) => void;
+  onClaimChat?: (sessionId: string | number) => void;
   conversationHistory?: any[];
   loadingHistory?: boolean;
 }
@@ -1788,7 +1873,7 @@ interface ChatWindowRef {
   addLiveMessage: (message: any) => void;
 }
 
-const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend, quickReplies, onEndChat, conversationHistory = [], loadingHistory = false}, ref) => {
+const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend, quickReplies, onEndChat, onClaimChat, conversationHistory = [], loadingHistory = false}, ref) => {
   const [input, setInput] = useState('')
   const [allMessages, setAllMessages] = useState<any[]>([])
   const boxRef = useRef<HTMLDivElement>(null)
@@ -1852,6 +1937,13 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend,
         <div className="chat-closed-actions">
           <p className="card-placeholder">You cannot send messages on a closed ticket.</p>
         </div>
+      ) : isWaitingStatus(session.status) ? (
+        <div className="chat-claim-actions">
+          <p className="card-placeholder">You must claim this ticket to start chatting.</p>
+          <button onClick={() => onClaimChat && onClaimChat(session.id)} className="claim-chat-button">
+            Claim to Chat
+          </button>
+        </div>
       ) : (
         <div className="chat-input-row">
           <select onChange={e=>setInput(e.target.value)} value={input} className="chat-select">
@@ -1864,8 +1956,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend,
             className="chat-input"
             value={input}
             onChange={e=>setInput(e.target.value)}
-            placeholder="Type a reply..."
-            onKeyDown={(e)=> e.key==='Enter' && send()}
+            onKeyDown={e=>{if(e.key==='Enter' && !e.shiftKey){e.preventDefault();send()}}}
+            placeholder="Type your message..."
           />
           <button onClick={send} className="send-button" disabled={!input.trim()}>Send</button>
           {/* End Chat button for agent to end chat and allow user to chat with AI again */}
