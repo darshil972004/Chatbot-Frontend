@@ -153,13 +153,35 @@ function AgentSidebar({status, setStatus, sessions, onSelect}){
 }
 
 function ConversationListItem({session, onOpen, active}){
+  // Helper to format time in 12-hour format with AM/PM
+  function formatTime12h(timeStrOrDate) {
+    let date;
+    if (typeof timeStrOrDate === 'number') {
+      date = new Date(timeStrOrDate);
+    } else if (!isNaN(Number(timeStrOrDate))) {
+      // If it's a numeric string (timestamp)
+      date = new Date(Number(timeStrOrDate));
+    } else if (typeof timeStrOrDate === 'string' && timeStrOrDate.match(/\d{1,2}(:\d{2})? ?(AM|PM)?/i)) {
+      // Already formatted, just return
+      return timeStrOrDate;
+    } else {
+      date = new Date(); // fallback
+    }
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const mins = minutes < 10 ? '0'+minutes : minutes;
+    return `${hours}:${mins} ${ampm}`;
+  }
   return (
     <div onClick={onOpen} className={`p-2 rounded cursor-pointer flex justify-between items-center ${active ? 'bg-sky-50': 'hover:bg-slate-50'}`}>
       <div>
         <div className="font-medium">{session.user.name} <span className="text-xs text-slate-400">#{session.id}</span></div>
         <div className="text-xs text-slate-500">{session.topic} • {session.unread} new</div>
       </div>
-      <div className="text-xs text-slate-400">{session.lastMsgTime}</div>
+      <div className="text-xs text-slate-400">{formatTime12h(session.lastMsgTime)}</div>
     </div>
   )
 }

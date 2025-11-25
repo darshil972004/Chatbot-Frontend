@@ -10,6 +10,18 @@ import { ticketsApi, ticketAgentsApi, ticketMessagesApi, ticketFeedbackApi, tick
 import { conversationsApi, conversationDetailsApi } from '../api/conversationsApi';
 import { analyticsApi } from '../api/analyticsApi';
 
+// Helper to format time in 12-hour format with AM/PM
+function formatTime12h(dateInput: string | number | Date) {
+  const date = new Date(dateInput);
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const mins = minutes < 10 ? '0' + minutes : minutes;
+  return `${hours}:${mins} ${ampm} ${date.toLocaleDateString()}`;
+}
+
 type AdminPanelProps = {
   isAdmin: boolean;
   onLogin: (username: string, password: string) => { success: boolean; message?: string };
@@ -1946,7 +1958,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                     <div className="admin-feedback-header">
                       <span className="admin-feedback-rating">Rating: {feedback.rating}/5</span>
                       <span className="admin-feedback-date">
-                        {new Date(feedback.created_at).toLocaleDateString()}
+                        {formatTime12h(feedback.created_at)}
                       </span>
                     </div>
                     <div className="admin-feedback-comment">
@@ -2000,7 +2012,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                         </div>
                         <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
                           <span>User</span>
-                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                          {message.created_at && <><span>·</span><span>{formatTime12h(message.created_at)}</span></>}
                         </div>
                       </div>
                     );
@@ -2039,7 +2051,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                         <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
                           <span>AI</span>
                           {message.agent_id && <span>(Agent {message.agent_id})</span>}
-                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                          {message.created_at && <><span>·</span><span>{formatTime12h(message.created_at)}</span></>}
                         </div>
                       </div>
                     );
@@ -2096,7 +2108,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                             {isAgent && 'Agent'}
                             {isAI && 'AI'} {message.agent_id ? `(Agent ${message.agent_id})` : ''}
                           </span>
-                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                          {message.created_at && <><span>·</span><span>{formatTime12h(message.created_at)}</span></>}
                         </div>
                       </div>
                     );
@@ -2223,7 +2235,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                         </span>
                       </td>
                       <td className="text-sm text-gray-600 whitespace-nowrap">
-                        {new Date(ticket.created_at).toLocaleDateString()}
+                        {formatTime12h(ticket.created_at)}
                       </td>
                       <td>
                         <div className="admin-table-actions">
@@ -2579,7 +2591,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                       </span>
                     </td>
                     {/* <td>{conversationMessages.length || 0}</td> */}
-                    <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td>{conv.created_at ? formatTime12h(conv.created_at) : 'N/A'}</td>
                     <td>
                       <div className="admin-table-actions">
                         <button onClick={() => handleViewConversation(conv)} className="admin-button">View</button>

@@ -734,9 +734,10 @@ export default function ChatbotWidget() {
             onChange={e => setFeedbackNote(e.target.value)}
             style={{ width: '100%', minHeight: 60, marginTop: 12, borderRadius: 6, border: '1px solid #e5e7eb', padding: 8, fontSize: 15 }}
           />
-          <button
-            className="cp-feedback-submit cp-btn"
-            style={{ marginTop: 16, background: '#2563eb', color: '#fff', fontWeight: 500, border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 16 }}
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button
+              className="cp-feedback-submit cp-btn"
+              style={{ background: '#2563eb', color: '#fff', fontWeight: 500, border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 16 }}
               onClick={async () => {
                 if (feedbackRating < 1 || feedbackRating > 5) {
                   setFeedbackError('Please rate the agent (1-5 stars)');
@@ -765,6 +766,19 @@ export default function ChatbotWidget() {
             >
               Submit Feedback
             </button>
+            <button
+              className="cp-feedback-close cp-btn"
+              style={{ background: '#e5e7eb', color: '#374151', fontWeight: 500, border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 16 }}
+              onClick={() => {
+                setShowFeedback(false);
+                setFeedbackRating(0);
+                setFeedbackNote('');
+                setFeedbackError('');
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       );
     }
@@ -955,6 +969,7 @@ export default function ChatbotWidget() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  disabled={showFeedback}
                 />
                 <button
                   className="cp-send"
@@ -962,7 +977,7 @@ export default function ChatbotWidget() {
                     e.preventDefault();
                     handleSend();
                   }}
-                  disabled={loading}
+                  disabled={loading || showFeedback}
                   aria-label="Send"
                   type="button"
                 >
@@ -975,6 +990,7 @@ export default function ChatbotWidget() {
                   onClick={handleNewChat}
                   aria-label="Start new chat"
                   type="button"
+                  disabled={showFeedback}
                 >
                   Start New Chat
                 </button>
@@ -983,6 +999,7 @@ export default function ChatbotWidget() {
                   onClick={handleShowConvos}
                   aria-label="Chat History"
                   type="button"
+                  disabled={showFeedback}
                 >
                   Chat History
                 </button>
@@ -993,6 +1010,7 @@ export default function ChatbotWidget() {
                   onClick={handleLiveSupport}
                   aria-label = "Live Support"
                   type="button"
+                  disabled={showFeedback}
                   >
                     Connect To Live Support
                 </button>
