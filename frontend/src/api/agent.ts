@@ -57,7 +57,7 @@ export type AgentQuickReply = {
   id: number;
   category?: string | null;
   template_text: string;
-  form_schema?: any; // Add this line for form quick replies
+  form_schema?: any; // Optional schema for form-type quick replies
   agent_id?: number;
   created_at?: string;
 };
@@ -499,7 +499,7 @@ export async function fetchAgentQuickReplies(agentId: number | string): Promise<
 type QuickReplyMutationPayload = {
   category?: string | null;
   template_text: string;
-  form_schema?: any; // Add this field as well
+  form_schema?: any; // Optional schema for form-type quick replies
 };
 
 /**
@@ -513,10 +513,14 @@ export async function createAgentQuickReply(
     throw new Error('Quick reply text is required');
   }
 
-  const body = {
+  const body: any = {
     category: payload.category ?? null,
     template_text: payload.template_text.trim(),
   };
+
+  if (payload.form_schema) {
+    body.form_schema = payload.form_schema;
+  }
 
   const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies`, {
     method: 'POST',
@@ -543,6 +547,7 @@ export async function createAgentQuickReply(
     id: typeof newId === 'number' ? newId : Date.now(),
     category: body.category ?? undefined,
     template_text: body.template_text,
+    form_schema: body.form_schema,
     agent_id: typeof agentId === 'number' ? agentId : Number(agentId),
   };
 }
@@ -578,10 +583,14 @@ export async function updateAgentQuickReply(
   replyId: number | string,
   payload: QuickReplyMutationPayload
 ): Promise<AgentQuickReply> {
-  const body = {
+  const body: any = {
     category: payload.category ?? null,
     template_text: payload.template_text?.trim() || undefined,
   };
+
+  if (payload.form_schema) {
+    body.form_schema = payload.form_schema;
+  }
 
   const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies/${replyId}`, {
     method: 'PUT',
@@ -607,6 +616,7 @@ export async function updateAgentQuickReply(
     id: typeof replyId === 'number' ? replyId : Number(replyId),
     category: body.category ?? undefined,
     template_text: body.template_text || '',
+    form_schema: body.form_schema,
     agent_id: typeof agentId === 'number' ? agentId : Number(agentId),
   };
 }
