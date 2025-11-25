@@ -2194,67 +2194,143 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                 <div className="admin-empty-state">No messages in this conversation</div>
               ) : (
                 conversationMessages.map((message: any, idx: number) => {
-                  // User messages left, agent/ai right
-                  const isUser = message.sender_type === 'user' || message.sender === 'user';
-                  const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
-                  const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' ||message.sender_type === 'prompt' || message.sender === 'bot';
-                  const align = isUser ? 'flex-start' : 'flex-end';
-                  const bubbleColor = isUser
-                    ? '#e5e7eb'
-                    : isAgent
-                      ? 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)'
-                      : 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
-                  const textColor = isUser ? '#222' : 'white';
-                  const borderRadius = isUser
-                    ? '16px 16px 16px 4px'
-                    : '16px 16px 4px 16px';
-                  // For user, show prompt if present, else fallback; for agent/ai, show output/text/content
-                  let mainContent = '';
-                  if (isUser) {
-                    mainContent = message.prompt || message.text || message.content || message.output || '';
-                  } else {
-                    mainContent = message.output || message.text || message.content || message.prompt || '';
-                  }
-                  return (
-                    <div
-                      key={message.id || idx}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: align,
-                      }}
-                    >
+                  // Show prompt (user, left) and output (ai/agent, right) for each message if present
+                  const bubbles = [];
+                  if (message.prompt && message.prompt.trim() !== '') {
+                    bubbles.push(
                       <div
+                        key={`prompt-${message.id || idx}`}
                         style={{
-                          background: bubbleColor,
-                          color: textColor,
-                          borderRadius: borderRadius,
-                          padding: '10px 16px',
-                          maxWidth: '70%',
-                          marginBottom: '2px',
-                          fontSize: '15px',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                          wordBreak: 'break-word',
-                          alignSelf: align,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
                         }}
                       >
-                        {mainContent}
-                        {message.category && (
-                          <div style={{ fontSize: '11px', color: isUser ? '#6b7280' : '#d1fae5', marginTop: '4px' }}>
-                            Category: {message.category}
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            background: '#e5e7eb',
+                            color: '#222',
+                            borderRadius: '16px 16px 16px 4px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          {message.prompt}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
+                          <span>User</span>
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: align }}>
-                        <span>
-                          {isUser && 'User'}
-                          {isAgent && 'Agent'}
-                          {isAI && 'AI'} {message.agent_id ? `(Agent ${message.agent_id})` : ''}
-                        </span>
-                        {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                    );
+                  }
+                  if (message.output && message.output.trim() !== '') {
+                    bubbles.push(
+                      <div
+                        key={`output-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-end',
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                            color: 'white',
+                            borderRadius: '16px 16px 4px 16px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-end',
+                          }}
+                        >
+                          {message.output}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: '#d1fae5', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          <span>AI</span>
+                          {message.agent_id && <span>(Agent {message.agent_id})</span>}
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
                       </div>
-                    </div>
-                  );
+                    );
+                  }
+                  // fallback: if neither prompt nor output, show text/content
+                  if ((!message.prompt || message.prompt.trim() === '') && (!message.output || message.output.trim() === '')) {
+                    const isUser = message.sender_type === 'user' || message.sender === 'user';
+                    const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
+                    const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' || message.sender_type === 'prompt' || message.sender === 'bot';
+                    const align = isUser ? 'flex-start' : 'flex-end';
+                    const bubbleColor = isUser
+                      ? '#e5e7eb'
+                      : isAgent
+                        ? 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)'
+                        : 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
+                    const textColor = isUser ? '#222' : 'white';
+                    const borderRadius = isUser
+                      ? '16px 16px 16px 4px'
+                      : '16px 16px 4px 16px';
+                    let mainContent = message.text || message.content || '';
+                    bubbles.push(
+                      <div
+                        key={`fallback-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: align,
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: bubbleColor,
+                            color: textColor,
+                            borderRadius: borderRadius,
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: align,
+                          }}
+                        >
+                          {mainContent}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: isUser ? '#6b7280' : '#d1fae5', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: align }}>
+                          <span>
+                            {isUser && 'User'}
+                            {isAgent && 'Agent'}
+                            {isAI && 'AI'} {message.agent_id ? `(Agent ${message.agent_id})` : ''}
+                          </span>
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return bubbles;
                 })
               )}
             </div>
