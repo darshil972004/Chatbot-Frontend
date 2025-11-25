@@ -496,32 +496,27 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
   };
 
   return (
-    <div className="admin-sidebar">
-      <div className="admin-sidebar-card">
-        <ul className="admin-sidebar-list">
-          {item('dashboard', 'Dashboard', null)}
-          {item('tickets', 'Tickets', null)}
-          {item('agents', `Agents (${onlineCount} online)`, null)}
-          {item('analysis', 'Analysis', null)}
-          {item('conversations', 'Conversations', null)}
-          {item('alerts', 'Alerts', null)}
-          {item('skills', 'Skills', null)}
-          {/* Settings button removed, now only accessible from header dropdown */}
-          {item('workflows', 'Workflows', null)}
-        </ul>
-      </div>
-    </div>
+    <ul className="admin-sidebar-list">
+      {item('dashboard', 'Dashboard', null)}
+      {item('tickets', 'Tickets', null)}
+      {item('agents', `Agents (${onlineCount} online)`, null)}
+      {item('analysis', 'Analysis', null)}
+      {item('conversations', 'Conversations', null)}
+      {item('alerts', 'Alerts', null)}
+      {item('skills', 'Skills', null)}
+      {/* Settings button removed, now only accessible from header dropdown */}
+      {item('workflows', 'Workflows', null)}
+    </ul>
   );
 }
 
-// Dashboard Component
 type DashboardProps = {
   agents: Agent[];
 };
 
 function Dashboard({ agents }: DashboardProps) {
   const totalAgents = agents.length;
-  const activeAgents = agents.filter((a) => a.status !== 'offline').length;
+  const activeAgents = agents.filter((a: Agent) => a.status !== 'offline').length;
 
   // Sort agents by chats today and take top 5
   const topAgents = [...agents]
@@ -536,7 +531,8 @@ function Dashboard({ agents }: DashboardProps) {
         <div className="dashboard-stats-compact">
           <StatCard title="Total Agents" value={totalAgents} icon="👥" />
           <StatCard title="Active Agents" value={activeAgents} icon="⚡" />
-          <StatCard title="Online Agents" value={agents.filter((a) => a.status === 'online').length} icon="🟢" />
+          <StatCard title="Online Agents" value={agents.filter((a: Agent) => a.status === 'online').length} icon="🟢" />
+
         </div>
 
         {/* Compact Status Overview */}
@@ -547,28 +543,32 @@ function Dashboard({ agents }: DashboardProps) {
               <div className="status-icon">🟢</div>
               <div className="status-content">
                 <div className="status-label">Online</div>
-                <div className="status-value">{agents.filter(a => a.status === 'online').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'online').length}</div>
+
               </div>
             </div>
             <div className="status-item">
               <div className="status-icon">🔴</div>
               <div className="status-content">
                 <div className="status-label">Offline</div>
-                <div className="status-value">{agents.filter(a => a.status === 'offline').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'offline').length}</div>
+
               </div>
             </div>
             <div className="status-item">
               <div className="status-icon">🟠</div>
               <div className="status-content">
                 <div className="status-label">Busy</div>
-                <div className="status-value">{agents.filter(a => a.status === 'busy').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'busy').length}</div>
+
               </div>
             </div>
             <div className="status-item">
               <div className="status-icon">🟣</div>
               <div className="status-content">
                 <div className="status-label">Away</div>
-                <div className="status-value">{agents.filter(a => a.status === 'away').length}</div>
+                <div className="status-value">{agents.filter((a: Agent) => a.status === 'away').length}</div>
+
               </div>
             </div>
           </div>
@@ -1884,7 +1884,11 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
     return (
       <div className="admin-agents-page">
         <div className="admin-page-header">
-          <button onClick={() => setSelectedTicket(null)} className="admin-button">
+          <button 
+            onClick={() => setSelectedTicket(null)} 
+            className="admin-button admin-button-secondary" 
+            style={{ width: 'auto' }}
+          >
             ← Back to Tickets
           </button>
           <h2 className="admin-page-title">Ticket #{selectedTicket.id}</h2>
@@ -1961,19 +1965,144 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
               {ticketMessages.length === 0 ? (
                 <div className="admin-empty-state">No messages in this ticket</div>
               ) : (
-                ticketMessages.map((message: any) => (
-                  <div key={message.id} className="admin-message-item">
-                    <div className="admin-message-header">
-                      <span className="admin-message-sender">
-                        {message.sender_type} {message.sender_id}
-                      </span>
-                      <span className="admin-message-time">
-                        {new Date(message.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="admin-message-content">{message.content}</div>
-                  </div>
-                ))
+                ticketMessages.flatMap((message: any, idx: number) => {
+                  const bubbles = [];
+                  if (message.prompt && message.prompt.trim() !== '') {
+                    bubbles.push(
+                      <div
+                        key={`prompt-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: '#e5e7eb',
+                            color: '#222',
+                            borderRadius: '16px 16px 16px 4px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          {message.prompt}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
+                          <span>User</span>
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (message.output && message.output.trim() !== '') {
+                    bubbles.push(
+                      <div
+                        key={`output-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-end',
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                            color: 'white',
+                            borderRadius: '16px 16px 4px 16px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-end',
+                          }}
+                        >
+                          {message.output}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: '#d1fae5', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          <span>AI</span>
+                          {message.agent_id && <span>(Agent {message.agent_id})</span>}
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // fallback: if neither prompt nor output, show text/content
+                  if ((!message.prompt || message.prompt.trim() === '') && (!message.output || message.output.trim() === '')) {
+                    const isUser = message.sender_type === 'user' || message.sender === 'user';
+                    const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
+                    const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' || message.sender_type === 'prompt' || message.sender === 'bot';
+                    const align = isUser ? 'flex-start' : 'flex-end';
+                    const bubbleColor = isUser
+                      ? '#e5e7eb'
+                      : isAgent
+                        ? 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)'
+                        : 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
+                    const textColor = isUser ? '#222' : 'white';
+                    const borderRadius = isUser
+                      ? '16px 16px 16px 4px'
+                      : '16px 16px 4px 16px';
+                    let mainContent = message.text || message.content || '';
+                    bubbles.push(
+                      <div
+                        key={`fallback-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: align,
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: bubbleColor,
+                            color: textColor,
+                            borderRadius: borderRadius,
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: align,
+                          }}
+                        >
+                          {mainContent}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: isUser ? '#6b7280' : '#d1fae5', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: align }}>
+                          <span>
+                            {isUser && 'User'}
+                            {isAgent && 'Agent'}
+                            {isAI && 'AI'} {message.agent_id ? `(Agent ${message.agent_id})` : ''}
+                          </span>
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return bubbles;
+                })
               )}
             </div>
           </div>
@@ -2051,50 +2180,75 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
         </div>
       </div>
 
-      <div className="admin-tickets-container admin-tab-card">
-        <div className="admin-tickets-table-wrapper admin-table-scroll">
+      <div className="admin-tickets-container">
+        <div className="admin-tickets-table-wrapper">
           <table className="admin-table">
+            <colgroup>
+              <col style={{ width: '200px' }} />
+              <col style={{ minWidth: '200px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '160px' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th style={{ width: '366px' }}>ID</th>
-                <th style={{ minWidth: '200px' }}>Title</th>
-                <th style={{ width: '100px' }}>Status</th>
-                <th style={{ width: '100px' }}>Priority</th>
-                <th style={{ width: '120px' }}>Created</th>
-                <th style={{ minWidth: '145px' }}>Actions</th>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Agent</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Created</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                    <div className="admin-empty-state">No tickets found</div>
+                  <td colSpan={7} className="py-8 text-center">
+                    <div className="admin-empty-state text-gray-500">No tickets found</div>
                   </td>
                 </tr>
               ) : (
                 filteredTickets.map((ticket) => (
-                  <tr key={ticket.id}>
-                    <td style={{ width: '366px', fontWeight: '500', color: 'var(--admin-text)' }}>{ticket.id}</td>
-                    <td style={{ minWidth: '200px', fontWeight: '500', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {ticket.id}
+                    </td>
+                    <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
                       {ticket.title}
                     </td>
-                    <td style={{ width: '100px' }}>
+                    <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {ticket.agent_name || 'Unassigned'}
+                    </td>
+                    <td>
                       <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ width: '80px' }}>
+                    <td>
                       <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
                         {ticket.priority}
                       </span>
                     </td>
-                    <td style={{ width: '100px', fontSize: '14px', color: 'var(--admin-text-secondary)' }}>
+                    <td className="text-sm text-gray-600 whitespace-nowrap">
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
-                    <td style={{ width: '140px' }}>
+                    <td>
                       <div className="admin-table-actions">
-                        <button onClick={() => handleViewTicket(ticket)} className="admin-button">View</button>
-                        <button onClick={() => handleAssignTicket(ticket.id)} className="admin-button">Assign</button>
+                        <button 
+                          onClick={() => handleViewTicket(ticket)} 
+                          className="admin-button admin-button-primary text-xs px-3 py-1.5"
+                        >
+                          View
+                        </button>
+                        <button 
+                          onClick={() => handleAssignTicket(ticket.id)} 
+                          className="admin-button admin-button-secondary text-xs px-3 py-1.5"
+                        >
+                          Assign
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -2168,7 +2322,13 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
     return (
       <div className="admin-agents-page">
         <div className="admin-page-header">
-          <button onClick={() => setSelectedConversation(null)} className="admin-button">← Back to Conversations</button>
+          <button 
+            onClick={() => setSelectedConversation(null)} 
+            className="admin-button admin-button-secondary" 
+            style={{ width: 'auto' }}
+          >
+            ← Back to Conversations
+          </button>
           <h2 className="admin-page-title">Conversation #{selectedConversation.id}</h2>
         </div>
 
@@ -2194,67 +2354,143 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                 <div className="admin-empty-state">No messages in this conversation</div>
               ) : (
                 conversationMessages.map((message: any, idx: number) => {
-                  // User messages left, agent/ai right
-                  const isUser = message.sender_type === 'user' || message.sender === 'user';
-                  const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
-                  const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' ||message.sender_type === 'prompt' || message.sender === 'bot';
-                  const align = isUser ? 'flex-start' : 'flex-end';
-                  const bubbleColor = isUser
-                    ? '#e5e7eb'
-                    : isAgent
-                      ? 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)'
-                      : 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
-                  const textColor = isUser ? '#222' : 'white';
-                  const borderRadius = isUser
-                    ? '16px 16px 16px 4px'
-                    : '16px 16px 4px 16px';
-                  // For user, show prompt if present, else fallback; for agent/ai, show output/text/content
-                  let mainContent = '';
-                  if (isUser) {
-                    mainContent = message.prompt || message.text || message.content || message.output || '';
-                  } else {
-                    mainContent = message.output || message.text || message.content || message.prompt || '';
-                  }
-                  return (
-                    <div
-                      key={message.id || idx}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: align,
-                      }}
-                    >
+                  // Show prompt (user, left) and output (ai/agent, right) for each message if present
+                  const bubbles = [];
+                  if (message.prompt && message.prompt.trim() !== '') {
+                    bubbles.push(
                       <div
+                        key={`prompt-${message.id || idx}`}
                         style={{
-                          background: bubbleColor,
-                          color: textColor,
-                          borderRadius: borderRadius,
-                          padding: '10px 16px',
-                          maxWidth: '70%',
-                          marginBottom: '2px',
-                          fontSize: '15px',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                          wordBreak: 'break-word',
-                          alignSelf: align,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
                         }}
                       >
-                        {mainContent}
-                        {message.category && (
-                          <div style={{ fontSize: '11px', color: isUser ? '#6b7280' : '#d1fae5', marginTop: '4px' }}>
-                            Category: {message.category}
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            background: '#e5e7eb',
+                            color: '#222',
+                            borderRadius: '16px 16px 16px 4px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          {message.prompt}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
+                          <span>User</span>
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: align }}>
-                        <span>
-                          {isUser && 'User'}
-                          {isAgent && 'Agent'}
-                          {isAI && 'AI'} {message.agent_id ? `(Agent ${message.agent_id})` : ''}
-                        </span>
-                        {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                    );
+                  }
+                  if (message.output && message.output.trim() !== '') {
+                    bubbles.push(
+                      <div
+                        key={`output-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-end',
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                            color: 'white',
+                            borderRadius: '16px 16px 4px 16px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-end',
+                          }}
+                        >
+                          {message.output}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: '#d1fae5', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          <span>AI</span>
+                          {message.agent_id && <span>(Agent {message.agent_id})</span>}
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
                       </div>
-                    </div>
-                  );
+                    );
+                  }
+                  // fallback: if neither prompt nor output, show text/content
+                  if ((!message.prompt || message.prompt.trim() === '') && (!message.output || message.output.trim() === '')) {
+                    const isUser = message.sender_type === 'user' || message.sender === 'user';
+                    const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
+                    const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' || message.sender_type === 'prompt' || message.sender === 'bot';
+                    const align = isUser ? 'flex-start' : 'flex-end';
+                    const bubbleColor = isUser
+                      ? '#e5e7eb'
+                      : isAgent
+                        ? 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)'
+                        : 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
+                    const textColor = isUser ? '#222' : 'white';
+                    const borderRadius = isUser
+                      ? '16px 16px 16px 4px'
+                      : '16px 16px 4px 16px';
+                    let mainContent = message.text || message.content || '';
+                    bubbles.push(
+                      <div
+                        key={`fallback-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: align,
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: bubbleColor,
+                            color: textColor,
+                            borderRadius: borderRadius,
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: align,
+                          }}
+                        >
+                          {mainContent}
+                          {message.category && (
+                            <div style={{ fontSize: '11px', color: isUser ? '#6b7280' : '#d1fae5', marginTop: '4px' }}>
+                              Category: {message.category}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: align }}>
+                          <span>
+                            {isUser && 'User'}
+                            {isAgent && 'Agent'}
+                            {isAI && 'AI'} {message.agent_id ? `(Agent ${message.agent_id})` : ''}
+                          </span>
+                          {message.created_at && <><span>·</span><span>{new Date(message.created_at).toLocaleString()}</span></>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return bubbles;
                 })
               )}
             </div>
@@ -2268,7 +2504,15 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
     <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Conversations</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'nowrap',
+          }}
+        >
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <input
               type="checkbox"
@@ -2295,13 +2539,27 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             <option value="open">Open</option>
             <option value="closed">Closed</option>
           </select>
-          <button onClick={handleExportConversations} className="admin-button admin-button-primary">Export</button>
+          <button
+            onClick={handleExportConversations}
+            className="admin-button admin-button-primary"
+            style={{ width: 'auto' }}
+          >
+            Export
+          </button>
         </div>
       </div>
 
-      <div className="admin-tab-card">
-        <div className="admin-table-scroll">
+      <div className="admin-conversations-container">
+        <div className="admin-conversations-table-wrapper">
           <table className="admin-table">
+            <colgroup>
+              <col style={{ width: '200px' }} />
+              <col style={{ minWidth: '150px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '200px' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Session ID</th>
@@ -2309,7 +2567,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                 <th>Status</th>
                 <th>Messages</th>
                 <th>Created</th>
-                <th>Actions</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2324,7 +2582,11 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                   <tr key={conv.id}>
                     <td>{conv.session_id}</td>
                     <td>{conv.user_id || 'N/A'}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{conv.status || 'N/A'}</td>
+                    <td style={{ textTransform: 'capitalize' }}>
+                      <span className="admin-status-badge">
+                        {conv.status || 'N/A'}
+                      </span>
+                    </td>
                     <td>{conversationMessages.length || 0}</td>
                     <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
                     <td>
@@ -2451,6 +2713,7 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
             setShowCreateModal(true);
           }}
           className="admin-button admin-button-primary"
+          style={{ width: 'auto' }}
         >
           Add Skill
         </button>
