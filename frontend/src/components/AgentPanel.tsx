@@ -978,7 +978,13 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     try {
       const agent = retrieveAgentInfo()
       
-      // Update ticket agent assignment
+      // 1️⃣ First, change ticket status to "waiting" before transfer
+      await ticketsApi.updateTicket({
+        id: String(transferTicketId),
+        status: 'waiting'
+      })
+      
+      // 2️⃣ Update ticket agent assignment to new agent
       await ticketAgentsApi.updateTicketAgent({
         ticket_id: String(transferTicketId),
         assigned_agent_id: selectedAgent.id,
@@ -988,7 +994,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       // Update the session status to show it's transferred
       setSessions(prev => prev.map(session => 
         session.id === transferTicketId 
-          ? { ...session, status: 'assigned', transferred: true }
+          ? { ...session, status: 'waiting', transferred: true }
           : session
       ))
 
