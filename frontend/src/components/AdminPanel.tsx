@@ -2178,84 +2178,75 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
             <option value="longest_open">Longest Open</option>
           </select>
         </div>
-      </div>
 
-      <div className="admin-tickets-container">
-        <div className="admin-tickets-table-wrapper">
-          <table className="admin-table">
-            <colgroup>
-              <col style={{ width: '200px' }} />
-              <col style={{ minWidth: '200px' }} />
-              <col style={{ width: '150px' }} />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '160px' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Agent</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Created</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.length === 0 ? (
+        <div className="admin-tickets-container admin-tab-card">
+          <div className="admin-tickets-table-wrapper admin-table-scroll">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="py-8 text-center">
-                    <div className="admin-empty-state text-gray-500">No tickets found</div>
-                  </td>
+                  <th style={{ width: '150px' }}>ID</th>
+                  <th style={{ width: 'auto' }}>Title</th>
+                  <th style={{ width: 'auto' }}>Agent</th>
+                  <th style={{ width: 'auto' }}>Status</th>
+                  <th style={{ width: 'auto' }}>Priority</th>
+                  <th style={{ width: 'auto' }}>Created</th>
+                  <th style={{ width: '150px' }} >Actions</th>
                 </tr>
-              ) : (
-                filteredTickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {ticket.id}
-                    </td>
-                    <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
-                      {ticket.title}
-                    </td>
-                    <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {ticket.agent_name || 'Unassigned'}
-                    </td>
-                    <td>
-                      <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
-                        {ticket.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
-                        {ticket.priority}
-                      </span>
-                    </td>
-                    <td className="text-sm text-gray-600 whitespace-nowrap">
-                      {new Date(ticket.created_at).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <div className="admin-table-actions">
-                        <button 
-                          onClick={() => handleViewTicket(ticket)} 
-                          className="admin-button admin-button-primary text-xs px-3 py-1.5"
-                        >
-                          View
-                        </button>
-                        <button 
-                          onClick={() => handleAssignTicket(ticket.id)} 
-                          className="admin-button admin-button-secondary text-xs px-3 py-1.5"
-                        >
-                          Assign
-                        </button>
-                      </div>
+              </thead>
+              <tbody>
+                {filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center">
+                      <div className="admin-empty-state text-gray-500">No tickets found</div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredTickets.map((ticket) => (
+                    <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {ticket.id}
+                      </td>
+                      <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                        {ticket.title}
+                      </td>
+                      <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {ticket.agent_name || 'Unassigned'}
+                      </td>
+                      <td>
+                        <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
+                          {ticket.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
+                          {ticket.priority}
+                        </span>
+                      </td>
+                      <td className="text-sm text-gray-600 whitespace-nowrap">
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button 
+                            onClick={() => handleViewTicket(ticket)} 
+                            className="admin-button admin-button-primary text-xs px-3 py-1.5"
+                          >
+                            View
+                          </button>
+                          <button 
+                            onClick={() => handleAssignTicket(ticket.id)} 
+                            className="admin-button admin-button-secondary text-xs px-3 py-1.5"
+                          >
+                            Assign
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

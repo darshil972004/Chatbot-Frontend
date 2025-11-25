@@ -586,7 +586,7 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 200px);
-  min-height: 400px;
+  min-height: 300px;
   margin: 0 8px;
   width: 100%;
   max-width: 100%;
@@ -1032,7 +1032,7 @@
 @media (max-width: 1024px) {
   .admin-tickets-container {
     height: auto;
-    max-height: 70vh;
+    max-height: 50vh;
   }
   
   .admin-table {
@@ -1071,7 +1071,7 @@
   flex-direction: column;
   gap: 16px;
   height: 70vh;       /* fixed height */
-  overflow-y: auto;   /* enable scroll */
+  overflow-y: hidden;   /* enable scroll */
   overflow-x: hidden; /* optional: hide horizontal scroll */
 }
 
@@ -1092,6 +1092,7 @@
 
 .admin-tab-card {
   width: 100%;
+  height: 57vh;
   background-color: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);
@@ -2424,7 +2425,7 @@ html, body {
   font-size: 14px;
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments
 @media (max-width: 1200px) {
   .admin-tickets-container {
     height: auto;
@@ -2434,7 +2435,7 @@ html, body {
   .admin-table {
     min-width: 100%;
   }
-}
+} */
 
 /* Scrollbar styling */
 .admin-tickets-table-wrapper::-webkit-scrollbar {
@@ -2698,7 +2699,7 @@ html, body {
 }
 
 .admin-tickets-table-wrapper {
-  max-height: 70vh;
+  max-height: 56vh;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--admin-border) transparent;
