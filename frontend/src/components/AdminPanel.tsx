@@ -1884,7 +1884,11 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
     return (
       <div className="admin-agents-page">
         <div className="admin-page-header">
-          <button onClick={() => setSelectedTicket(null)} className="admin-button">
+          <button 
+            onClick={() => setSelectedTicket(null)} 
+            className="admin-button admin-button-secondary" 
+            style={{ width: 'auto' }}
+          >
             ← Back to Tickets
           </button>
           <h2 className="admin-page-title">Ticket #{selectedTicket.id}</h2>
@@ -2193,7 +2197,13 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
     return (
       <div className="admin-agents-page">
         <div className="admin-page-header">
-          <button onClick={() => setSelectedConversation(null)} className="admin-button">← Back to Conversations</button>
+          <button 
+            onClick={() => setSelectedConversation(null)} 
+            className="admin-button admin-button-secondary" 
+            style={{ width: 'auto' }}
+          >
+            ← Back to Conversations
+          </button>
           <h2 className="admin-page-title">Conversation #{selectedConversation.id}</h2>
         </div>
 
@@ -2369,7 +2379,15 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
     <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Conversations</h2>
-        <div style={{ display: 'flex', gap: '8px',flexDirection: 'row',flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'nowrap',
+          }}
+        >
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <input
               type="checkbox"
@@ -2396,7 +2414,13 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             <option value="open">Open</option>
             <option value="closed">Closed</option>
           </select>
-          <button onClick={handleExportConversations} className="admin-button admin-button-primary">Export</button>
+          <button
+            onClick={handleExportConversations}
+            className="admin-button admin-button-primary"
+            style={{ width: 'auto' }}
+          >
+            Export
+          </button>
         </div>
       </div>
 
@@ -2564,6 +2588,7 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
             setShowCreateModal(true);
           }}
           className="admin-button admin-button-primary"
+          style={{ width: 'auto' }}
         >
           Add Skill
         </button>

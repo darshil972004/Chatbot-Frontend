@@ -687,6 +687,13 @@
   justify-content: flex-end;
 }
 
+/* Table action buttons (Agents, Tickets, Conversations, Skills, etc.)
+   should size to their content, not full width */
+.admin-table-actions .admin-button {
+  width: auto;
+  max-width: none;
+}
+
 /* Responsive status badges */
 .admin-status-badge,
 .admin-priority-badge {
@@ -930,7 +937,7 @@
 
 .admin-table th {
   padding: 0.75rem 0.5rem;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   color: var(--admin-text-secondary);
   text-transform: uppercase;
@@ -2268,6 +2275,12 @@ html, body {
   scrollbar-width: thin;
   scrollbar-color: var(--admin-border) transparent;
   padding: 0; /* Remove padding */
+}
+
+/* Make buttons in Skills tab size to their content instead of full width */
+.admin-skills-table-wrapper .admin-button {
+  width: auto;
+  max-width: none;
 }
 
 .admin-skills-table-wrapper::-webkit-scrollbar {
