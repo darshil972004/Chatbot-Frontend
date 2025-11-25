@@ -1,34 +1,46 @@
-import { useEffect } from "react";
+// useTicketUpdates.ts
+import { useEffect, useRef } from "react";
 
 export interface TicketEvent {
   type: string;
   ticket_id?: string;
   assigned_agent_id?: number;
-  [key: string]: any; // allow extra fields
+  [key: string]: any;
 }
 
 export function useTicketUpdates(onUpdate: (event: TicketEvent) => void) {
-  useEffect(() => {
-    const events = new EventSource("http://localhost:8000/events");
+  const sseRef = useRef<EventSource | null>(null);
 
-    events.onmessage = (e: MessageEvent) => {
+  useEffect(() => {
+    // Prevent multiple connections
+    if (sseRef.current) {
+      console.log("SSE already open — skipping reconnect.");
+      return;
+    }
+
+    console.log("Opening SSE connection...");
+    const es = new EventSource("http://localhost:8000/events");
+    sseRef.current = es;
+
+    es.onmessage = (e) => {
       try {
-        const data: TicketEvent = JSON.parse(e.data);
-        console.log("Received SSE:", data);
+        const data = JSON.parse(e.data);
+        console.log("📩 Received SSE:", data);
         onUpdate(data);
       } catch (error) {
-        console.error("Failed to parse SSE message:", error);
+        console.error("❌ Failed to parse SSE message:", error);
       }
     };
 
-    events.onerror = (err) => {
-      console.warn("SSE connection lost, retrying...", err);
-      // Optional: events.close();
+    es.onerror = (err) => {
+      console.warn("⚠ SSE connection error:", err);
+      // You may implement retry logic here
     };
 
     return () => {
-      console.log("Closing SSE connection...");
-      events.close();
+      console.log("🛑 Closing SSE connection...");
+      es.close();
+      sseRef.current = null;
     };
-  }, [onUpdate]);
+  }, []); // ← empty deps = NEVER reconnect automatically
 }

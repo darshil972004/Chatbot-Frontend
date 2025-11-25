@@ -7,7 +7,7 @@ import { agentsApi } from '../api/agentsApi'
 import { conversationDetailsApi } from '../api/conversationsApi'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
-import { useTicketUpdates } from '../api/sse/sse'
+import { useTicketUpdates ,TicketEvent } from '../api/sse/sse'
 
 const DEFAULT_ROLE_LABEL = 'Technical Agent'
 
@@ -108,6 +108,8 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const [availableAgents, setAvailableAgents] = useState<any[]>([])
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
   const [transferLoading, setTransferLoading] = useState<boolean>(false)
+  const handlerRef = useRef<(event: TicketEvent) => void>(() => {});
+
   
   // Notification state
   const [notifications, setNotifications] = useState<Array<{
@@ -509,92 +511,78 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
   },[agentId, loggedOut, loadQuickReplies])
 
- useTicketUpdates(async (event) => {
-  const agent = retrieveAgentInfo();
-  if (!agent?.id) return;
+  useEffect(() => {
+    handlerRef.current = async (event: TicketEvent) => {
+      const agent = retrieveAgentInfo();
+      if (!agent?.id) return;
 
-  // 1️⃣ If assigned_agent_id exists → must match logged-in agent
-  if (event.assigned_agent_id) {
-    if (Number(event.assigned_agent_id) !== Number(agent.id)) {
-      console.log("Ignoring SSE event for another agent:", event.assigned_agent_id);
-      return;
-    }
-  } 
-  // 2️⃣ If assigned_agent_id missing → event must belong to a ticket in current session list
-  else {
-    const existsInCurrentList = sessions.some(
-      (session) => String(session.id) === String(event.ticket_id)
-    );
+      // 1️⃣ Agent-based filtering
+      if (event.assigned_agent_id) {
+        if (Number(event.assigned_agent_id) !== Number(agent.id)) {
+          console.log("Ignoring event for another agent:", event.assigned_agent_id);
+          return;
+        }
+      } else {
+        // 2️⃣ Allow CREATED/UPDATED even if session missing
+        if (!["TICKET_CREATED", "TICKET_UPDATED"].includes(event.type)) {
+          const existsInCurrentList = sessions.some(
+            (session) => String(session.id) === String(event.ticket_id)
+          );
 
-    if (!existsInCurrentList) {
-      console.log("Ignoring SSE event: ticket not in current agent list:", event.ticket_id);
-      return;
-    }
-  }
-
-  console.log("SSE event relevant to this agent:", event);
-
-  // Add notification for this event
-  const newNotification = {
-    id: `${event.type}_${event.ticket_id}_${Date.now()}`,
-    type: event.type,
-    ticket_id: event.ticket_id,
-    timestamp: Date.now(),
-    read: false
-  };
-  
-  setNotifications(prev => {
-    // Keep only latest 10 notifications, add new one at the beginning
-    const updated = [newNotification, ...prev.slice(0, 9)];
-    return updated;
-  });
-
-  // 3️⃣ Always trust backend completely and refresh ticket list
-  try {
-    const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0);
-
-    if (Array.isArray(tickets)) {
-      const mapped = tickets.map((ticket: any) => ({
-        id: ticket.id,
-        user: {
-          name: `User ${ticket.user_id || "Unknown"}`,
-          email: "",
-          country: "",
-          pastIssues: 0,
-        },
-        topic: ticket.category || "tech",
-        status: ticket.status, // ← NO more overriding, TRUST backend
-        unread: 0,
-        lastMsgTime: ticket.created_at
-          ? new Date(ticket.created_at).toLocaleString()
-          : "now",
-        startedAgo: ticket.created_at
-          ? new Date(ticket.created_at).toLocaleString()
-          : "just now",
-        messages: [],
-        messagesLoaded: false,
-        loadingMessages: false,
-        title: ticket.title,
-        description: ticket.description,
-        priority: ticket.priority,
-      }));
-
-      // 4️⃣ Replace/merge sessions based on backend truth
-      setSessions((prev) => {
-        const existingIds = new Set(mapped.map((p) => p.id));
-        return [...mapped, ...prev.filter((p) => !existingIds.has(p.id))];
-      });
-
-      // 5️⃣ Auto-select first ticket if none active
-      if (!activeSessionId && mapped.length > 0) {
-        setActiveSessionId(mapped[0].id);
+          if (!existsInCurrentList) {
+            console.log("Ignoring SSE event: ticket not in list:", event.ticket_id);
+            return;
+          }
+        }
       }
-    }
-  } catch (e) {
-    console.warn("Failed to fetch tickets by agent", e);
-  }
-});
 
+      console.log("SSE event relevant:", event);
+
+      // 3️⃣ Add notification
+      const newNotification = {
+        id: `${event.type}_${event.ticket_id}_${Date.now()}`,
+        type: event.type,
+        ticket_id: event.ticket_id,
+        timestamp: Date.now(),
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotification, ...prev.slice(0, 9)]);
+
+      // 4️⃣ Refresh tickets
+      try {
+        const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0);
+
+        if (Array.isArray(tickets)) {
+          const mapped = tickets.map((ticket: any) => ({
+            id: ticket.id,
+            user: { name: `User ${ticket.user_id || "Unknown"}`, email: "", country: "", pastIssues: 0 },
+            topic: ticket.category || "tech",
+            status: ticket.status,
+            unread: 0,
+            lastMsgTime: new Date(ticket.created_at).toLocaleString(),
+            startedAgo: new Date(ticket.created_at).toLocaleString(),
+            messages: [],
+            messagesLoaded: false,
+            loadingMessages: false,
+            title: ticket.title,
+            description: ticket.description,
+            priority: ticket.priority,
+          }));
+
+          setSessions(() => mapped);
+
+          if (!activeSessionId && mapped.length > 0) {
+            setActiveSessionId(mapped[0].id);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to refresh tickets", e);
+      }
+    };
+  }, [sessions, activeSessionId]);
+
+  useTicketUpdates((event) => handlerRef.current(event));
 
 
   // Restore active chat session from localStorage after page reload
