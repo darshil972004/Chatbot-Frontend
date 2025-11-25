@@ -2556,7 +2556,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
               <col style={{ width: '200px' }} />
               <col style={{ minWidth: '150px' }} />
               <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
+              {/* <col style={{ width: '100px' }} /> */}
               <col style={{ width: '120px' }} />
               <col style={{ width: '200px' }} />
             </colgroup>
@@ -2565,7 +2565,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                 <th>Session ID</th>
                 <th>User ID</th>
                 <th>Status</th>
-                <th>Messages</th>
+                {/* <th>Messages</th> */}
                 <th>Created</th>
                 <th className="text-right">Actions</th>
               </tr>
@@ -2587,7 +2587,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                         {conv.status || 'N/A'}
                       </span>
                     </td>
-                    <td>{conversationMessages.length || 0}</td>
+                    {/* <td>{conversationMessages.length || 0}</td> */}
                     <td>{conv.created_at ? new Date(conv.created_at).toLocaleDateString() : 'N/A'}</td>
                     <td>
                       <div className="admin-table-actions">
