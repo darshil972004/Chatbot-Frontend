@@ -1882,7 +1882,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
 
   if (selectedTicket) {
     return (
-      <div className="admin-agents-page">
+      <div className="admin-agents-page-conv">
         <div className="admin-page-header">
           <button 
             onClick={() => setSelectedTicket(null)} 
