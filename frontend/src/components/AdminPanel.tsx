@@ -2311,7 +2311,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
 
   if (selectedConversation) {
     return (
-      <div className="admin-agents-page">
+      <div className="admin-agents-page-conv">
         <div className="admin-page-header">
           <button 
             onClick={() => setSelectedConversation(null)} 
@@ -2492,7 +2492,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
   }
 
   return (
-    <div className="admin-agents-page">
+    <div className="admin-agents-page-conv">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Conversations</h2>
         <div

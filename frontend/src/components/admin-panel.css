@@ -593,6 +593,21 @@
   box-sizing: border-box;
 }
 
+.admin-agents-page-conv{
+  width: 100%;
+  background-color: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 70vh;       /* fixed height */
+  overflow-y: auto;   /* enable scroll */
+  overflow-x: hidden; /* optional: hide horizontal scroll */
+}
+
 /* Table Wrapper */
 .admin-tickets-table-wrapper,
 .admin-conversations-table-wrapper {
