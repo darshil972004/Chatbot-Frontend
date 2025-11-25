@@ -2269,6 +2269,46 @@
         }
       }
     },
+    "/api/conversation-details/by-ticket/{ticket_id}": {
+      "get": {
+        "summary": "Get Conversation Details By Ticket Api",
+        "description": "Get conversation details by ticket ID",
+        "operationId": "get_conversation_details_by_ticket_api_api_conversation_details_by_ticket__ticket_id__get",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tickets": {
       "post": {
         "summary": "Create Ticket Api",
@@ -2580,22 +2620,58 @@
         }
       }
     },
-    "/api/ticket-agents/{ticket_id}": {
-      "get": {
-        "summary": "Get Ticket Agents Api",
-        "description": "Get all agents assigned to a ticket",
-        "operationId": "get_ticket_agents_api_api_ticket_agents__ticket_id__get",
-        "parameters": [
-          {
-            "name": "ticket_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Ticket Id"
+    "/api/ticket-agents": {
+      "put": {
+        "summary": "Update Ticket Agent Api",
+        "description": "Update an agent's role or status for a ticket",
+        "operationId": "update_ticket_agent_api_api_ticket_agents_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketAgentUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
             }
           }
-        ],
+        }
+      },
+      "post": {
+        "summary": "Create Ticket Agent Api",
+        "description": "Assign an agent to a ticket",
+        "operationId": "create_ticket_agent_api_api_ticket_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketAgentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2620,21 +2696,22 @@
         }
       }
     },
-    "/api/ticket-agents": {
-      "put": {
-        "summary": "Update Ticket Agent Api",
-        "description": "Update an agent's role or status for a ticket",
-        "operationId": "update_ticket_agent_api_api_ticket_agents_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TicketAgentUpdateRequest"
-              }
+    "/api/ticket-agents/{ticket_id}": {
+      "get": {
+        "summary": "Get Ticket Agents Api",
+        "description": "Get all agents assigned to a ticket",
+        "operationId": "get_ticket_agents_api_api_ticket_agents__ticket_id__get",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
             }
-          },
-          "required": true
-        },
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3233,6 +3310,24 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events": {
+      "get": {
+        "summary": "Sse Events",
+        "operationId": "sse_events_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
                 }
               }
             }
@@ -4412,6 +4507,67 @@
           "name"
         ],
         "title": "SkillUpdateRequest"
+      },
+      "TicketAgentCreateRequest": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "assigned_agent_id": {
+            "type": "integer",
+            "title": "Assigned Agent Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "in_progress"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "default": "medium"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "assigned_agent_id"
+        ],
+        "title": "TicketAgentCreateRequest"
       },
       "TicketAgentUpdateRequest": {
         "properties": {

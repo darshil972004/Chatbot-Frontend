@@ -2,8 +2,9 @@ import React, {useCallback, useEffect, useRef, useState} from 'react'
 import './agent_panel_styles.css'
 import AgentLogin from './AgentLogin'
 import { openAgentNotifierWS, openAgentChatWS, sendClaimAction, sendChatMessage, sendReleaseAction, retrieveAgentInfo, clearAgentInfo, updateAgentStatus, fetchActiveRooms, fetchAgentCurrentStatus, fetchAgentSkills, fetchAgentQuickReplies, createAgentQuickReply, deleteAgentQuickReply, updateAgentQuickReply, type AgentSkill, type AgentQuickReply } from '../api/agent'
-import { ticketsApi, ticketMessagesApi, ticketAgentsApi } from '../api/ticketsApi'
+import { ticketsApi, ticketAgentsApi } from '../api/ticketsApi'
 import { agentsApi } from '../api/agentsApi'
+import { conversationDetailsApi } from '../api/conversationsApi'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import { useTicketUpdates } from '../api/sse/sse'
@@ -117,6 +118,14 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   }>>([])
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
 
+  // Conversation history state
+  const [conversationHistory, setConversationHistory] = useState<{
+    [ticketId: string]: any[];
+  }>({})
+  const [loadingHistory, setLoadingHistory] = useState<{
+    [ticketId: string]: boolean;
+  }>({})
+
   // Persist active chat session to localStorage
   const saveActiveChatSession = useCallback((ticketId: string | number | null) => {
     if (ticketId) {
@@ -224,11 +233,11 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       )
     )
     try {
-      const messages = await ticketMessagesApi.getTicketMessages(String(ticketId), 200, 0)
+      const messages = await conversationDetailsApi.getConversationDetailsByTicket(ticketId, 200, 0)
       const formatted = Array.isArray(messages)
         ? messages.map(msg => ({
-            sender: (msg.sender_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
-            text: msg.content || '',
+            sender: (msg.responder_type || '').toLowerCase() === 'agent' ? 'agent' : 'user',
+            text: msg.output || msg.prompt || '',
             ts: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
           }))
         : []
@@ -249,6 +258,58 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
       )
     }
   }, [])
+
+  const loadConversationHistory = useCallback(async (ticketId: string | number) => {
+    const ticketIdStr = String(ticketId);
+    
+    // Don't reload if already loaded or loading
+    // if (conversationHistory[ticketIdStr] || loadingHistory[ticketIdStr]) {
+    //   return;
+    // }
+
+    setLoadingHistory(prev => ({ ...prev, [ticketIdStr]: true }));
+    
+    try {
+      const history = await conversationDetailsApi.getConversationDetailsByTicket(ticketId, 100, 0);
+      
+      if (Array.isArray(history) && history.length > 0) {
+        // Format the conversation history
+        const formattedHistory = history
+          // .filter(item => item.prompt || item.output) // Ignore null values
+          .map(item => {
+            const messages = [];
+            // prompt is from USER side - show on left
+            if (item.prompt) {
+              messages.push({
+                sender: 'user',
+                text: item.prompt,
+                ts: item.created_at ? new Date(item.created_at).getTime() : Date.now()
+              });
+            }
+            // output is from US - show on right
+            if (item.output) {
+              messages.push({
+                sender: 'agent',
+                text: item.output,
+                ts: item.created_at ? new Date(item.created_at).getTime() : Date.now()
+              });
+            }
+            return messages;
+          })
+          .flat(); // Flatten the array of arrays
+        
+        setConversationHistory(prev => ({ ...prev, [ticketIdStr]: formattedHistory }));
+      } else {
+        // No history found
+        setConversationHistory(prev => ({ ...prev, [ticketIdStr]: [] }));
+      }
+    } catch (err) {
+      console.error('Failed to load conversation history', err);
+      setConversationHistory(prev => ({ ...prev, [ticketIdStr]: [] }));
+    } finally {
+      setLoadingHistory(prev => ({ ...prev, [ticketIdStr]: false }));
+    }
+  }, [conversationHistory, loadingHistory]);
 
   useEffect(()=>{
     if (loggedOut) {
@@ -715,10 +776,8 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
   async function openSession(id: string|number){
     setActiveSessionId(id)
-    const session = sessions.find(s => s.id === id)
-    if (session && !session.messagesLoaded && !session.loadingMessages) {
-      await loadTicketMessages(id)
-    }
+    // Always load conversation history (this includes both current and historical messages)
+    await loadConversationHistory(id)
   }
 
   async function handleResumeChat(sessionId: string | number) {
@@ -958,6 +1017,8 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
     return new Date(timestamp).toLocaleDateString()
   }
+
+  // Conversation history functions - History is now always loaded and displayed
 
   interface ConversationListItemProps {
     session: any;
@@ -1332,6 +1393,8 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               onSend={sendMessageToSession}
               quickReplies={quickReplyOptions}
               onEndChat={endChatSession}
+              conversationHistory={conversationHistory[String(activeSession.id)] || []}
+              loadingHistory={loadingHistory[String(activeSession.id)] || false}
             />
           ) : (
             <div className="preview-placeholder">Select a conversation to begin</div>
@@ -1530,16 +1593,20 @@ interface ChatWindowProps {
   onSend: (sessionId: string | number, text: string) => void;
   quickReplies: string[];
   onEndChat?: (sessionId: string | number) => void;
+  conversationHistory?: any[];
+  loadingHistory?: boolean;
 }
-function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps){
+function ChatWindow({session, onSend, quickReplies, onEndChat, conversationHistory = [], loadingHistory = false}: ChatWindowProps){
   const [input, setInput] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
   const isClosed = isClosedStatus(session.status)
-  const messages = Array.isArray(session.messages) ? session.messages : []
+
+  // Use only conversation history since we removed duplicate loading
+  const allMessages = conversationHistory
 
   useEffect(()=>{
     if(boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
-  }, [messages.length, session.loadingMessages, session.status])
+  }, [allMessages.length, loadingHistory, session.status])
 
   function send(){
     if(!input.trim() || isClosed) return
@@ -1558,10 +1625,13 @@ function ChatWindow({session, onSend, quickReplies, onEndChat}: ChatWindowProps)
       </div>
 
       <div ref={boxRef} className={`chat-messages${isClosed ? ' chat-messages-closed' : ''}`}>
-        {session.loadingMessages && (
-          <div className="chat-loading">Loading ticket conversation…</div>
+        {loadingHistory && (
+          <div className="chat-loading">Loading conversation history…</div>
         )}
-        {messages.map((m: any,i: number)=> (
+        {!loadingHistory && conversationHistory.length === 0 && (
+          <div className="chat-history-placeholder">No conversation history found for this ticket</div>
+        )}
+        {allMessages.map((m: any,i: number)=> (
           <div key={i} className={`chat-message ${m.sender === 'agent' ? 'agent' : 'user'}`}> 
             <div className="chat-message-sender">{m.sender === 'agent' ? 'Agent' : 'User'}</div>
             <div>{m.text}</div>
