@@ -134,6 +134,15 @@ export default function ChatbotWidget() {
     prevAgentStatus.current = agentStatus;
   }, [agentStatus]);
 
+  // When feedback is shown, clear ticketId so cp-live-banner is hidden
+  useEffect(() => {
+    if (showFeedback && ticketId) {
+      // Wait a short moment to allow feedback form to render, then clear ticketId
+      const timeout = setTimeout(() => setTicketId(null), 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [showFeedback, ticketId]);
+
   const emitLiveMessage = useCallback((text: string) => {
     const payload = JSON.stringify({ type: 'message', text, sender: 'user', ts: Date.now() });
     const socket = wsRef.current;
