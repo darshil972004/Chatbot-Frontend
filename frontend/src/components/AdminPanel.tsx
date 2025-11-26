@@ -1896,6 +1896,38 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
     alert('Assign ticket functionality - would open agent selection modal');
   };
 
+  const handleSolveFast = async (ticketId: string) => {
+    try {
+      // Update ticket status to resolved
+      const response = await fetch(`/api/tickets/${ticketId}/solve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'resolved',
+          resolved_at: new Date().toISOString(),
+          resolution_method: 'fast_solve'
+        })
+      });
+      
+      if (response.ok) {
+        // Update local state
+        setTickets(prev => prev.map(ticket => 
+          ticket.id === ticketId 
+            ? { ...ticket, status: 'resolved', resolved_at: new Date().toISOString() }
+            : ticket
+        ));
+        alert('Ticket marked as resolved successfully!');
+      } else {
+        throw new Error('Failed to resolve ticket');
+      }
+    } catch (error) {
+      console.error('Error solving ticket:', error);
+      alert('Failed to resolve ticket. Please try again.');
+    }
+  };
+
   if (selectedTicket) {
     return (
       <div className="admin-agents-page-conv">
@@ -2243,6 +2275,133 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
       </div>
     );
   }
+
+  // Main tickets table view
+  return (
+    <div className="admin-agents-page">
+      <div className="admin-page-header">
+        <h2 className="admin-page-title">Tickets</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="waiting">Waiting</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select
+            value={filters.priority}
+            onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="">All Priority</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '140px' }}
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="longest_open">Longest Open</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="admin-tickets-container admin-tab-card">
+        <div className="admin-tickets-table-wrapper admin-table-scroll">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th style={{ width: '80px' }}>ID</th>
+                <th style={{ minWidth: '200px' }}>Title</th>
+                <th style={{ width: '120px' }}>Status</th>
+                <th style={{ width: '100px' }}>Priority</th>
+                <th style={{ width: '150px' }}>Category</th>
+                <th style={{ width: '150px' }}>Created</th>
+                <th style={{ width: '150px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTickets.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center">
+                    <div className="admin-empty-state text-gray-500">No tickets found</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredTickets.map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="font-medium text-sm text-gray-900 whitespace-nowrap">
+                      #{ticket.id}
+                    </td>
+                    <td className="font-medium text-sm text-gray-900 max-w-xs">
+                      <div className="truncate" title={ticket.title}>
+                        {ticket.title}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
+                        {ticket.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
+                        {ticket.priority}
+                      </span>
+                    </td>
+                    <td className="text-sm text-gray-600">
+                      {ticket.category || 'Uncategorized'}
+                    </td>
+                    <td className="text-sm text-gray-600 whitespace-nowrap">
+                      {formatTime12h(ticket.created_at)}
+                    </td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button 
+                          onClick={() => handleViewTicket(ticket)} 
+                          className="admin-button admin-button-primary text-xs px-3 py-1.5"
+                        >
+                          View
+                        </button>
+                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                          <button 
+                            onClick={() => handleAssignTicket(ticket.id)} 
+                            className="admin-button admin-button-secondary text-xs px-3 py-1.5"
+                          >
+                            Assign
+                          </button>
+                        )}
+                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                          <button 
+                            onClick={() => handleSolveFast(ticket.id)} 
+                            className="admin-button admin-button-success text-xs px-3 py-1.5"
+                          >
+                            Solve Fast
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ConversationsPage Component
