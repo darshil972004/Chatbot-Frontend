@@ -2056,8 +2056,98 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                       </div>
                     );
                   }
+                  // Check for blog info first
+                  if (message.blog && Array.isArray(message.blog) && message.blog.length > 0) {
+                    bubbles.push(
+                      <div key={`blog-${message.id || idx}`}>
+                        <div
+                          style={{
+                            background: '#e5e7eb',
+                            color: '#222',
+                            borderRadius: '16px 16px 16px 4px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          {message.text || 'Blog information'}
+                        </div>
+                        <div className="cp-blog-info">
+                          {message.blog.map((blog: any, bIdx: number) => {
+                            const isBlogValid = blog && blog.title && blog.blog_url;
+                            return isBlogValid ? (
+                              <span className="cp-blog-title" key={blog.blog_id || bIdx} style={{ display: 'block', marginBottom: 4 }}>
+                                <span className="cp-blog-label">Blog:</span>&nbsp;
+                                <a
+                                  className="cp-blog-name"
+                                  href={blog.blog_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {blog.title}
+                                </a>
+                              </span>
+                            ) : (
+                              <span className="cp-blog-error" key={bIdx}>Blog info not fetched completely from backend.</span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Check for property group info
+                  if (message.propertyGroup) {
+                    const group = message.propertyGroup;
+                    const itemsToShow = group.items; // For admin panel, show all items
+                    bubbles.push(
+                      <div key={`prop-group-${message.id || idx}`} className="cp-prop-group">
+                        <div className="cp-prop-grid">
+                          {itemsToShow.map((p: any, pIdx: number) => {
+                            const currency = p?.varCurrency ;
+                            const title = p?.varTitle || p?.title || p?.varName || 'Property';
+                            const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
+                            const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
+                            const priceText = price ? `${price.toLocaleString()}` : '';
+                            const mls = p?.varMLS || p?.mls || p?.mls_no || '';
+                            const beds = p?.intBeds ?? p?.beds ?? p?.num_beds;
+                            const baths = p?.intBaths ?? p?.baths ?? p?.num_baths;
+                            const location = p?.city_name || p?.location || '';
+                            return (
+                              <div key={pIdx} className="cp-prop-card">
+                                <div className="cp-prop-badge">{pIdx + 1}</div>
+                                <div className="cp-prop-image">
+                                  {p?.varFeaturedImage || p?.image || p?.thumbnail ? (
+                                    <img src={p.varFeaturedImage || p.image || p.thumbnail} alt={title} />
+                                  ) : (
+                                    <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
+                                  )}
+                                </div>
+                                <div className="cp-prop-title">{title}</div>
+                                {priceText && <div className="cp-prop-price">{currency} {priceText}</div>}
+                                {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
+                                <div className="cp-prop-meta">
+                                  {beds ? <span>🛏️ {beds} beds</span> : null}
+                                  {baths ? <span>🚿 {baths} baths</span> : null}
+                                  {location ? <span>📍 {location}</span> : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
                   // fallback: if neither prompt nor output, show text/content
-                  if ((!message.prompt || message.prompt.trim() === '') && (!message.output || message.output.trim() === '')) {
+                  if (
+                    (!message.prompt || message.prompt.trim() === '') &&
+                    (!message.output || message.output.trim() === '') &&
+                    (!message.blog || message.blog.length === 0) &&
+                    !message.propertyGroup
+                  ) {
                     const isUser = message.sender_type === 'user' || message.sender === 'user';
                     const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
                     const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' || message.sender_type === 'prompt' || message.sender === 'bot';
@@ -2149,120 +2239,6 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
       </div>
     );
   }
-
-  return (
-    <div className="admin-agents-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Tickets</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="waiting">Waiting</option>
-            {/* <option value="resolved">Resolved</option> */}
-            <option value="closed">Closed</option>
-          </select>
-          <select
-            value={filters.priority}
-            onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '120px' }}
-          >
-            <option value="">All Priority</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-          <select
-            value={filters.sort_by}
-            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
-            className="admin-login-input"
-            style={{ width: '140px' }}
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="longest_open">Longest Open</option>
-          </select>
-        </div>
-
-        <div className="admin-tickets-container admin-tab-card">
-          <div className="admin-tickets-table-wrapper admin-table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '150px' }}>ID</th>
-                  <th style={{ width: 'auto' }}>Title</th>
-                  <th style={{ width: 'auto' }}>Agent</th>
-                  <th style={{ width: 'auto' }}>Status</th>
-                  <th style={{ width: 'auto' }}>Priority</th>
-                  <th style={{ width: 'auto' }}>Created</th>
-                  <th style={{ width: '150px' }} >Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center">
-                      <div className="admin-empty-state text-gray-500">No tickets found</div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTickets.map((ticket) => (
-                    <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
-                        {ticket.id}
-                      </td>
-                      <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
-                        {ticket.title}
-                      </td>
-                      <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
-                        {ticket.agent_name || 'Unassigned'}
-                      </td>
-                      <td>
-                        <span className={`admin-status-badge admin-status-${ticket.status.replace('_', '-')}`}>
-                          {ticket.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`admin-priority-badge admin-priority-${ticket.priority}`}>
-                          {ticket.priority}
-                        </span>
-                      </td>
-                      <td className="text-sm text-gray-600 whitespace-nowrap">
-                        {formatTime12h(ticket.created_at)}
-                      </td>
-                      <td>
-                        <div className="admin-table-actions">
-                          <button 
-                            onClick={() => handleViewTicket(ticket)} 
-                            className="admin-button admin-button-primary text-xs px-3 py-1.5"
-                          >
-                            View
-                          </button>
-                          <button 
-                            onClick={() => handleAssignTicket(ticket.id)} 
-                            className="admin-button admin-button-secondary text-xs px-3 py-1.5"
-                          >
-                            Assign
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ConversationsPage Component
@@ -2359,6 +2335,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                 conversationMessages.map((message: any, idx: number) => {
                   // Show prompt (user, left) and output (ai/agent, right) for each message if present
                   const bubbles = [];
+                  
                   if (message.prompt && message.prompt.trim() !== '') {
                     bubbles.push(
                       <div
@@ -2436,8 +2413,137 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                       </div>
                     );
                   }
+                  // Map result_list into blog/propertyGroup if present
+                  const results: any[] = Array.isArray(message.result_list) ? message.result_list : [];
+
+                  // Treat any result_list entry with blog_* as blog
+                  const blogResults = results.filter(
+                    (r: any) => r.blog_title || r.blog_url || r.type === 'blog'
+                  );
+
+                  // Treat others as properties
+                  const propertyResults = results.filter(
+                    (r: any) =>
+                      !blogResults.includes(r) &&
+                      (r.type === 'property' || r.varMLS || r.property_id)
+                  );
+
+                  // Only synthesize if not already set
+                  if (blogResults.length > 0 && !message.blog) {
+                    message.blog = blogResults.map((b: any) => ({
+                      blog_id: b.blog_id,
+                      title: b.blog_title || b.title,
+                      blog_url: b.blog_url || b.url,
+                    }));
+                  }
+
+                  if (propertyResults.length > 0 && !message.propertyGroup) {
+                    message.propertyGroup = {
+                      // show all items in admin
+                      items: propertyResults.map((p: any) => ({
+                        varCurrency: p.varCurrency,
+                        varTitle: p.varTitle || p.title || p.varName,
+                        decPrice: p.decPrice ?? p.price ?? p.varAskingPrice ?? p.asking_price,
+                        varMLS: p.varMLS || p.mls || p.mls_no,
+                        intBeds: p.intBeds ?? p.beds ?? p.num_beds,
+                        intBaths: p.intBaths ?? p.baths ?? p.num_baths,
+                        city_name: p.city_name || p.location,
+                        varFeaturedImage: p.varFeaturedImage || p.image || p.thumbnail,
+                      })),
+                    };
+                  }
+                  // Check for blog info first
+                  if (message.blog && Array.isArray(message.blog) && message.blog.length > 0) {
+                    bubbles.push(
+                      <div key={`blog-${message.id || idx}`}>
+                        <div
+                          style={{
+                            background: '#e5e7eb',
+                            color: '#222',
+                            borderRadius: '16px 16px 16px 4px',
+                            padding: '10px 16px',
+                            maxWidth: '70%',
+                            marginBottom: '2px',
+                            fontSize: '15px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                            wordBreak: 'break-word',
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          {message.text || 'Blog information'}
+                        </div>
+                        <div className="cp-blog-info">
+                          {message.blog.map((blog: any, bIdx: number) => {
+                            const isBlogValid = blog && blog.title && blog.blog_url;
+                            return isBlogValid ? (
+                              <span className="cp-blog-title" key={blog.blog_id || bIdx} style={{ display: 'block', marginBottom: 4 }}>
+                                <span className="cp-blog-label">Blog:</span>&nbsp;
+                                <a
+                                  className="cp-blog-name"
+                                  href={blog.blog_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {blog.title}
+                                </a>
+                              </span>
+                            ) : (
+                              <span className="cp-blog-error" key={bIdx}>Blog info not fetched completely from backend.</span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Check for property group info
+                  if (message.propertyGroup) {
+                    const group = message.propertyGroup;
+                    const itemsToShow = group.items; // For admin panel, show all items
+                    bubbles.push(
+                      <div key={`prop-group-${message.id || idx}`} className="cp-prop-group">
+                        <div className="cp-prop-grid">
+                          {itemsToShow.map((p: any, pIdx: number) => {
+                            const currency = p?.varCurrency ;
+                            const title = p?.varTitle || p?.title || p?.varName || 'Property';
+                            const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
+                            const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
+                            const priceText = price ? `${price.toLocaleString()}` : '';
+                            const mls = p?.varMLS || p?.mls || p?.mls_no || '';
+                            const beds = p?.intBeds ?? p?.beds ?? p?.num_beds;
+                            const baths = p?.intBaths ?? p?.baths ?? p?.num_baths;
+                            const location = p?.city_name || p?.location || '';
+                            return (
+                              <div key={pIdx} className="cp-prop-card">
+                                <div className="cp-prop-badge">{pIdx + 1}</div>
+                                <div className="cp-prop-image">
+                                  {p?.varFeaturedImage || p?.image || p?.thumbnail ? (
+                                    <img src={p.varFeaturedImage || p.image || p.thumbnail} alt={title} />
+                                  ) : (
+                                    <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
+                                  )}
+                                </div>
+                                <div className="cp-prop-title">{title}</div>
+                                {priceText && <div className="cp-prop-price">{currency} {priceText}</div>}
+                                {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
+                                <div className="cp-prop-meta">
+                                  {beds ? <span>🛏️ {beds} beds</span> : null}
+                                  {baths ? <span>🚿 {baths} baths</span> : null}
+                                  {location ? <span>📍 {location}</span> : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
                   // fallback: if neither prompt nor output, show text/content
-                  if ((!message.prompt || message.prompt.trim() === '') && (!message.output || message.output.trim() === '')) {
+                  if (
+                    (!message.prompt || message.prompt.trim() === '') &&
+                    (!message.output || message.output.trim() === '') &&
+                    (!message.blog || message.blog.length === 0) &&
+                    !message.propertyGroup
+                  ) {
                     const isUser = message.sender_type === 'user' || message.sender === 'user';
                     const isAgent = message.sender_type === 'agent' || message.sender === 'agent';
                     const isAI = message.sender_type === 'ai' || message.sender_type === 'bot' || message.sender_type === 'prompt' || message.sender === 'bot';
@@ -2500,38 +2606,32 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
           </div>
         </div>
       </div>
-    );
-  }
+  );
+}
 
   return (
-    <div className="admin-agents-page-conv">
+    <div className="admin-agents-page">
       <div className="admin-page-header">
         <h2 className="admin-page-title">Conversations</h2>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: '8px',
-            flexWrap: 'nowrap',
-          }}
-        >
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <input
-              type="checkbox"
-              checked={filters.ai_only}
-              onChange={(e) => setFilters({ ...filters, ai_only: e.target.checked })}
-            />
-            AI Only
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <input
-              type="checkbox"
-              checked={filters.agent_involved}
-              onChange={(e) => setFilters({ ...filters, agent_involved: e.target.checked })}
-            />
-            Agent Involved
-          </label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <select
+            value={filters.ai_only.toString()}
+            onChange={(e) => setFilters({ ...filters, ai_only: e.target.value === 'true' })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="false">Include AI</option>
+            <option value="true">Only AI</option>
+          </select>
+          <select
+            value={filters.agent_involved.toString()}
+            onChange={(e) => setFilters({ ...filters, agent_involved: e.target.value === 'true' })}
+            className="admin-login-input"
+            style={{ width: '120px' }}
+          >
+            <option value="false">Exclude Agent</option>
+            <option value="true">Include Agent</option>
+          </select>
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -2539,70 +2639,87 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             style={{ width: '120px' }}
           >
             <option value="">All Status</option>
-            <option value="open">Open</option>
+            <option value="assigned">Assigned</option>
+            <option value="waiting">Waiting</option>
             <option value="closed">Closed</option>
           </select>
-          <button
-            onClick={handleExportConversations}
-            className="admin-button admin-button-primary"
-            style={{ width: 'auto' }}
+          <select
+            value={filters.sort_by}
+            onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
+            className="admin-login-input"
+            style={{ width: '140px' }}
           >
-            Export
-          </button>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="longest_open">Longest Open</option>
+          </select>
         </div>
-      </div>
 
-      <div className="admin-conversations-container">
-        <div className="admin-conversations-table-wrapper">
-          <table className="admin-table">
-            <colgroup>
-              <col style={{ width: '200px' }} />
-              <col style={{ minWidth: '150px' }} />
-              <col style={{ width: '100px' }} />
-              {/* <col style={{ width: '100px' }} /> */}
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '200px' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>Session ID</th>
-                <th>User ID</th>
-                <th>Status</th>
-                {/* <th>Messages</th> */}
-                <th>Created</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredConversations.length === 0 ? (
+        <div className="admin-conversations-container admin-tab-card">
+          <div className="admin-conversations-table-wrapper admin-table-scroll">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                    <div className="admin-empty-state">No conversations found</div>
-                  </td>
+                  <th style={{ width: '150px' }}>ID</th>
+                  <th style={{ width: 'auto' }}>Topic</th>
+                  <th style={{ width: 'auto' }}>Status</th>
+                  <th style={{ width: 'auto' }}>Agent</th>
+                  <th style={{ width: 'auto' }}>Created</th>
+                  <th style={{ width: '150px' }} >Actions</th>
                 </tr>
-              ) : (
-                filteredConversations.map((conv) => (
-                  <tr key={conv.id}>
-                    <td>{conv.session_id}</td>
-                    <td>{conv.user_id || 'N/A'}</td>
-                    <td style={{ textTransform: 'capitalize' }}>
-                      <span className="admin-status-badge">
-                        {conv.status || 'N/A'}
-                      </span>
-                    </td>
-                    {/* <td>{conversationMessages.length || 0}</td> */}
-                    <td>{conv.created_at ? formatTime12h(conv.created_at) : 'N/A'}</td>
-                    <td>
-                      <div className="admin-table-actions">
-                        <button onClick={() => handleViewConversation(conv)} className="admin-button">View</button>
-                        <button onClick={() => handleChangeAgent(conv.id)} className="admin-button">Change Agent</button>
-                      </div>
+              </thead>
+              <tbody>
+                {filteredConversations.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center">
+                      <div className="admin-empty-state text-gray-500">No conversations found</div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredConversations.map((conv) => (
+                    <tr key={conv.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {conv.id}
+                      </td>
+                      <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                        {conv.topic}
+                      </td>
+                      <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {conv.user_id || 'N/A'}
+                      </td>
+                      <td style={{ textTransform: 'capitalize' }}>
+                        <span className={`admin-status-badge admin-status-${(conv.status || '').replace('_', '-')}`}>
+                          {(conv.status || '').replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {conv.agent_involved ? 'Agent Involved' : 'No Agent'}
+                      </td>
+                      <td className="text-sm text-gray-600 whitespace-nowrap">
+                        {formatTime12h(conv.created_at)}
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button 
+                            onClick={() => handleViewConversation(conv)} 
+                            className="admin-button admin-button-primary text-xs px-3 py-1.5"
+                          >
+                            View
+                          </button>
+                          <button 
+                            onClick={() => handleChangeAgent(conv.id)} 
+                            className="admin-button admin-button-secondary text-xs px-3 py-1.5"
+                          >
+                            Change Agent
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -2649,29 +2766,29 @@ function AlertsPage({ analytics }: AlertsPageProps) {
   );
 }
 
-// SkillsPage Component
-type SkillsPageProps = {
-  skills: Skill[];
-  setSkills: React.Dispatch<React.SetStateAction<Skill[]>>;
-};
-
-function SkillsPage({ skills, setSkills }: SkillsPageProps) {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
-  const [formData, setFormData] = useState({ name: '' });
-
-  const handleCreateSkill = async () => {
-    if (formData.name.trim()) {
-      try {
-        const newSkill = await skillsApi.createSkill({ name: formData.name.trim() });
-        setSkills((prev) => [...prev, newSkill]);
-        setShowCreateModal(false);
-        setFormData({ name: '' });
-      } catch (err) {
-        alert('Error creating skill');
-      }
-    }
+  // SkillsPage Component
+  type SkillsPageProps = {
+    skills: Skill[];
+    setSkills: React.Dispatch<React.SetStateAction<Skill[]>>;
   };
+
+  function SkillsPage({ skills, setSkills }: SkillsPageProps) {
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+    const [formData, setFormData] = useState({ name: '' });
+
+    const handleCreateSkill = async () => {
+      if (formData.name.trim()) {
+        try {
+          const newSkill = await skillsApi.createSkill({ name: formData.name.trim() });
+          setSkills((prev) => [...prev, newSkill]);
+          setShowCreateModal(false);
+          setFormData({ name: '' });
+        } catch (err) {
+          alert('Error creating skill');
+        }
+      }
+    };
 
   const handleUpdateSkill = async () => {
     if (editingSkill && formData.name.trim()) {
@@ -2830,4 +2947,4 @@ function SkillsPage({ skills, setSkills }: SkillsPageProps) {
       </div>
     </div>
   );
-}
+} 
