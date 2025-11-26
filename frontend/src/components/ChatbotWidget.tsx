@@ -289,10 +289,10 @@ export default function ChatbotWidget() {
             setMessages([initialMsg]);
             localStorage.setItem(LOCAL_KEY, JSON.stringify([initialMsg]));
 
-            // Auto-send "defult" for initial message if needed
+            // Auto-send "Default" for initial message if needed
             if (rType === 'message') {
               setLoading(false);
-              await handleSend('defult', true);
+              await handleSend('Default', true);
               return;
             }
           }
@@ -566,9 +566,9 @@ export default function ChatbotWidget() {
       return updated;
     });
 
-    // Auto-send if response_type is 'message' - send hidden "defult" message and show next result
+    // Auto-send if response_type is 'message' - send hidden "Default" message and show next result
     if (rTypeEarly === 'message' && !skipAutoRespond) {
-      const autoText = 'defult';
+      const autoText = 'Default';
       await handleSend(autoText, true);
     }
 
