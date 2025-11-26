@@ -108,53 +108,12 @@ function QuickRepliesPage() {
         </div>
         <button 
           onClick={openAddQuickReplyModal}
-          className="admin-button admin-button-primary"
+          className="admin-button admin-button-primary admin-button-small"
+          style={{ minWidth: '80px', width: 'auto' }}
         >
           <span className="admin-button-icon">+</span>
-          Add Quick Reply
+          Add Reply
         </button>
-      </div>
-
-      {/* Search and Filter Section */}
-      <div className="admin-search-section">
-        <div className="admin-search-controls">
-          <div className="admin-search-input-wrapper">
-            <input
-              type="text"
-              placeholder="Search quick replies..."
-              className="admin-search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <span className="admin-search-icon">🔍</span>
-          </div>
-          <select
-            className="admin-filter-select"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="admin-stats-row">
-          <div className="admin-stat-item">
-            <span className="admin-stat-number">{quickReplyTemplates.length}</span>
-            <span className="admin-stat-label">Total Replies</span>
-          </div>
-          <div className="admin-stat-item">
-            <span className="admin-stat-number">{categories.length}</span>
-            <span className="admin-stat-label">Categories</span>
-          </div>
-          <div className="admin-stat-item">
-            <span className="admin-stat-number">{formRepliesCount}</span>
-            <span className="admin-stat-label">With Forms</span>
-          </div>
-        </div>
       </div>
 
       <div className="admin-quick-replies-container admin-tab-card">
@@ -163,7 +122,7 @@ function QuickRepliesPage() {
             <div className="admin-empty-state">
               <div className="admin-empty-state-icon">💬</div>
               <div className="admin-empty-state-title">
-                {quickReplyTemplates.length === 0 ? 'No Quick Replies Yet' : 'No Matching Quick Replies'}
+                {quickReplyTemplates.length === 0 ? 'No Quick Replies Yet' : 'No Matching Replies'}
               </div>
               <div className="admin-empty-state-description">
                 {quickReplyTemplates.length === 0 
@@ -174,10 +133,10 @@ function QuickRepliesPage() {
               {quickReplyTemplates.length === 0 && (
                 <button 
                   onClick={openAddQuickReplyModal}
-                  className="admin-button admin-button-primary"
+                  className="admin-button admin-button-primary admin-button-small"
                 >
                   <span className="admin-button-icon">+</span>
-                  Create First Quick Reply
+                  Create First Reply
                 </button>
               )}
             </div>
@@ -187,9 +146,6 @@ function QuickRepliesPage() {
                 <div className="admin-quick-reply-header">
                   <div className="admin-quick-reply-category-section">
                     <span className="admin-quick-reply-category">{template.category}</span>
-                    {template.form_schema && (
-                      <span className="admin-quick-reply-badge">Form</span>
-                    )}
                   </div>
                   <div className="admin-quick-reply-actions">
                     <button 
@@ -197,7 +153,6 @@ function QuickRepliesPage() {
                       className="admin-button admin-button-secondary admin-button-small"
                       title="Edit quick reply"
                     >
-                      <span className="admin-button-icon">✏️</span>
                       Edit
                     </button>
                     <button 
@@ -205,7 +160,6 @@ function QuickRepliesPage() {
                       className="admin-button admin-button-danger admin-button-small"
                       title="Delete quick reply"
                     >
-                      <span className="admin-button-icon">🗑️</span>
                       Delete
                     </button>
                   </div>
@@ -243,17 +197,14 @@ function QuickRepliesPage() {
                   <div className="admin-quick-reply-meta">
                     <span className="admin-meta-item">
                       <span className="admin-meta-icon">📅</span>
-                      Created: {template.created_at ? new Date(template.created_at).toLocaleDateString() : 'Unknown'}
+                      {template.created_at ? new Date(template.created_at).toLocaleDateString() : 'Unknown'}
                     </span>
                     {template.updated_at && template.updated_at !== template.created_at && (
                       <span className="admin-meta-item">
                         <span className="admin-meta-icon">🔄</span>
-                        Updated: {new Date(template.updated_at).toLocaleDateString()}
+                        {new Date(template.updated_at).toLocaleDateString()}
                       </span>
                     )}
-                  </div>
-                  <div className="admin-quick-reply-usage">
-                    <span className="admin-usage-text">Click to preview</span>
                   </div>
                 </div>
               </div>
