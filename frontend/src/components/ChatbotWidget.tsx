@@ -734,7 +734,7 @@ export default function ChatbotWidget() {
             onChange={e => setFeedbackNote(e.target.value)}
             style={{ width: '100%', minHeight: 60, marginTop: 12, borderRadius: 6, border: '1px solid #e5e7eb', padding: 8, fontSize: 15 }}
           />
-          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
             <button
               className="cp-feedback-submit cp-btn"
               style={{ background: '#2563eb', color: '#fff', fontWeight: 500, border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 16 }}
