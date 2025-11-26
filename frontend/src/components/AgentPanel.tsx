@@ -1526,18 +1526,18 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   return (
     <div className="agent-panel">
       {/* Navigation Bar */}
-      <div className="admin-navbar agent-navbar">
-        <div className="admin-navbar__inner">
-          <div className="admin-navbar__brand">
-            <img src={logo} alt="RealEstate CRM" className="admin-navbar__logo" />
-            <span className="admin-navbar__brandName">RealEstate CRM</span>
+      <div className="agent-navbar agent-navbar">
+        <div className="agent-navbar__inner">
+          <div className="agent-navbar__brand">
+            <img src={logo} alt="RealEstate CRM" className="agent-navbar__logo" />
+            <span className="agent-navbar__brandName">RealEstate CRM</span>
           </div>
 
-          <div className="admin-navbar__title">
+          <div className="agent-navbar__title">
             <h1>Agent Workspace</h1>
           </div>
 
-          <div className="admin-navbar__meta">
+          <div className="agent-navbar__meta">
             {/* Mobile Sidebar Toggle */}
             <button 
               className="notification-bell"

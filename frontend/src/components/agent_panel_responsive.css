@@ -38,7 +38,7 @@
 }
 
 /* ===== NAVBAR ===== */
-.admin-navbar {
+.agent-navbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 0 clamp(0.75rem, 1.5vw, 1.5rem);
@@ -52,7 +52,7 @@
   z-index: 100;
 }
 
-.admin-navbar__inner {
+.agent-navbar__inner {
   width: 100%;
   display: flex;
   align-items: center;
@@ -60,43 +60,43 @@
   gap: clamp(1rem, 3vw, 2rem);
 }
 
-.admin-navbar__brand {
+.agent-navbar__brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
 }
 
-.admin-navbar__logo {
+.agent-navbar__logo {
   height: 36px;
   width: auto;
 }
 
-.admin-navbar__brandName {
+.agent-navbar__brandName {
   font-size: clamp(1.1rem, 2vw, 1.3rem);
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.admin-navbar__title {
+.agent-navbar__title {
   flex: 1;
   text-align: center;
 }
 
-.admin-navbar__title h1 {
+.agent-navbar__title h1 {
   font-size: clamp(1.2rem, 2.5vw, 1.5rem);
   font-weight: 600;
   margin: 0 0 0.25rem 0;
   color: var(--text-primary);
 }
 
-.admin-navbar__title p {
+.agent-navbar__title p {
   font-size: clamp(0.8rem, 1.5vw, 0.9rem);
   color: var(--text-secondary);
   margin: 0;
 }
 
-.admin-navbar__meta {
+.agent-navbar__meta {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -1657,29 +1657,29 @@
 
 /* Mobile (<= 768px) */
 @media (max-width: 768px) {
-  .admin-navbar {
+  .agent-navbar {
     height: auto;
     min-height: 60px;
     padding: 0.75rem;
   }
   
-  .admin-navbar__inner {
+  .agent-navbar__inner {
     flex-wrap: wrap;
     gap: 0.75rem;
   }
   
-  .admin-navbar__brand {
+  .agent-navbar__brand {
     order: 1;
   }
   
-  .admin-navbar__title {
+  .agent-navbar__title {
     order: 3;
     flex-basis: 100%;
     text-align: left;
     margin-top: 0.5rem;
   }
   
-  .admin-navbar__meta {
+  .agent-navbar__meta {
     order: 2;
   }
   
@@ -1778,15 +1778,15 @@
 
 /* Small Mobile (<= 480px) */
 @media (max-width: 480px) {
-  .admin-navbar__brandName {
+  .agent-navbar__brandName {
     display: none;
   }
   
-  .admin-navbar__title h1 {
+  .agent-navbar__title h1 {
     font-size: 1rem;
   }
   
-  .admin-navbar__title p {
+  .agent-navbar__title p {
     font-size: 0.75rem;
   }
   
