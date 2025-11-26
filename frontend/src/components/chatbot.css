@@ -1,3 +1,4 @@
+
 /* Live Support button style (matches other footer buttons) */
 .cp-chatbot__livesupport-btn {
   font-size: 15px;
@@ -333,7 +334,64 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+  /* flex-direction: row; */
+  justify-content: flex-start;
+}
+
+/* Checklist options: stack vertically, one per line */
+.cp-options--checklist {
+  display: flex;
   flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cp-checklist-option {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d7dfeb;
+  background: #fff;
+  color: #0c1b33;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 90px;
+  text-align: left;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  word-break: break-word;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s, border 0.2s;
+}
+
+.cp-checklist-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cp-checklist-option input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.cp-checklist-submit {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(135deg, #1e8bff, #5a5cff);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(30, 139, 255, 0.15);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.cp-checklist-submit:hover {
+  background: #1e8bff;
+  box-shadow: 0 8px 18px rgba(30, 139, 255, 0.18);
 }
 
 .cp-options--row {
@@ -348,6 +406,14 @@
   color: #0c1b33;
   font-size: 12px;
   cursor: pointer;
+  min-width: 90px;
+  text-align: center;
+  margin: 0;
+  flex: 1 1 30%;
+  max-width: 32%;
+  box-sizing: border-box;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .cp-option:disabled {

@@ -910,7 +910,7 @@ export default function ChatbotWidget() {
   {/* Only show typing indicator if not chatting with agent */}
   {loading && !isAgentActive && <div className="cp-msg cp-msg--bot">Typing…</div>}
         {!loading && pendingOptions.length > 0 && pendingMode === 'button-list' && (
-          <div className="cp-options">
+          <div className="cp-options cp-options--button-list">
             {pendingOptions.map((opt) => (
               <button key={opt} className="cp-option" onClick={() => handleSend(opt)}>
                 {opt}
@@ -1024,22 +1024,33 @@ export default function ChatbotWidget() {
             <button className="cp-modal-close" onClick={handleCloseConvos}>×</button>
             <div className="cp-modal-list">
               {convos.length === 0 && <div className="cp-modal-empty">No previous conversations found.</div>}
-              {convos.map((c) => (
-                <div key={c.id} className={`cp-modal-item${activeConvoId === c.id ? ' cp-modal-item--active' : ''}`}>
-                  <div className="cp-modal-item-title">Conversation {c.id.slice(0, 8)}</div>
-                  <div className="cp-modal-item-date">Started: {new Date(c.created).toLocaleString()}</div>
-                  <button className="cp-modal-view-btn" onClick={() => handleSelectConvo(c)}>View Conversation</button>
-                  <div className="cp-modal-item-preview">
-                    {c.messages.slice(0, 2).map((m: any, idx: number) => (
-                      <div key={idx} className="cp-modal-msg-preview">
-                        <span className="cp-modal-msg-role">{m.role === 'user' ? 'User:' : 'Bot:'}</span> {m.text.length > 60 ? m.text.slice(0, 60) + '...' : m.text}
-                      </div>
-                    ))}
-                    {c.messages.length > 2 && <div className="cp-modal-msg-more">...{c.messages.length - 2} more messages</div>}
+
+              {[...convos]
+                .sort((a, b) => Number(b.created) - Number(a.created)) // Newest first
+                .map((c) => (
+                  <div key={c.id} className={`cp-modal-item${activeConvoId === c.id ? ' cp-modal-item--active' : ''}`}>
+                    <div className="cp-modal-item-title">Conversation {c.id.slice(0, 8)}</div>
+                    <div className="cp-modal-item-date">Started: {new Date(c.created).toLocaleString()}</div>
+                    <button className="cp-modal-view-btn" onClick={() => handleSelectConvo(c)}>View Conversation</button>
+
+                    <div className="cp-modal-item-preview">
+                      {c.messages.slice(0, 2).map((m, idx) => (
+                        <div key={idx} className="cp-modal-msg-preview">
+                          <span className="cp-modal-msg-role">{m.role === 'user' ? 'User:' : 'Bot:'}</span>
+                          {m.text.length > 60 ? m.text.slice(0, 60) + '...' : m.text}
+                        </div>
+                      ))}
+
+                      {c.messages.length > 2 && (
+                        <div className="cp-modal-msg-more">
+                          ...{c.messages.length - 2} more messages
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
+
             <div style={{ textAlign: 'center', marginTop: 12 }}>
               <button
                 className="cp-chatbot__deletehistory cp-footer-btn"
@@ -1219,13 +1230,13 @@ function ChecklistOptions({ options, onSubmit }: ChecklistOptionsProps) {
       {opts.map((opt) => {
         const val = typeof opt === 'string' ? opt : opt.text || '';
         return (
-          <label key={val} className="cp-option-check">
+          <label key={val} className="cp-option-check cp-checklist-option">
             <input type="checkbox" checked={checked.includes(val)} onChange={() => handleToggle(val)} />
             <span>{val}</span>
           </label>
         );
       })}
-      <button className="cp-option" disabled={checked.length === 0} onClick={() => onSubmit(checked)}>
+      <button className="cp-option cp-checklist-submit" disabled={checked.length === 0} onClick={() => onSubmit(checked)}>
         Submit
       </button>
     </div>
