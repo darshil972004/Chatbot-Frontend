@@ -159,11 +159,12 @@ const QuickReplyModal: React.FC<QuickReplyModalProps> = ({
               onChange={(e) => setCategory(e.target.value)}
               className="quick-reply-select"
             >
-              <option value="">General</option>
+              <optgroup label="Select Category">
               <option value="Greeting">Greeting</option>
               <option value="Form">Form</option>
               <option value="Closing">Closing</option>
               <option value="Information">Information</option>
+              </optgroup>
             </select>
           </div>
 
