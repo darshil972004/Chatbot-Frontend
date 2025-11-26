@@ -636,25 +636,40 @@ export default function ChatbotWidget() {
     setExpandedGroups([]);
     setInput('');
   }
-
+  
   // Handler to delete all chat history
   function handleDeleteHistory() {
-    if (window.confirm('Are you sure you want to delete your chat history? This cannot be undone.')) {
-      localStorage.removeItem(LOCAL_KEY);
-      localStorage.removeItem(CONVOS_KEY);
-      setMessages([]);
-      setConvos([]);
-      setActiveConvoId(null);
-      setShowConvos(false);
-      setIsInitialized(false);
-      setPendingOptions([]);
-      setPendingMode(null);
-      setSelectedOption('');
-      setExpandedGroups([]);
-      setInput('');
-      addSystemMessage('Your chat history has been deleted.');
+      if (window.confirm('Are you sure you want to delete your chat history? This cannot be undone.')) {
+        localStorage.removeItem(LOCAL_KEY);
+        localStorage.removeItem(CONVOS_KEY);
+        setMessages([]);
+        setConvos([]);
+        setActiveConvoId(null);
+        setShowConvos(false);
+        setIsInitialized(false);
+        setPendingOptions([]);
+        setPendingMode(null);
+        setSelectedOption('');
+        setExpandedGroups([]);
+        setInput('');
+        addSystemMessage('Your chat history has been deleted.');
+        // Automatically start a new chat (simulate Start New Chat button)
+        setTimeout(() => {
+          resetLiveAgentSession();
+          const newUserId = uid();
+          setUserId(newUserId);
+          localStorage.setItem('cp_chat_user_id', newUserId);
+          setMessages([]);
+          localStorage.setItem(LOCAL_KEY, JSON.stringify([]));
+          setIsInitialized(false);
+          setPendingOptions([]);
+          setPendingMode(null);
+          setSelectedOption('');
+          setExpandedGroups([]);
+          setInput('');
+        } , 500);
+      }
     }
-  }
   const getMessageClass = (role: ChatRole) => {
     if (role === 'user') return 'cp-msg--user';
     if (role === 'agent') return 'cp-msg--agent';
@@ -703,8 +718,9 @@ export default function ChatbotWidget() {
                 className="cp-cancel-request-btn cp-btn cp-btn--danger"
                 style={{ marginTop: 4, padding: '0px 0px', borderRadius: '5px', background: 'linear-gradient(90deg, #e53935 0%, #ff9800 100%)', color: '#fff', fontWeight: 500, fontSize: '0.92rem', border: 'none', boxShadow: '0 1px 4px rgba(229,57,53,0.10)', transition: 'background 0.2s', minWidth: 'unset', lineHeight: 1.2 }}
                 onClick={handleCancelRequest}
+                aria-label={agentStatus === 'connected' ? 'End Chat' : 'Cancel Request'}
               >
-                Cancel Request
+                {agentStatus === 'connected' ? 'End Chat' : 'Cancel Request'}
               </button>
             </div>
           </div>
@@ -1051,17 +1067,19 @@ export default function ChatbotWidget() {
                 ))}
             </div>
 
-            <div style={{ textAlign: 'center', marginTop: 12 }}>
-              <button
-                className="cp-chatbot__deletehistory cp-footer-btn"
-                onClick={handleDeleteHistory}
-                aria-label="Delete Chat History"
-                type="button"
-                style={{ background: '#ef4444', color: '#fff', margin: '8px auto', padding: '4px 10px', borderRadius: '4px', fontWeight: 500, fontSize: '13px', boxShadow: '0 1px 4px rgba(239,68,68,0.10)' }}
-              >
-                Delete Chat History
-              </button>
-            </div>
+            {convos.length > 0 && (
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button
+                  className="cp-chatbot__deletehistory cp-footer-btn"
+                  onClick={handleDeleteHistory}
+                  aria-label="Delete Chat History"
+                  type="button"
+                  style={{ background: '#ef4444', color: '#fff', margin: '8px auto', padding: '4px 10px', borderRadius: '4px', fontWeight: 500, fontSize: '13px', boxShadow: '0 1px 4px rgba(239,68,68,0.10)' }}
+                >
+                  Delete Chat History
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1163,48 +1181,57 @@ function FormOptions({ options, heading, onSubmit }: { options: any[]; heading?:
   };
 
   return (
-      <form className="cp-form-options" onSubmit={handleSubmit}>
-        <div className="cp-form-card">
-          <div className="cp-form-heading">{displayHeading}</div>
-          {opts.map((opt: any, idx: number) => {
-            const label = typeof opt === 'string' ? opt : opt.label;
-            const { type, pattern, autoComplete, placeholder, required, description } = getInputProps(opt);
-            const value = values[label] || '';
-            return (
-              <label key={label} className="cp-form-label">
-                <span className="cp-form-label-text">{label}{required ? ' *' : ''}</span>
-                {description && <span className="cp-form-desc">{description}</span>}
-                {type === 'textarea' ? (
-                  <textarea
-                    className="cp-form-input"
-                    value={value}
-                    onChange={(e) => handleChange(e, opt)}
-                    onBlur={(e) => handleBlur(e, opt)}
-                    required={required}
-                    autoComplete={autoComplete}
-                    placeholder={placeholder}
-                  />
-                ) : (
-                  <input
-                    className="cp-form-input"
-                    value={value}
-                    onChange={(e) => handleChange(e, opt)}
-                    onBlur={(e) => handleBlur(e, opt)}
-                    required={required}
-                    type={type}
-                    pattern={pattern}
-                    autoComplete={autoComplete}
-                    placeholder={placeholder}
-                  />
-                )}
-                {errors[label] && <span className="cp-form-error">{errors[label]}</span>}
-              </label>
-            );
-          })}
+      <form className="cp-form-options cp-form-modern" onSubmit={handleSubmit}>
+        <div className="cp-form-card cp-form-card-modern">
+          <div className="cp-form-heading">
+            <span className="cp-form-heading-icon"></span> {/* Placeholder for icon */}
+            {displayHeading}
+          </div>
+          <div className="cp-form-fields">
+            {opts.map((opt: any, idx: number) => {
+              const label = typeof opt === 'string' ? opt : opt.label;
+              const { type, pattern, autoComplete, placeholder, required, description } = getInputProps(opt);
+              const value = values[label] || '';
+              return (
+                <label key={label} className="cp-form-label cp-form-label-modern">
+                  <span className="cp-form-label-text">
+                    {label}{required ? ' *' : ''}
+                  </span>
+                  {description && <span className="cp-form-desc">{description}</span>}
+                  {type === 'textarea' ? (
+                    <textarea
+                      className="cp-form-input cp-form-input-modern"
+                      value={value}
+                      onChange={(e) => handleChange(e, opt)}
+                      onBlur={(e) => handleBlur(e, opt)}
+                      required={required}
+                      autoComplete={autoComplete}
+                      placeholder={placeholder}
+                      aria-label={label}
+                    />
+                  ) : (
+                    <input
+                      className="cp-form-input cp-form-input-modern"
+                      value={value}
+                      onChange={(e) => handleChange(e, opt)}
+                      onBlur={(e) => handleBlur(e, opt)}
+                      required={required}
+                      type={type}
+                      pattern={pattern}
+                      autoComplete={autoComplete}
+                      placeholder={placeholder}
+                      aria-label={label}
+                    />
+                  )}
+                  {errors[label] && <span className="cp-form-error">{errors[label]}</span>}
+                </label>
+              );
+            })}
+          </div>
         </div>
-        <div className="cp-form-footer">
-          <button className="cp-form-submit" type="submit">
-            Submit Details
+        <div className="cp-form-footer cp-form-footer-modern">
+          <button className="cp-form-submit cp-form-submit-modern" type="submit">
+            <span className="cp-form-submit-text">Submit Details</span>
             <span className="cp-form-submit-icon">→</span>
           </button>
         </div>
