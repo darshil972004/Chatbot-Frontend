@@ -116,6 +116,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
   const [quickReplyTemplates, setQuickReplyTemplates] = useState<AgentQuickReply[]>([])
   const [quickRepliesLoading, setQuickRepliesLoading] = useState<boolean>(false)
   const [quickRepliesError, setQuickRepliesError] = useState<string | null>(null)
+  const [expandedProps, setExpandedProps] = useState<Record<string, boolean>>({});
   const [quickReplyDraft, setQuickReplyDraft] = useState<{
     id: number | null;
     category: string;
@@ -446,12 +447,42 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
             }
             // output is from US - show on right
             if (item.output) {
-              messages.push({
+              const agentMessage: any = {
                 sender: 'agent',
                 text: item.output,
                 ts: item.created_at ? new Date(item.created_at).getTime() : Date.now(),
-                agentName: (item as any).display_name || 'AI' // Use display_name from DB or fallback to 'AI'
-              });
+                agentName: (item as any).display_name || 'AI'
+              };
+
+              // Map result_list into propertyGroup/blog like ConversationsPage
+              const results: any[] = Array.isArray(item.result_list) ? item.result_list : [];
+              const blogResults = results.filter(r => r.blog_title || r.blog_url || r.type === 'blog');
+              const propertyResults = results.filter(r => !blogResults.includes(r) && (r.type === 'property' || r.varMLS || r.property_id));
+
+              if (blogResults.length > 0) {
+                agentMessage.blog = blogResults.map((b: any) => ({
+                  blog_id: b.blog_id,
+                  title: b.blog_title || b.title,
+                  blog_url: b.blog_url || b.url,
+                }));
+              }
+
+              if (propertyResults.length > 0) {
+                agentMessage.propertyGroup = {
+                  items: propertyResults.map((p: any) => ({
+                    varCurrency: p.varCurrency,
+                    varTitle: p.varTitle || p.title || p.varName,
+                    decPrice: p.decPrice ?? p.price ?? p.varAskingPrice ?? p.asking_price,
+                    varMLS: p.varMLS || p.mls || p.mls_no,
+                    intBeds: p.intBeds ?? p.beds ?? p.num_beds,
+                    intBaths: p.intBaths ?? p.baths ?? p.num_baths,
+                    city_name: p.city_name || p.location,
+                    varFeaturedImage: p.varFeaturedImage || p.image || p.thumbnail,
+                  })),
+                };
+              }
+
+              messages.push(agentMessage);
             }
             return messages;
           })
@@ -1745,6 +1776,8 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               onClaimChat={claimSession}
               conversationHistory={conversationHistory[String(activeSession.id)] || []}
               loadingHistory={loadingHistory[String(activeSession.id)] || false}
+              expandedProps={expandedProps}
+              setExpandedProps={setExpandedProps}
             />
           ) : (
             <div className="preview-placeholder">Select a conversation to begin</div>
@@ -1911,159 +1944,234 @@ interface ChatWindowProps {
   onClaimChat?: (sessionId: string | number) => void;
   conversationHistory?: any[];
   loadingHistory?: boolean;
+  expandedProps?: Record<string, boolean>;
+  setExpandedProps?: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
 interface ChatWindowRef {
   addLiveMessage: (message: any) => void;
 }
 
-const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({session, onSend, quickReplies, onEndChat, onClaimChat, conversationHistory = [], loadingHistory = false}, ref) => {
-  const [input, setInput] = useState('')
-  const [allMessages, setAllMessages] = useState<any[]>([])
-  const [selectedQuickReplyId, setSelectedQuickReplyId] = useState<string>('')
-  const boxRef = useRef<HTMLDivElement>(null)
-  const isClosed = isClosedStatus(session.status)
-  
-  // Get agent info for displaying real name
-  const agent = retrieveAgentInfo();
-  const agentDisplayName = agent?.display_name || agent?.username || 'Agent';
+const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(
+  ({ session, onSend, quickReplies, onEndChat, onClaimChat, conversationHistory = [], loadingHistory = false, expandedProps = {}, setExpandedProps }, ref) => {
+    const [input, setInput] = useState('')
+    const [allMessages, setAllMessages] = useState<any[]>([])
+    const [selectedQuickReplyId, setSelectedQuickReplyId] = useState<string>('')
+    const boxRef = useRef<HTMLDivElement>(null)
+    const isClosed = isClosedStatus(session.status)
+    
+    // Get agent info for displaying real name
+    const agent = retrieveAgentInfo();
+    const agentDisplayName = agent?.display_name || agent?.username || 'Agent';
 
-  // Initialize allMessages with conversationHistory when it changes or component loads
-  useEffect(() => {
-    setAllMessages(conversationHistory)
-  }, [conversationHistory])
+    // Initialize allMessages with conversationHistory when it changes or component loads
+    useEffect(() => {
+      setAllMessages(conversationHistory)
+    }, [conversationHistory])
 
-  // Function to add new live messages from WebSocket
-  const addLiveMessage = useCallback((message: any) => {
-    setAllMessages(prev => [...prev, message])
-  }, [])
+    // Function to add new live messages from WebSocket
+    const addLiveMessage = useCallback((message: any) => {
+      setAllMessages(prev => [...prev, message])
+    }, [])
 
-  // Expose the addLiveMessage function to parent component
-  useImperativeHandle(ref, () => ({
-    addLiveMessage
-  }), [addLiveMessage])
+    // Expose the addLiveMessage function to parent component
+    useImperativeHandle(ref, () => ({
+      addLiveMessage
+    }), [addLiveMessage])
 
-  useEffect(()=>{
-    if(boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
-  }, [allMessages.length, loadingHistory, session.status])
+    useEffect(()=>{
+      if(boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
+    }, [allMessages.length, loadingHistory, session.status])
 
-  function send(){
-    if(!input.trim() || isClosed) return
-    onSend(session.id, input.trim())
-    setInput('')
-  }
-
-  function handleQuickReplyChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const value = e.target.value
-    if (!value) {
-      setSelectedQuickReplyId('')
-      return
+    function send(){
+      if(!input.trim() || isClosed) return
+      onSend(session.id, input.trim())
+      setInput('')
     }
 
-    setSelectedQuickReplyId(value)
-
-    const replyId = Number(value)
-    const reply = quickReplies.find(r => r.id === replyId)
-    if (!reply) {
-      return
-    }
-
-    const category = (reply.category || '').toLowerCase()
-
-    // For form-type quick replies, send a JSON payload that the widget can render as a real form
-    if (category === 'form' && reply.form_schema && Array.isArray((reply as any).form_schema.fields)) {
-      const fields = (reply as any).form_schema.fields as any[]
-      const title = reply.template_text || 'Form'
-      const formFields = fields.map((f: any, idx: number) => ({
-        label: typeof f.label === 'string' ? f.label : `Field ${idx + 1}`,
-        type: typeof f.type === 'string' ? f.type : 'text',
-        required: !!f.required,
-      }))
-
-      const payload = {
-        type: 'form_quick_reply',
-        heading: title,
-        fields: formFields,
+    function handleQuickReplyChange(e: React.ChangeEvent<HTMLSelectElement>) {
+      const value = e.target.value
+      if (!value) {
+        setSelectedQuickReplyId('')
+        return
       }
 
-      const message = JSON.stringify(payload)
+      setSelectedQuickReplyId(value)
 
-      if (message && !isClosed) {
-        onSend(session.id, message)
+      const replyId = Number(value)
+      const reply = quickReplies.find(r => r.id === replyId)
+      if (!reply) {
+        return
       }
 
-      // Reset selection after sending
-      setSelectedQuickReplyId('')
-      return
+      const category = (reply.category || '').toLowerCase()
+
+      // For form-type quick replies, send a JSON payload that the widget can render as a real form
+      if (category === 'form' && reply.form_schema && Array.isArray((reply as any).form_schema.fields)) {
+        const fields = (reply as any).form_schema.fields as any[]
+        const title = reply.template_text || 'Form'
+        const formFields = fields.map((f: any, idx: number) => ({
+          label: typeof f.label === 'string' ? f.label : `Field ${idx + 1}`,
+          type: typeof f.type === 'string' ? f.type : 'text',
+          required: !!f.required,
+        }))
+
+        const payload = {
+          type: 'form_quick_reply',
+          heading: title,
+          fields: formFields,
+        }
+
+        const message = JSON.stringify(payload)
+
+        if (message && !isClosed) {
+          onSend(session.id, message)
+        }
+
+        // Reset selection after sending
+        setSelectedQuickReplyId('')
+        return
+      }
+
+      // For non-form quick replies, just populate the input so agent can edit before sending
+      setInput(reply.template_text || '')
     }
 
-    // For non-form quick replies, just populate the input so agent can edit before sending
-    setInput(reply.template_text || '')
-  }
-
-  return (
-    <div className="chat-window">
-      <div className="chat-window-header">
-        <div>
-          <div className="chat-title">{session.user.name}</div>
-          <div className="chat-subtitle">{session.user.email} - {session.user.country}</div>
-        </div>
-        <div className="chat-subtitle">Since {session.startedAgo}</div>
-      </div>
-
-      <div ref={boxRef} className={`chat-messages${isClosed ? ' chat-messages-closed' : ''}`}>
-        {loadingHistory && (
-          <div className="chat-loading">Loading conversation history…</div>
-        )}
-        {!loadingHistory && conversationHistory.length === 0 && (
-          <div className="chat-history-placeholder">No conversation history found for this ticket</div>
-        )}
-        {allMessages.map((m: any,i: number)=> (
-          <div key={i} className={`chat-message ${m.sender === 'agent' ? 'agent' : 'user'}`}> 
-            <div className="chat-message-sender">
-              {m.sender === 'agent' ? (m.agentName || agentDisplayName) : 'User'}
-            </div>
-            <div>{m.text}</div>
-            <div className="chat-message-time">{formatTime12Hour(m.ts)}</div>
+    return (
+      <div className="chat-window">
+        <div className="chat-window-header">
+          <div>
+            <div className="chat-title">{session.user.name}</div>
+            <div className="chat-subtitle">{session.user.email} - {session.user.country}</div>
           </div>
-        ))}
-        {/* {isClosed && (
-          <div className="chat-closed-banner">Ticket is closed. Messaging is disabled.</div>
-        )} */}
-      </div>
+          <div className="chat-subtitle">Since {session.startedAgo}</div>
+        </div>
 
-      {isClosed ? (
-        <div className="chat-closed-actions">
-          <p className="card-placeholder">You cannot send messages on a closed ticket.</p>
+        <div ref={boxRef} className={`chat-messages${isClosed ? ' chat-messages-closed' : ''}`}>
+          {loadingHistory && (
+            <div className="chat-loading">Loading conversation history…</div>
+          )}
+          {!loadingHistory && conversationHistory.length === 0 && (
+            <div className="chat-history-placeholder">No conversation history found for this ticket</div>
+          )}
+          {allMessages.map((m: any,i: number)=> (
+            <div key={i} className={`chat-message ${m.sender === 'agent' ? 'agent' : 'user'}`}> 
+              <div className="chat-message-sender">
+                {m.sender === 'agent' ? (m.agentName || agentDisplayName) : 'User'}
+              </div>
+              <div>{m.text}</div>
+              {/* Blog links */}
+              <div
+                key={`blog-prop`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                }}
+              >
+                {m.blog && Array.isArray(m.blog) && m.blog.length > 0 && (
+                  <div className="cp-blog-info" style={{ marginTop: 8, fontSize: 13 }}>
+                    {m.blog.map((blog: any, bIdx: number) => (
+                      <div key={blog.blog_id || bIdx} style={{ marginBottom: 4 }}>
+                        <span className="cp-blog-label">Blog:</span>{' '}
+                        <a href={blog.blog_url} target="_blank" rel="noopener noreferrer" className="cp-blog-name">
+                          {blog.title}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Property cards */}
+                {m.propertyGroup && (
+                  <div className="cp-prop-group" style={{ marginTop: 8 }}>
+                    <div className="cp-prop-grid">
+                      {(() => {
+                        const allItems = m.propertyGroup.items || [];
+                        const msgKey = `${session.id}-${m.ts}`;
+                        const isExpanded = expandedProps[msgKey];
+                        const itemsToShow = isExpanded ? allItems : allItems.slice(0, 5);
+                        return itemsToShow.map((p: any, pIdx: number) => (
+                          <div key={pIdx} className="cp-prop-card">
+                            <div className="cp-prop-badge">{pIdx + 1}</div>
+                            <div className="cp-prop-image">
+                              {p?.varFeaturedImage || p?.image || p?.thumbnail ? (
+                                <img src={p.varFeaturedImage || p.image || p.thumbnail} alt={p.varTitle || 'Property'} />
+                              ) : (
+                                <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
+                              )}
+                            </div>
+                            <div className="cp-prop-title">{p.varTitle || 'Property'}</div>
+                            {p.decPrice && (
+                              <div className="cp-prop-price">
+                                {p.varCurrency} {typeof p.decPrice === 'number' ? p.decPrice.toLocaleString() : p.decPrice}
+                              </div>
+                            )}
+                            {p.varMLS && <div className="cp-prop-mls">MLS#: {p.varMLS}</div>}
+                            <div className="cp-prop-meta">
+                              {p.intBeds && <span>🛏️ {p.intBeds} beds</span>}
+                              {p.intBaths && <span>🚿 {p.intBaths} baths</span>}
+                              {p.city_name && <span>📍 {p.city_name}</span>}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                    {!expandedProps[`${session.id}-${m.ts}`] && m.propertyGroup.items.length > 5 && (
+                      <button
+                        type="button"
+                        className="admin-button admin-button-secondary"
+                        style={{ marginTop: 8, alignSelf: 'center', backgroundColor: '#cfe2ff' }}
+                        onClick={() =>
+                          setExpandedProps?.(prev => ({ ...prev, [`${session.id}-${m.ts}`]: true }))
+                        }
+                      >
+                        View more properties ({m.propertyGroup.items.length - 5} more)
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="chat-message-time">{formatTime12Hour(m.ts)}</div>
+            </div>
+          ))}
+          {/* {isClosed && (
+            <div className="chat-closed-banner">Ticket is closed. Messaging is disabled.</div>
+          )} */}
         </div>
-      ) : isWaitingStatus(session.status) ? (
-        <div className="chat-claim-actions">
-          <p className="card-placeholder">You must claim this ticket to start chatting.</p>
-          <button onClick={() => onClaimChat && onClaimChat(session.id)} className="claim-chat-button">
-            Claim to Chat
-          </button>
-        </div>
-      ) : (
-        <div className="chat-input-row">
-          <select onChange={handleQuickReplyChange} value={selectedQuickReplyId} className="chat-select">
-            <option value="">Quick reply…</option>
-            {quickReplies.map((q) => (
-              <option key={q.id} value={q.id}>{q.template_text}</option>
-            ))}
-          </select>
-          <input
-            className="chat-input"
-            value={input}
-            onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter' && !e.shiftKey){e.preventDefault();send()}}}
-            placeholder="Type your message..."
-          />
-          <button onClick={send} className="send-button" disabled={!input.trim()}>Send</button>
-          {/* End Chat button for agent to end chat and allow user to chat with AI again */}
-          <button onClick={() => onEndChat && onEndChat(session.id)} className="end-chat-button">End Chat</button>
-        </div>
-      )}
-    </div>
+
+        {isClosed ? (
+          <div className="chat-closed-actions">
+            <p className="card-placeholder">You cannot send messages on a closed ticket.</p>
+          </div>
+        ) : isWaitingStatus(session.status) ? (
+          <div className="chat-claim-actions">
+            <p className="card-placeholder">You must claim this ticket to start chatting.</p>
+            <button onClick={() => onClaimChat && onClaimChat(session.id)} className="claim-chat-button">
+              Claim to Chat
+            </button>
+          </div>
+        ) : (
+          <div className="chat-input-row">
+            <select onChange={handleQuickReplyChange} value={selectedQuickReplyId} className="chat-select">
+              <option value="">Quick reply…</option>
+              {quickReplies.map((q) => (
+                <option key={q.id} value={q.id}>{q.template_text}</option>
+              ))}
+            </select>
+            <input
+              className="chat-input"
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter' && !e.shiftKey){e.preventDefault();send()}}}
+              placeholder="Type your message..."
+            />
+            <button onClick={send} className="send-button" disabled={!input.trim()}>Send</button>
+            {/* End Chat button for agent to end chat and allow user to chat with AI again */}
+            <button onClick={() => onEndChat && onEndChat(session.id)} className="end-chat-button">End Chat</button>
+          </div>
+        )}
+      </div>
   )
 })
 

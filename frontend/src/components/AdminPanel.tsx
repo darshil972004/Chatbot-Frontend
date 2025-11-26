@@ -536,7 +536,7 @@ function Dashboard({ agents }: DashboardProps) {
 
   // Sort agents by chats today and take top 5
   const topAgents = [...agents]
-    .sort((a, b) => b.metrics.chatsToday - a.metrics.chatsToday)
+    .sort((a,b) => b.id - a.id) // Placeholder sort, replace with actual metric
     .slice(0, 5);
 
   return (
@@ -607,9 +607,9 @@ function Dashboard({ agents }: DashboardProps) {
                   <div className="agent-compact-info">
                     <div className="agent-compact-name">{a.name}</div>
                     <div className="agent-compact-role">{a.role}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
+                    {/* <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
                       {a.metrics.chatsToday} chats today
-                    </div>
+                    </div> */}
                   </div>
                   <div className={`agent-compact-status ${a.status}`}>
                     {a.status}
@@ -2854,9 +2854,10 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: '150px' }}>ID</th>
-                  <th style={{ width: 'auto' }}>Topic</th>
-                  <th style={{ width: 'auto' }}>Status</th>
+                  <th style={{ width: '100px' }}>No.</th>
+                  <th style={{ width: '250px' }}>ID</th>
+                  {/* <th style={{ width: 'auto' }}>Topic</th> */}
+                  {/* <th style={{ width: 'auto' }}>Status</th> */}
                   <th style={{ width: 'auto' }}>Agent</th>
                   <th style={{ width: 'auto' }}>Created</th>
                   <th style={{ width: '150px' }} >Actions</th>
@@ -2875,17 +2876,20 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                       <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
                         {conv.id}
                       </td>
-                      <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                      <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {conv.session_id}
+                      </td>
+                      {/* <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
                         {conv.topic}
-                      </td>
-                      <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                      </td> */}
+                      {/* <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
                         {conv.user_id || 'N/A'}
-                      </td>
-                      <td style={{ textTransform: 'capitalize' }}>
+                      </td> */}
+                      {/* <td style={{ textTransform: 'capitalize' }}>
                         <span className={`admin-status-badge admin-status-${(conv.status || '').replace('_', '-')}`}>
                           {(conv.status || '').replace('_', ' ')}
                         </span>
-                      </td>
+                      </td> */}
                       <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
                         {conv.agent_involved ? 'Agent Involved' : 'No Agent'}
                       </td>
