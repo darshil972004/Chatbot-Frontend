@@ -630,6 +630,7 @@
   padding: var(--admin-table-cell-padding);
   word-wrap: break-word;
   overflow-wrap: break-word;
+  text-align: center;
 }
 
 /* Responsive text handling */

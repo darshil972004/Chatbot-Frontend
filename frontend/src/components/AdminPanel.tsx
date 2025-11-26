@@ -536,7 +536,7 @@ function Dashboard({ agents }: DashboardProps) {
 
   // Sort agents by chats today and take top 5
   const topAgents = [...agents]
-    .sort((a, b) => b.metrics.chatsToday - a.metrics.chatsToday)
+    .sort((a,b) => b.id - a.id) // Placeholder sort, replace with actual metric
     .slice(0, 5);
 
   return (
@@ -607,9 +607,9 @@ function Dashboard({ agents }: DashboardProps) {
                   <div className="agent-compact-info">
                     <div className="agent-compact-name">{a.name}</div>
                     <div className="agent-compact-role">{a.role}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
+                    {/* <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
                       {a.metrics.chatsToday} chats today
-                    </div>
+                    </div> */}
                   </div>
                   <div className={`agent-compact-status ${a.status}`}>
                     {a.status}
@@ -1896,38 +1896,6 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
     alert('Assign ticket functionality - would open agent selection modal');
   };
 
-  const handleSolveFast = async (ticketId: string) => {
-    try {
-      // Update ticket status to resolved
-      const response = await fetch(`/api/tickets/${ticketId}/solve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'resolved',
-          resolved_at: new Date().toISOString(),
-          resolution_method: 'fast_solve'
-        })
-      });
-      
-      if (response.ok) {
-        // Update local state
-        setTickets(prev => prev.map(ticket => 
-          ticket.id === ticketId 
-            ? { ...ticket, status: 'resolved', resolved_at: new Date().toISOString() }
-            : ticket
-        ));
-        alert('Ticket marked as resolved successfully!');
-      } else {
-        throw new Error('Failed to resolve ticket');
-      }
-    } catch (error) {
-      console.error('Error solving ticket:', error);
-      alert('Failed to resolve ticket. Please try again.');
-    }
-  };
-
   if (selectedTicket) {
     return (
       <div className="admin-agents-page-conv">
@@ -2324,13 +2292,14 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
           <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: '80px' }}>ID</th>
-                <th style={{ minWidth: '200px' }}>Title</th>
+                <th style={{ width: '300px' }}>ID</th>
+                <th style={{ minWidth: '50px' }}>Title</th>
+                <th style={{ minWidth: '50px' }}>Agent</th>
                 <th style={{ width: '120px' }}>Status</th>
                 <th style={{ width: '100px' }}>Priority</th>
                 <th style={{ width: '150px' }}>Category</th>
                 <th style={{ width: '150px' }}>Created</th>
-                <th style={{ width: '150px' }}>Actions</th>
+                <th style={{ width: '100px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2344,11 +2313,16 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                 filteredTickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
                     <td className="font-medium text-sm text-gray-900 whitespace-nowrap">
-                      #{ticket.id}
+                      {ticket.id}
                     </td>
                     <td className="font-medium text-sm text-gray-900 max-w-xs">
                       <div className="truncate" title={ticket.title}>
-                        {ticket.title}
+                        {ticket.title || 'Tech Support'}
+                      </div>
+                    </td>
+                    <td className="font-medium text-sm text-gray-900 max-w-xs">
+                      <div className="truncate" title={ticket.title}>
+                        {ticket.agent_name || 'Unassigned'}
                       </div>
                     </td>
                     <td>
@@ -2375,22 +2349,14 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                         >
                           View
                         </button>
-                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                        {/* {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
                           <button 
                             onClick={() => handleAssignTicket(ticket.id)} 
                             className="admin-button admin-button-secondary text-xs px-3 py-1.5"
                           >
                             Assign
                           </button>
-                        )}
-                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
-                          <button 
-                            onClick={() => handleSolveFast(ticket.id)} 
-                            className="admin-button admin-button-success text-xs px-3 py-1.5"
-                          >
-                            Solve Fast
-                          </button>
-                        )}
+                        )} */}
                       </div>
                     </td>
                   </tr>
@@ -2854,9 +2820,10 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: '150px' }}>ID</th>
-                  <th style={{ width: 'auto' }}>Topic</th>
-                  <th style={{ width: 'auto' }}>Status</th>
+                  <th style={{ width: '100px' }}>No.</th>
+                  <th style={{ width: '250px' }}>ID</th>
+                  {/* <th style={{ width: 'auto' }}>Topic</th> */}
+                  {/* <th style={{ width: 'auto' }}>Status</th> */}
                   <th style={{ width: 'auto' }}>Agent</th>
                   <th style={{ width: 'auto' }}>Created</th>
                   <th style={{ width: '150px' }} >Actions</th>
@@ -2875,17 +2842,20 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                       <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
                         {conv.id}
                       </td>
-                      <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                      <td className="font-medium text-sm text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {conv.session_id}
+                      </td>
+                      {/* <td className="font-medium text-sm text-gray-900 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
                         {conv.topic}
-                      </td>
-                      <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                      </td> */}
+                      {/* <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
                         {conv.user_id || 'N/A'}
-                      </td>
-                      <td style={{ textTransform: 'capitalize' }}>
+                      </td> */}
+                      {/* <td style={{ textTransform: 'capitalize' }}>
                         <span className={`admin-status-badge admin-status-${(conv.status || '').replace('_', '-')}`}>
                           {(conv.status || '').replace('_', ' ')}
                         </span>
-                      </td>
+                      </td> */}
                       <td className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
                         {conv.agent_involved ? 'Agent Involved' : 'No Agent'}
                       </td>
