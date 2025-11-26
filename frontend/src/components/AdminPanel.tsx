@@ -2256,6 +2256,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
   });
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [conversationMessages, setConversationMessages] = useState<any[]>([]);
+  const [expandedProps, setExpandedProps] = useState<Record<number, boolean>>({});
 
   // Filter and sort conversations
   const filteredConversations = conversations
@@ -2455,42 +2456,51 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                   // Check for blog info first
                   if (message.blog && Array.isArray(message.blog) && message.blog.length > 0) {
                     bubbles.push(
-                      <div key={`blog-${message.id || idx}`}>
-                        <div
-                          style={{
-                            background: '#e5e7eb',
-                            color: '#222',
-                            borderRadius: '16px 16px 16px 4px',
-                            padding: '10px 16px',
-                            maxWidth: '70%',
-                            marginBottom: '2px',
-                            fontSize: '15px',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                            wordBreak: 'break-word',
-                            alignSelf: 'flex-start',
-                          }}
-                        >
-                          {message.text || 'Blog information'}
-                        </div>
-                        <div className="cp-blog-info">
-                          {message.blog.map((blog: any, bIdx: number) => {
-                            const isBlogValid = blog && blog.title && blog.blog_url;
-                            return isBlogValid ? (
-                              <span className="cp-blog-title" key={blog.blog_id || bIdx} style={{ display: 'block', marginBottom: 4 }}>
-                                <span className="cp-blog-label">Blog:</span>&nbsp;
-                                <a
-                                  className="cp-blog-name"
-                                  href={blog.blog_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {blog.title}
-                                </a>
-                              </span>
-                            ) : (
-                              <span className="cp-blog-error" key={bIdx}>Blog info not fetched completely from backend.</span>
-                            );
-                          })}
+                      <div
+                        key={`blog-${message.id || idx}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-end',
+                        }}
+                      >
+                        <div key={`blog-${message.id || idx}`}>
+                          <div
+                            style={{
+                              background: '#e5e7eb',
+                              color: '#222',
+                              borderRadius: '16px 16px 16px 4px',
+                              padding: '10px 16px',
+                              maxWidth: '70%',
+                              marginBottom: '2px',
+                              fontSize: '15px',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                              wordBreak: 'break-word',
+                              alignSelf: 'flex-start',
+                            }}
+                          >
+                            {message.text || 'Blog information'}
+                          </div>
+                          <div className="cp-blog-info">
+                            {message.blog.map((blog: any, bIdx: number) => {
+                              const isBlogValid = blog && blog.title && blog.blog_url;
+                              return isBlogValid ? (
+                                <span className="cp-blog-title" key={blog.blog_id || bIdx} style={{ display: 'block', marginBottom: 4 }}>
+                                  <span className="cp-blog-label">Blog:</span>&nbsp;
+                                  <a
+                                    className="cp-blog-name"
+                                    href={blog.blog_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {blog.title}
+                                  </a>
+                                </span>
+                              ) : (
+                                <span className="cp-blog-error" key={bIdx}>Blog info not fetched completely from backend.</span>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     );
@@ -2498,41 +2508,62 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                   // Check for property group info
                   if (message.propertyGroup) {
                     const group = message.propertyGroup;
-                    const itemsToShow = group.items; // For admin panel, show all items
+                    const allItems = group.items || [];
+                    const isExpanded = expandedProps[idx];
+                    const itemsToShow = isExpanded ? allItems : allItems.slice(0, 5);
+
                     bubbles.push(
-                      <div key={`prop-group-${message.id || idx}`} className="cp-prop-group">
-                        <div className="cp-prop-grid">
-                          {itemsToShow.map((p: any, pIdx: number) => {
-                            const currency = p?.varCurrency ;
-                            const title = p?.varTitle || p?.title || p?.varName || 'Property';
-                            const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
-                            const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
-                            const priceText = price ? `${price.toLocaleString()}` : '';
-                            const mls = p?.varMLS || p?.mls || p?.mls_no || '';
-                            const beds = p?.intBeds ?? p?.beds ?? p?.num_beds;
-                            const baths = p?.intBaths ?? p?.baths ?? p?.num_baths;
-                            const location = p?.city_name || p?.location || '';
-                            return (
-                              <div key={pIdx} className="cp-prop-card">
-                                <div className="cp-prop-badge">{pIdx + 1}</div>
-                                <div className="cp-prop-image">
-                                  {p?.varFeaturedImage || p?.image || p?.thumbnail ? (
-                                    <img src={p.varFeaturedImage || p.image || p.thumbnail} alt={title} />
-                                  ) : (
-                                    <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
-                                  )}
+                      <div
+                        key={`propertyGroup-${message.id || idx}`}
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
+                      >
+                        <div key={`prop-group-${message.id || idx}`} className="cp-prop-group">
+                          <div className="cp-prop-grid">
+                            {itemsToShow.map((p: any, pIdx: number) => {
+                              const currency = p?.varCurrency;
+                              const title = p?.varTitle || p?.title || p?.varName || 'Property';
+                              const priceRaw = p?.decPrice ?? p?.price ?? p?.varAskingPrice ?? p?.asking_price;
+                              const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw || 0);
+                              const priceText = price ? `${price.toLocaleString()}` : '';
+                              const mls = p?.varMLS || p?.mls || p?.mls_no || '';
+                              const beds = p?.intBeds ?? p?.beds ?? p?.num_beds;
+                              const baths = p?.intBaths ?? p?.baths ?? p?.num_baths;
+                              const location = p?.city_name || p?.location || '';
+                              return (
+                                <div key={pIdx} className="cp-prop-card">
+                                  <div className="cp-prop-badge">{pIdx + 1}</div>
+                                  <div className="cp-prop-image">
+                                    {p?.varFeaturedImage || p?.image || p?.thumbnail ? (
+                                      <img src={p.varFeaturedImage || p.image || p.thumbnail} alt={title} />
+                                    ) : (
+                                      <div className="cp-prop-image--ph">COMING SOON IMAGE</div>
+                                    )}
+                                  </div>
+                                  <div className="cp-prop-title">{title}</div>
+                                  {priceText && <div className="cp-prop-price">{currency} {priceText}</div>}
+                                  {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
+                                  <div className="cp-prop-meta">
+                                    {beds ? <span>🛏️ {beds} beds</span> : null}
+                                    {baths ? <span>🚿 {baths} baths</span> : null}
+                                    {location ? <span>📍 {location}</span> : null}
+                                  </div>
                                 </div>
-                                <div className="cp-prop-title">{title}</div>
-                                {priceText && <div className="cp-prop-price">{currency} {priceText}</div>}
-                                {mls && <div className="cp-prop-mls">MLS#: {mls}</div>}
-                                <div className="cp-prop-meta">
-                                  {beds ? <span>🛏️ {beds} beds</span> : null}
-                                  {baths ? <span>🚿 {baths} baths</span> : null}
-                                  {location ? <span>📍 {location}</span> : null}
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
+
+                          {!isExpanded && allItems.length > 5 && (
+                            <button
+                              type="button"
+                              className="admin-button admin-button-secondary"
+                              style={{ marginTop: 8, alignSelf: 'center', backgroundColor: '#cfe2ff'}}
+                              onClick={() =>
+                                setExpandedProps(prev => ({ ...prev, [idx]: true }))
+                              }
+                            >
+                              View more properties ({allItems.length - 5} more)
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
