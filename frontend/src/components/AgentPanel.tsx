@@ -1688,12 +1688,16 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                       <p className="quick-reply-text">{reply.template_text}</p>
                     </div>
                     <div className="quick-reply-item-actions">
-                      <button className="quick-reply-edit" type="button" onClick={() => openEditQuickReplyModal(reply)}>
-                        Edit
-                      </button>
-                      <button className="quick-reply-delete" type="button" onClick={() => handleDeleteQuickReply(reply.id)}>
-                        Delete
-                      </button>
+                      {(reply as any).fkAgent_id !== 0 && (
+                        <>
+                          <button className="quick-reply-edit" type="button" onClick={() => openEditQuickReplyModal(reply)}>
+                            Edit
+                          </button>
+                          <button className="quick-reply-delete" type="button" onClick={() => handleDeleteQuickReply(reply.id)}>
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

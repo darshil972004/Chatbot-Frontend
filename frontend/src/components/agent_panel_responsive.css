@@ -1091,6 +1091,18 @@
   margin-bottom: 0.5rem;
 }
 
+.quick-reply-global-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
 .quick-reply-text {
   font-size: 0.875rem;
   color: var(--text-primary);

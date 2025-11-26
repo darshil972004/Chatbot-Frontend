@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { FormEvent, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import QuickReplyModal from './QuickReplyModal';
+import QuickRepliesPage from './QuickRepliesPage';
 import AdminNavbar from './AdminPanel/AdminNavbar';
 import ChatbotWidget from './ChatbotWidget';
 import './admin-panel.css';
@@ -359,6 +361,7 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
               {route === 'conversations' && <ConversationsPage conversations={conversations} setConversations={setConversations} />}
               {route === 'alerts' && <AlertsPage analytics={analytics} />}
               {route === 'skills' && <SkillsPage skills={skills} setSkills={setSkills} />}
+              {route === 'quickreplies' && <QuickRepliesPage />}
               {route === 'workflows' && (
                 <WorkflowSection />
               )}
@@ -516,6 +519,7 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
       {item('conversations', 'Conversations', null)}
       {item('alerts', 'Alerts', null)}
       {item('skills', 'Skills', null)}
+      {item('quickreplies', 'Quick Replies', null)}
       {/* Settings button removed, now only accessible from header dropdown */}
       {item('workflows', 'Workflows', null)}
     </ul>
