@@ -800,7 +800,7 @@
   box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
 }
 
-.send-button, .end-chat-button, .claim-chat-button {
+.send-button, .end-chat-button, .claim-chat-button, .Transfer-button {
   padding: 0.75rem 1rem;
   border: none;
   border-radius: var(--radius-md);
@@ -835,6 +835,17 @@
 
 .end-chat-button:hover {
   background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.Transfer-button {
+  background: #8b5cf6;
+  color: white;
+
+}
+
+.transfer-chat-button:hover {
+  background: #8b5cf6;
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }

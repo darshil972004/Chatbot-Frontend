@@ -101,7 +101,6 @@ function normalizeAgentSkills(skills?: any): AgentSkill[] {
 export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number, onLogout?: () => void}){
   const [status, setStatus] = useState<string>('offline') // online, away, busy, offline
   const [statusSynced, setStatusSynced] = useState<boolean>(false)
-  const [bypassStatus, setBypassStatus] = useState<boolean>(false) // Prevent auto status changes
   // Initialize with empty list so queue comes from backend active rooms + notifier
   const [sessions, setSessions] = useState<any[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string|number|null>(null)
@@ -544,7 +543,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
 
     const hydrateStatusFromBackend = async () => {
-      if (!agent.id && agent.id!=0) {
+      if (!agent?.id) {
         setStatusSynced(true)
         return
       }
@@ -578,7 +577,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
 
     // Connect notifier websocket for agent notifications (ticket claims)
-    if (agent && ( agent.id || agent.id==0)) {
+    if (agent && agent.id) {
       wsRef.current = openAgentNotifierWS(
         agent.id,
         (msg) => {
@@ -594,7 +593,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
     // Fetch tickets assigned to this agent from backend
     (async () => {
-      if (!agent.id && agent.id!=0) return
+      if (!agent?.id) return
       try {
         // Fetch tickets assigned to this agent
         const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0)
@@ -930,25 +929,21 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
   async function setAgentStatus(nextStatus: string){
     const previousStatus = status
+    setStatus(nextStatus)
 
     const agent = retrieveAgentInfo()
     if (!agent?.id) {
       console.warn('No agent info available to sync status')
-       // Reset bypass if no agent
       return
     }
 
     try {
-      setBypassStatus(true)
-      setStatus(nextStatus);
       await updateAgentStatus(agent.id, nextStatus, { previous_status: previousStatus })
     } catch (err) {
       console.error('Failed to persist agent status', err)
       // revert UI if backend update fails
       setStatus(previousStatus)
       showAlert('Unable to update your status right now. Please try again.', 'error')
-    } finally {
-
     }
   }
 
@@ -1500,13 +1495,6 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
   // Update agent status based on active tickets
   useEffect(() => {
-    // If bypass is active, skip automatic status changes and reset bypass
-    if (bypassStatus) {
-      console.log('Bypassing automatic status change - agent manually changed status')
-      setBypassStatus(false)
-      return
-    }
-
     const hasActiveTicket = sessions.some(s => !isClosedStatus(s.status) && s.status !== 'waiting')
     const currentAgent = retrieveAgentInfo()
     
@@ -1790,6 +1778,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
               loadingHistory={loadingHistory[String(activeSession.id)] || false}
               expandedProps={expandedProps}
               setExpandedProps={setExpandedProps}
+              onTransfer={() => openTransferPopup(activeSession.id)}
             />
           ) : (
             <div className="preview-placeholder">Select a conversation to begin</div>
@@ -1958,6 +1947,7 @@ interface ChatWindowProps {
   loadingHistory?: boolean;
   expandedProps?: Record<string, boolean>;
   setExpandedProps?: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  onTransfer?: () => void;
 }
 
 interface ChatWindowRef {
@@ -1965,7 +1955,7 @@ interface ChatWindowRef {
 }
 
 const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(
-  ({ session, onSend, quickReplies, onEndChat, onClaimChat, conversationHistory = [], loadingHistory = false, expandedProps = {}, setExpandedProps }, ref) => {
+  ({ session, onSend, quickReplies, onEndChat, onClaimChat, conversationHistory = [], loadingHistory = false, expandedProps = {}, setExpandedProps, onTransfer }, ref) => {
     const [input, setInput] = useState('')
     const [allMessages, setAllMessages] = useState<any[]>([])
     const [selectedQuickReplyId, setSelectedQuickReplyId] = useState<string>('')
@@ -2181,6 +2171,10 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(
             <button onClick={send} className="send-button" disabled={!input.trim()}>Send</button>
             {/* End Chat button for agent to end chat and allow user to chat with AI again */}
             <button onClick={() => onEndChat && onEndChat(session.id)} className="end-chat-button">End Chat</button>
+            <button className="Transfer-button" onClick={(e) => {
+                e.stopPropagation()
+                onTransfer && onTransfer()
+              }}>Transfer</button>
           </div>
         )}
       </div>
