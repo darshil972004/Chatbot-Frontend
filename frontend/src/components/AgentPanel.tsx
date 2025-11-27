@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react'
+import ReactMarkdown from 'react-markdown';
 import './agent_panel_responsive.css'
 import AgentLogin from './AgentLogin'
 import GeneralPopup from './GeneralPopup'
@@ -2061,7 +2062,9 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(
               <div className="chat-message-sender">
                 {m.sender === 'agent' ? (m.agentName || agentDisplayName) : 'User'}
               </div>
-              <div>{m.text}</div>
+              <div>
+                <ReactMarkdown>{m.text}</ReactMarkdown>
+                </div>
               {/* Blog links */}
               <div
                 key={`blog-prop`}

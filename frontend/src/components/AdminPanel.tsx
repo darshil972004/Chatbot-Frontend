@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { FormEvent, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -1980,7 +1981,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
             <div className="admin-messages-container">
               {ticketMessages.length === 0 ? (
                 <div className="admin-empty-state">No messages in this ticket</div>
-              ) : (
+                ) : (
                 ticketMessages.flatMap((message: any, idx: number) => {
                   const bubbles = [];
                   if (message.prompt && message.prompt.trim() !== '') {
@@ -2528,7 +2529,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                             alignSelf: 'flex-end',
                           }}
                         >
-                          {message.output}
+                          <ReactMarkdown>{message.output}</ReactMarkdown>
                           {message.category && (
                             <div style={{ fontSize: '11px', color: '#d1fae5', marginTop: '4px' }}>
                               Category: {message.category}

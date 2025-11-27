@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown';
 import { ChatMessage as BaseChatMessage, sendMessageToBot } from '../api/chatbot'
 import { ticketsApi } from '../api/ticketsApi'
 import { ticketFeedbackApi } from '../api/ticketsApi'
@@ -822,7 +823,8 @@ export default function ChatbotWidget() {
             const blogsArr = m.blog;
             return (
               <div key={m.id}>
-                <div className="cp-msg cp-msg--bot">{m.text}</div>
+                <div className="cp-msg cp-msg--bot">
+                  <ReactMarkdown>{m.text}</ReactMarkdown></div>
                 <div className="cp-blog-info">
                   {blogsArr.length > 0 ? (
                     blogsArr.map((blog, idx) => {
