@@ -543,7 +543,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
 
     const hydrateStatusFromBackend = async () => {
-      if (!agent?.id) {
+      if (!agent.id && agent.id!=0) {
         setStatusSynced(true)
         return
       }
@@ -577,7 +577,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     }
 
     // Connect notifier websocket for agent notifications (ticket claims)
-    if (agent && agent.id) {
+    if (agent && ( agent.id || agent.id==0)) {
       wsRef.current = openAgentNotifierWS(
         agent.id,
         (msg) => {
@@ -593,7 +593,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
     // Fetch tickets assigned to this agent from backend
     (async () => {
-      if (!agent?.id) return
+      if (!agent.id && agent.id!=0) return
       try {
         // Fetch tickets assigned to this agent
         const tickets = await ticketsApi.getTicketsByAgent(agent.id, 100, 0)
