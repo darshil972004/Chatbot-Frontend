@@ -196,7 +196,7 @@ export default function AdminPanel({ isAdmin, onLogin, onLogout }: AdminPanelPro
   }, []);
 
   const attachAgentStatus = useCallback(async (agent: Agent): Promise<Agent> => {
-    if (!agent.id) {
+    if (!agent.id && agent.id!=0) {
       return agent;
     }
     try {
