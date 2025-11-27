@@ -2870,12 +2870,12 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
                           >
                             View
                           </button>
-                          <button 
+                          {/* <button 
                             onClick={() => handleChangeAgent(conv.id)} 
                             className="admin-button admin-button-secondary text-xs px-3 py-1.5"
                           >
                             Change Agent
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>

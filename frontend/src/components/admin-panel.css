@@ -2815,7 +2815,7 @@ html, body {
 }
 
 .admin-button-small {
-  padding: 2px 4px;
+  padding:  6px 10px;
   font-size: 9px;
   gap: 2px;
   min-width: auto;
@@ -2962,7 +2962,6 @@ html, body {
 .admin-quick-replies-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 8px;
   padding: 2px;
 }
 
@@ -2974,6 +2973,7 @@ html, body {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  margin: 6px;
 }
 
 .admin-quick-reply-card:hover {
@@ -2999,16 +2999,17 @@ html, body {
 }
 
 .admin-quick-reply-category {
-  background: var(--admin-primary);
+  background: #4578e9;
   color: white;
-  padding: 1px 4px;
+  padding: 4px 8px;
   border-radius: 6px;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.2px;
   display: inline-block;
   white-space: nowrap;
+
 }
 
 .admin-quick-reply-badge {
