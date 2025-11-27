@@ -2793,7 +2793,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             <option value="false">Exclude Agent</option>
             <option value="true">Include Agent</option>
           </select>
-          <select
+          {/* <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             className="admin-login-input"
@@ -2803,7 +2803,7 @@ function ConversationsPage({ conversations, setConversations }: ConversationsPag
             <option value="assigned">Assigned</option>
             <option value="waiting">Waiting</option>
             <option value="closed">Closed</option>
-          </select>
+          </select> */}
           <select
             value={filters.sort_by}
             onChange={(e) => setFilters({ ...filters, sort_by: e.target.value })}
