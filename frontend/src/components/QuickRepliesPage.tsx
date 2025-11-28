@@ -38,7 +38,7 @@ function QuickRepliesPage() {
   // Load quick replies for admin (agent ID = 0)
   const loadQuickReplies = useCallback(async () => {
     try {
-      const response = await apiClient.get(`/api/agents/${ADMIN_AGENT_ID}/quick-replies`);
+      const response = await apiClient.get(`/agents/${ADMIN_AGENT_ID}/quick-replies`);
       if (response.data?.success) {
         setQuickReplyTemplates(response.data.data || []);
       }
@@ -71,10 +71,10 @@ function QuickRepliesPage() {
     try {
       if (editingQuickReply) {
         // Update existing reply
-        await apiClient.put(`/api/agents/${ADMIN_AGENT_ID}/quick-replies/${editingQuickReply.id}`, replyData);
+        await apiClient.put(`/agents/${ADMIN_AGENT_ID}/quick-replies/${editingQuickReply.id}`, replyData);
       } else {
         // Create new reply
-        await apiClient.post(`/api/agents/${ADMIN_AGENT_ID}/quick-replies`, replyData);
+        await apiClient.post(`/agents/${ADMIN_AGENT_ID}/quick-replies`, replyData);
       }
       
       await loadQuickReplies(); // Reload the list
@@ -91,7 +91,7 @@ function QuickRepliesPage() {
     }
 
     try {
-      await apiClient.delete(`/api/agents/${ADMIN_AGENT_ID}/quick-replies/${replyId}`);
+      await apiClient.delete(`/agents/${ADMIN_AGENT_ID}/quick-replies/${replyId}`);
       await loadQuickReplies(); // Reload the list
     } catch (error) {
       console.error('Error deleting quick reply:', error);
