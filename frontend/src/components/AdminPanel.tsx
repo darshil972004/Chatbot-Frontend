@@ -2294,11 +2294,11 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
             <thead>
               <tr>
                 <th style={{ width: '300px' }}>ID</th>
-                <th style={{ minWidth: '50px' }}>Title</th>
-                <th style={{ minWidth: '50px' }}>Agent</th>
-                <th style={{ width: '120px' }}>Status</th>
+                {/* <th style={{ minWidth: '100px' }}>Title</th> */}
+                <th style={{ width: '100px' }}>Agent</th>
+                <th style={{ width: '100px' }}>Status</th>
                 <th style={{ width: '100px' }}>Priority</th>
-                <th style={{ width: '150px' }}>Category</th>
+                <th style={{ width: '100px' }}>Category</th>
                 <th style={{ width: '150px' }}>Created</th>
                 <th style={{ width: '100px' }}>Actions</th>
               </tr>
@@ -2316,11 +2316,11 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                     <td className="font-medium text-sm text-gray-900 whitespace-nowrap">
                       {ticket.id}
                     </td>
-                    <td className="font-medium text-sm text-gray-900 max-w-xs">
+                    {/* <td className="font-medium text-sm text-gray-900 max-w-xs">
                       <div className="truncate" title={ticket.title}>
                         {ticket.title || 'Tech Support'}
                       </div>
-                    </td>
+                    </td> */}
                     <td className="font-medium text-sm text-gray-900 max-w-xs">
                       <div className="truncate" title={ticket.title}>
                         {ticket.agent_name || 'Unassigned'}

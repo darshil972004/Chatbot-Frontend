@@ -2090,13 +2090,13 @@
 
 .admin-panel-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(11, 1fr);
   gap: 16px;
   height: 100%;
 }
 
 .admin-panel-sidebar {
-    grid-column: span 3;
+    grid-column: span 2;
     height: 100%;
     overflow: hidden;
     max-width: 300px;
@@ -3285,4 +3285,90 @@ html, body {
 .admin-quick-reply-text::-webkit-scrollbar-thumb {
   background: var(--admin-border);
   border-radius: 1px;
+}
+
+/* Tickets Table Specific Styling */
+.admin-tickets-table-wrapper .admin-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* First two columns - responsive to screen size */
+.admin-tickets-table-wrapper .admin-table th:nth-child(1),
+.admin-tickets-table-wrapper .admin-table td:nth-child(1) {
+  width: 120px;
+  min-width: 80px;
+  max-width: 200px;
+}
+
+.admin-tickets-table-wrapper .admin-table th:nth-child(2),
+.admin-tickets-table-wrapper .admin-table td:nth-child(2) {
+  width: 150px;
+  min-width: 100px;
+  max-width: 250px;
+}
+
+/* Last five columns - fixed relative to each other */
+.admin-tickets-table-wrapper .admin-table th:nth-child(3),
+.admin-tickets-table-wrapper .admin-table td:nth-child(3) {
+  width: 100px;
+  min-width: 90px;
+  max-width: 120px;
+}
+
+.admin-tickets-table-wrapper .admin-table th:nth-child(4),
+.admin-tickets-table-wrapper .admin-table td:nth-child(4) {
+  width: 90px;
+  min-width: 80px;
+  max-width: 110px;
+}
+
+.admin-tickets-table-wrapper .admin-table th:nth-child(5),
+.admin-tickets-table-wrapper .admin-table td:nth-child(5) {
+  width: 100px;
+  min-width: 90px;
+  max-width: 130px;
+}
+
+.admin-tickets-table-wrapper .admin-table th:nth-child(6),
+.admin-tickets-table-wrapper .admin-table td:nth-child(6) {
+  width: 120px;
+  min-width: 100px;
+  max-width: 140px;
+}
+
+.admin-tickets-table-wrapper .admin-table th:nth-child(7),
+.admin-tickets-table-wrapper .admin-table td:nth-child(7) {
+  width: 100px;
+  min-width: 90px;
+  max-width: 120px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .admin-tickets-table-wrapper .admin-table th:nth-child(1),
+  .admin-tickets-table-wrapper .admin-table td:nth-child(1) {
+    width: 100px;
+    min-width: 70px;
+  }
+  
+  .admin-tickets-table-wrapper .admin-table th:nth-child(2),
+  .admin-tickets-table-wrapper .admin-table td:nth-child(2) {
+    width: 120px;
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-tickets-table-wrapper .admin-table th:nth-child(1),
+  .admin-tickets-table-wrapper .admin-table td:nth-child(1) {
+    width: 80px;
+    min-width: 60px;
+  }
+  
+  .admin-tickets-table-wrapper .admin-table th:nth-child(2),
+  .admin-tickets-table-wrapper .admin-table td:nth-child(2) {
+    width: 100px;
+    min-width: 70px;
+  }
 }
