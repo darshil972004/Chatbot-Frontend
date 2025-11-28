@@ -21,14 +21,14 @@ const QuickReplyModal: React.FC<QuickReplyModalProps> = ({
   onSave,
   editingReply
 }) => {
-  const [category, setCategory] = useState<string>('');
+  const [category, setCategory] = useState<string>('Greeting');
   const [text, setText] = useState<string>('');
   const [formFields, setFormFields] = useState<FormField[]>([]);
 
   useEffect(() => {
     if (editingReply) {
       console.log('Editing reply data:', editingReply);
-      setCategory(editingReply.category || '');
+      setCategory(editingReply.category || 'Greeting');
       setText(editingReply.template_text || '');
       
       // Try to extract form fields from different possible structures
@@ -73,7 +73,7 @@ const QuickReplyModal: React.FC<QuickReplyModalProps> = ({
   useEffect(() => {
     if (isOpen && !editingReply) {
       // Ensure clean state when opening add modal
-      setCategory('');
+      setCategory('Greeting');
       setText('');
       setFormFields([]);
     }
@@ -121,8 +121,9 @@ const QuickReplyModal: React.FC<QuickReplyModalProps> = ({
       };
     }
 
+    let saveCategory = category && category !== 'Select Category' ? category.trim() : 'Greeting';
     onSave({
-      category: category.trim() || null,
+      category: saveCategory,
       template_text: text.trim(),
       form_schema: formSchema,
     });
@@ -159,12 +160,10 @@ const QuickReplyModal: React.FC<QuickReplyModalProps> = ({
               onChange={(e) => setCategory(e.target.value)}
               className="quick-reply-select"
             >
-              <optgroup label="Select Category">
               <option value="Greeting">Greeting</option>
               <option value="Form">Form</option>
               <option value="Closing">Closing</option>
               <option value="Information">Information</option>
-              </optgroup>
             </select>
           </div>
 

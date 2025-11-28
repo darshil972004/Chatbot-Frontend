@@ -11,7 +11,7 @@ function QuickRepliesPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
 
   // Hardcoded agent ID for admin
-  const ADMIN_AGENT_ID = 0;
+  const ADMIN_AGENT_ID = 1;
 
   // Derived state for filtering and stats
   const categories = useMemo(() => {

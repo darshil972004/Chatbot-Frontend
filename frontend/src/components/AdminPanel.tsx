@@ -2215,7 +2215,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
           </div>
 
           {/* Ticket Events */}
-          <div className="admin-content-card admin-ticket-events-card">
+          {/* <div className="admin-content-card admin-ticket-events-card">
             <h3 className="admin-card-title">Events ({ticketEvents.length})</h3>
             <div className="admin-events-container">
               {ticketEvents.length === 0 ? (
@@ -2239,7 +2239,7 @@ function TicketsPage({ tickets, setTickets }: TicketsPageProps) {
                 ))
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     );
