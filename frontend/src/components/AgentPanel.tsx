@@ -102,6 +102,7 @@ function normalizeAgentSkills(skills?: any): AgentSkill[] {
 export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number, onLogout?: () => void}){
   const [status, setStatus] = useState<string>('offline') // online, away, busy, offline
   const [statusSynced, setStatusSynced] = useState<boolean>(false)
+  const [bypassStatus, setBypassStatus] = useState<boolean>(false) // Prevent auto status changes
   // Initialize with empty list so queue comes from backend active rooms + notifier
   const [sessions, setSessions] = useState<any[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string|number|null>(null)
@@ -935,16 +936,21 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
     const agent = retrieveAgentInfo()
     if (!agent?.id) {
       console.warn('No agent info available to sync status')
+       // Reset bypass if no agent
       return
     }
 
     try {
+      setBypassStatus(true)
+      setStatus(nextStatus);
       await updateAgentStatus(agent.id, nextStatus, { previous_status: previousStatus })
     } catch (err) {
       console.error('Failed to persist agent status', err)
       // revert UI if backend update fails
       setStatus(previousStatus)
       showAlert('Unable to update your status right now. Please try again.', 'error')
+    } finally {
+
     }
   }
 
@@ -1496,6 +1502,13 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
 
   // Update agent status based on active tickets
   useEffect(() => {
+     // If bypass is active, skip automatic status changes and reset bypass
+    if (bypassStatus) {
+      console.log('Bypassing automatic status change - agent manually changed status')
+      setBypassStatus(false)
+      return
+    }
+
     const hasActiveTicket = sessions.some(s => !isClosedStatus(s.status) && s.status !== 'waiting')
     const currentAgent = retrieveAgentInfo()
     
@@ -1720,7 +1733,7 @@ export default function AgentPanelApp({agentId = 1, onLogout}:{agentId?: number,
                       <p className="quick-reply-text">{reply.template_text}</p>
                     </div>
                     <div className="quick-reply-item-actions">
-                      {(reply as any).fkAgent_id !== 0 && (
+                      {(reply as any).fkAgent_id !== 1 && (
                         <>
                           <button className="quick-reply-edit" type="button" onClick={() => openEditQuickReplyModal(reply)}>
                             Edit
