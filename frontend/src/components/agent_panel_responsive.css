@@ -787,6 +787,7 @@
 .chat-select {
   min-width: 150px;
   flex-shrink: 0;
+  max-width: 150px;
 }
 
 .chat-input {

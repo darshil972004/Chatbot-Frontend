@@ -2946,10 +2946,21 @@ function AlertsPage({ analytics }: AlertsPageProps) {
       if (formData.name.trim()) {
         try {
           const newSkill = await skillsApi.createSkill({ name: formData.name.trim() });
-          setSkills((prev) => [...prev, newSkill]);
+          console.log('Created skill from API:', newSkill);
+          
+          // Ensure the new skill has the correct structure
+          const skillToAdd = {
+            ...newSkill,
+            id: newSkill.id || Date.now(),
+            name: formData.name.trim(), // Use the form data as fallback
+          };
+          
+          console.log('Skill to add to state:', skillToAdd);
+          setSkills((prev) => [...prev, skillToAdd]);
           setShowCreateModal(false);
           setFormData({ name: '' });
         } catch (err) {
+          console.error('Error creating skill:', err);
           alert('Error creating skill');
         }
       }
@@ -2962,15 +2973,26 @@ function AlertsPage({ analytics }: AlertsPageProps) {
           id: editingSkill.id,
           name: formData.name.trim()
         });
+        console.log('Updated skill from API:', updatedSkill);
+        
+        // Ensure the updated skill has the correct structure
+        const skillToUpdate = {
+          ...updatedSkill,
+          id: editingSkill.id,
+          name: formData.name.trim(), // Use the form data as fallback
+        };
+        
+        console.log('Skill to update in state:', skillToUpdate);
         setSkills((prev) =>
           prev.map((skill) =>
-            skill.id === editingSkill.id ? updatedSkill : skill
+            skill.id === editingSkill.id ? skillToUpdate : skill
           )
         );
         setEditingSkill(null);
         setShowCreateModal(false);
         setFormData({ name: '' });
       } catch (err) {
+        console.error('Error updating skill:', err);
         alert('Error updating skill');
       }
     }
@@ -3068,7 +3090,17 @@ function AlertsPage({ analytics }: AlertsPageProps) {
       )}
 
       <div className="admin-tab-card">
-        <div className="admin-skills-table-wrapper admin-table-scroll">
+        {/* Debug info - remove this once issue is resolved */}
+        {/* <div style={{ padding: '8px', backgroundColor: '#f0f0f0', marginBottom: '8px', fontSize: '12px' }}>
+          Debug: Total skills in array: {skills.length} | Skills being rendered: {skills.sort((a, b) => a.id - b.id).length}
+        </div> */}
+        
+        {/* Detailed skill debug */}
+        {/* <div style={{ padding: '8px', backgroundColor: '#e8f4f8', marginBottom: '8px', fontSize: '11px' }}>
+          Skills Data: {JSON.stringify(skills.sort((a, b) => a.id - b.id).map(s => ({ id: s.id, name: s.name })))}
+        </div> */}
+        
+        <div className="admin-skills-table-wrapper admin-table-scroll" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -3080,9 +3112,13 @@ function AlertsPage({ analytics }: AlertsPageProps) {
             <tbody>
               {skills
                 .sort((a, b) => a.id - b.id)
-                .map((skill, index) => (
-                <tr key={skill.id}>
-                  <td>{index + 1}</td>
+                .map((skill, index) => {
+                  const rowNumber = index + 1;
+                  const uniqueKey = `skill-${skill.id || index}-${index}`;
+                  console.log('Rendering skill:', { id: skill.id, name: skill.name, index, rowNumber });
+                  return (
+                <tr key={uniqueKey}>
+                  <td>{rowNumber}</td>
                   <td>{skill.name}</td>
                   <td>
                     <div className="admin-table-actions">
@@ -3105,7 +3141,8 @@ function AlertsPage({ analytics }: AlertsPageProps) {
                     </div>
                   </td>
                 </tr>
-              ))}
+                  );
+                })}
             </tbody>
           </table>
         </div>
