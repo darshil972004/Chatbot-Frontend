@@ -397,10 +397,10 @@ export default function ChatbotWidget() {
           switch (payload.type) {
             case 'init_ack':
               return;
-            case 'agent_claimed':
-              setAgentStatus('waiting');
-              addSystemMessage('A live agent has claimed your ticket. They will join shortly.');
-              return;
+            // case 'agent_claimed':
+            //   setAgentStatus('waiting');
+            //   addSystemMessage('A live agent has claimed your ticket. They will join shortly.');
+            //   return;
             case 'agent_joined':
               setAgentStatus('connected');
               setAgentName(payload.agent_name || 'Live Agent');
@@ -419,7 +419,8 @@ export default function ChatbotWidget() {
             case 'agent_disconnected':
               // Agent temporarily disconnected (for example, they reloaded the page).
               // Keep the ticket so we can reconnect when the agent comes back.
-              addSystemMessage('The live agent connection was interrupted. Waiting for reconnection. You can continue with the AI assistant in the meantime.');
+              addSystemMessage(`Your Agent has transferred your chat to another agent. Please wait for them to join.`)
+              // addSystemMessage('The live agent connection was interrupted. Waiting for reconnection. You can continue with the AI assistant in the meantime.');
               setAgentStatus('waiting');
               return;
             case 'agent_claim_failed':
