@@ -60,8 +60,17 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(true)
   // Persist chat history in localStorage
   const LOCAL_KEY = 'cp_chatbot_history';
-  const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
-  const WS_BASE = (window as any).VITE_CHATBOT_WS_BASE || API_BASE.replace(/^http/i, 'ws');
+  const API_BASE = (window as any).VITE_CHATBOT_API_BASE || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  // Remove /api suffix if present for WebSocket connections
+  const cleanApiBase = API_BASE.replace(/\/api$/, '');
+  const WS_BASE = (window as any).VITE_CHATBOT_WS_BASE || cleanApiBase.replace(/^http/i, 'ws');
+  
+  // Debug logging for WebSocket URL
+  console.log('ChatbotWidget Debug:');
+  console.log('- API_BASE:', API_BASE);
+  console.log('- cleanApiBase:', cleanApiBase);
+  console.log('- WS_BASE:', WS_BASE);
+  console.log('- VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
   const [messages, setMessages] = useState<(ChatMessage & { propertyGroup?: { id: string; header?: string; items: any[] } })[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_KEY);
@@ -322,6 +331,13 @@ export default function ChatbotWidget() {
 
     const base = WS_BASE.replace(/\/$/, '');
     const wsUrl = `${base}/ws/chat/${ticketId}/user`;
+    
+    // Enhanced WebSocket debugging
+    console.log('WebSocket Debug:');
+    console.log('- Base URL:', base);
+    console.log('- Full WebSocket URL:', wsUrl);
+    console.log('- Ticket ID:', ticketId);
+    console.log('- User ID:', userId);
 
     let isActive = true;
     let reconnectAttempts = 0;
@@ -329,32 +345,54 @@ export default function ChatbotWidget() {
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connectWebSocket = () => {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        try {
-          ws.send(JSON.stringify({ type: 'init', user_id: userId }));
-        } catch {}
-        setAgentStatus((prev) => prev || 'waiting');
-        setLiveChatError(null);
-
-        // Flush any queued messages
-        if (pendingLiveQueue.current.length > 0) {
-          const queued = [...pendingLiveQueue.current];
-          pendingLiveQueue.current = [];
-          queued.forEach((messageText) => {
-            try {
-              ws.send(JSON.stringify({ type: 'message', text: messageText, sender: 'user', ts: Date.now() }));
-            } catch (err) {
-              console.error('Failed to flush queued live agent message', err);
-              pendingLiveQueue.current.unshift(messageText);
-            }
-          });
+      console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+      let ws: WebSocket | null = null;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+        console.log('WebSocket object created successfully');
+      } catch (error) {
+        console.error('Failed to create WebSocket object:', error);
+        setLiveChatError(`Failed to create WebSocket connection: ${error}`);
+        return;
+      }
+      
+      // Add connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+          console.warn('WebSocket connection timeout - closing connection');
+          wsRef.current.close();
+          setLiveChatError('WebSocket connection timeout. Server may be unavailable.');
         }
-      };
+      }, 10000); // 10 second timeout
 
-      ws.onmessage = (event) => {
+      if (ws) {
+        ws.onopen = () => {
+          clearTimeout(connectionTimeout); // Clear the connection timeout
+          console.log('WebSocket connection opened successfully');
+          try {
+            ws.send(JSON.stringify({ type: 'init', user_id: userId }));
+          } catch {}
+          setAgentStatus((prev) => prev || 'waiting');
+          setLiveChatError(null);
+
+          // Flush any queued messages
+          if (pendingLiveQueue.current.length > 0) {
+            const queued = [...pendingLiveQueue.current];
+            pendingLiveQueue.current = [];
+            queued.forEach((messageText) => {
+              try {
+                ws.send(JSON.stringify({ type: 'message', text: messageText, sender: 'user', ts: Date.now() }));
+              } catch (err) {
+                console.error('Failed to flush queued live agent message', err);
+                pendingLiveQueue.current.unshift(messageText);
+              }
+            });
+          }
+        };
+
+      ws.onmessage = (event: MessageEvent) => {
         if (!isActive) return;
         const raw = event.data;
         let payload: any = null;
@@ -440,13 +478,32 @@ export default function ChatbotWidget() {
         }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (error: Event) => {
+        clearTimeout(connectionTimeout); // Clear the connection timeout
         if (!isActive) return;
-        setLiveChatError('Live agent channel encountered a connection issue.');
+        console.error('WebSocket Error Details:', {
+          error,
+          wsUrl,
+          readyState: ws.readyState,
+          ticketId,
+          userId
+        });
+        setLiveChatError(`Live agent channel encountered a connection issue. URL: ${wsUrl}`);
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = (event: CloseEvent) => {
+        clearTimeout(connectionTimeout); // Clear the connection timeout
         wsRef.current = null;
+        
+        console.error('WebSocket Close Details:', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          wsUrl,
+          reconnectAttempts,
+          isActive,
+          ticketId
+        });
 
         // If we still have an active ticket and this wasn't a clean close,
         // try to reconnect a few times. This keeps the user connected
@@ -454,13 +511,18 @@ export default function ChatbotWidget() {
         if (isActive && ticketId && !event.wasClean && reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts += 1;
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 8000);
+          console.log(`WebSocket reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts} in ${delay}ms`);
           reconnectTimeout = setTimeout(() => {
             if (isActive && ticketId) {
               connectWebSocket();
             }
           }, delay);
+        } else if (reconnectAttempts >= maxReconnectAttempts) {
+          console.error('WebSocket max reconnection attempts reached');
+          setLiveChatError('Failed to connect to live agent after multiple attempts. Please refresh the page.');
         }
       };
+      }
     };
 
     // Initial connection

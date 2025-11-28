@@ -19,7 +19,7 @@ export function useTicketUpdates(onUpdate: (event: TicketEvent) => void) {
     }
 
     console.log("Opening SSE connection...");
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
     const es = new EventSource(`${API_BASE.replace('/api', '')}/events`);
     sseRef.current = es;
 
