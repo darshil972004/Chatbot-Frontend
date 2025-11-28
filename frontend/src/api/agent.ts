@@ -72,6 +72,7 @@ const getWebSocketUrl = () => {
   }
   const apiUrl = new URL(API_BASE);
   const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  console.log(wsProtocol+"//"+apiUrl.host)
   return `${wsProtocol}//${apiUrl.host}`;
 };
 
