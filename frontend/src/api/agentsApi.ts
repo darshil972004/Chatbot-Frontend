@@ -5,73 +5,73 @@ export const agentsApi = {
   // Get all agents
   getAgents: async (limit?: number, offset?: number): Promise<Agent[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get('/api/agents', { params });
+    const response = await apiClient.get('/agents', { params });
     return response.data?.data || [];
   },
 
   // Get agent by ID
   getAgent: async (agentId: number): Promise<Agent> => {
-    const response = await apiClient.get(`/api/agents/${agentId}`);
+    const response = await apiClient.get(`/agents/${agentId}`);
     return response.data?.data;
   },
 
   // Create new agent
   createAgent: async (agentData: AgentCreateRequest): Promise<Agent> => {
-    const response = await apiClient.post('/api/agents', agentData);
+    const response = await apiClient.post('/agents', agentData);
     return response.data?.data;
   },
 
   // Update agent
   updateAgent: async (agentData: AgentUpdateRequest): Promise<Agent> => {
-    const response = await apiClient.put('/api/agents', agentData);
+    const response = await apiClient.put('/agents', agentData);
     return response.data?.data;
   },
 
   // Delete agent
   deleteAgent: async (agentId: number): Promise<void> => {
-    await apiClient.delete(`/api/agents/${agentId}`);
+    await apiClient.delete(`/agents/${agentId}`);
   },
 
   // Get agent skills
   getAgentSkills: async (agentId: number): Promise<Skill[]> => {
-    const response = await apiClient.get(`/api/agents/${agentId}/skills`);
+    const response = await apiClient.get(`/agents/${agentId}/skills`);
     return response.data?.data || [];
   },
 
   // Get agent status events
   getAgentStatusEvents: async (agentId: number, limit?: number): Promise<any[]> => {
     const params = { limit };
-    const response = await apiClient.get(`/api/agents/${agentId}/status-events`, { params });
+    const response = await apiClient.get(`/agents/${agentId}/status-events`, { params });
     return response.data?.data || [];
   },
 
   // Get current agent status
   getCurrentAgentStatus: async (agentId: number): Promise<any> => {
-    const response = await apiClient.get(`/api/agents/${agentId}/current-status`);
+    const response = await apiClient.get(`/agents/${agentId}/current-status`);
     return response.data?.data;
   },
 
   // Update agent status
   updateAgentStatus: async (statusData: AgentStatusEventCreateRequest): Promise<void> => {
-    await apiClient.post('/api/agent-status-events', statusData);
+    await apiClient.post('/agent-status-events', statusData);
   },
 
   // Agent login
   agentLogin: async (username: string, password: string): Promise<any> => {
-    const response = await apiClient.post('/api/agent-login', { username, password });
+    const response = await apiClient.post('/agent-login', { username, password });
     return response.data?.data;
   },
 
   // Get all available agents (not offline)
   getAvailableAgents: async (): Promise<Agent[]> => {
-    const agents = await apiClient.get('/api/agents');
+    const agents = await apiClient.get('/agents');
     const allAgents = agents.data?.data || [];
     // Filter out offline agents - we'll need to check their current status
     const availableAgents = [];
     
     for (const agent of allAgents) {
       try {
-        const statusResponse = await apiClient.get(`/api/agents/${agent.id}/current-status`);
+        const statusResponse = await apiClient.get(`/agents/${agent.id}/current-status`);
         const currentStatus = statusResponse.data?.data?.status;
         // Only include agents that are not offline
         if (currentStatus && currentStatus !== 'offline') {
@@ -91,30 +91,30 @@ export const agentsApi = {
 export const skillsApi = {
   // Get all skills
   getSkills: async (): Promise<Skill[]> => {
-    const response = await apiClient.get('/api/skills');
+    const response = await apiClient.get('/skills');
     return response.data?.data || [];
   },
 
   // Create skill
   createSkill: async (skillData: SkillCreateRequest): Promise<Skill> => {
-    const response = await apiClient.post('/api/skills', skillData);
+    const response = await apiClient.post('/skills', skillData);
     return response.data?.data;
   },
 
   // Update skill
   updateSkill: async (skillData: SkillUpdateRequest): Promise<Skill> => {
-    const response = await apiClient.put('/api/skills', skillData);
+    const response = await apiClient.put('/skills', skillData);
     return response.data?.data;
   },
 
   // Delete skill
   deleteSkill: async (skillId: number): Promise<void> => {
-    await apiClient.delete(`/api/skills/${skillId}`);
+    await apiClient.delete(`/skills/${skillId}`);
   },
 
   // Get skill by ID
   getSkill: async (skillId: number): Promise<Skill> => {
-    const response = await apiClient.get(`/api/skills/${skillId}`);
+    const response = await apiClient.get(`/skills/${skillId}`);
     return response.data?.data;
   },
 };
@@ -123,16 +123,16 @@ export const skillsApi = {
 export const agentSkillsApi = {
   // Create agent skill relationship
   createAgentSkill: async (agentSkillData: AgentSkillCreateRequest): Promise<void> => {
-    await apiClient.post('/api/agent-skills', agentSkillData);
+    await apiClient.post('/agent-skills', agentSkillData);
   },
 
   // Update agent skill relationship
   updateAgentSkill: async (agentSkillData: AgentSkillUpdateRequest): Promise<void> => {
-    await apiClient.put('/api/agent-skills', agentSkillData);
+    await apiClient.put('/agent-skills', agentSkillData);
   },
 
   // Delete agent skill relationship
   deleteAgentSkill: async (agentId: number, skillId: number): Promise<void> => {
-    await apiClient.delete(`/api/agent-skills/${agentId}/${skillId}`);
+    await apiClient.delete(`/agent-skills/${agentId}/${skillId}`);
   },
 };

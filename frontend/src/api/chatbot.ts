@@ -22,8 +22,8 @@ export type ChatbotResponse =
       detail?: string;
     };
 
-const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
-const CHATBOT_TOKEN = (window as any).VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const CHATBOT_TOKEN = import.meta.env.VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
 
 export async function sendMessageToBot(userId: string, prompt: string): Promise<ChatbotResponse> {
   const payload: Record<string, unknown> = { user_id: userId, prompt };

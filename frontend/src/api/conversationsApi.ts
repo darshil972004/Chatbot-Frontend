@@ -5,43 +5,43 @@ export const conversationsApi = {
   // Get all conversations
   getConversations: async (limit?: number, offset?: number): Promise<Conversation[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get('/api/conversations', { params });
+    const response = await apiClient.get('/conversations', { params });
     return response.data?.data || [];
   },
 
   // Get conversation by ID
   getConversation: async (conversationId: number): Promise<Conversation> => {
-    const response = await apiClient.get(`/api/conversations/${conversationId}`);
+    const response = await apiClient.get(`/conversations/${conversationId}`);
     return response.data?.data;
   },
 
   // Create conversation
   createConversation: async (conversationData: ConversationCreateRequest): Promise<Conversation> => {
-    const response = await apiClient.post('/api/conversations', conversationData);
+    const response = await apiClient.post('/conversations', conversationData);
     return response.data?.data;
   },
 
   // Update conversation
   updateConversation: async (conversationData: ConversationUpdateRequest): Promise<Conversation> => {
-    const response = await apiClient.put('/api/conversations', conversationData);
+    const response = await apiClient.put('/conversations', conversationData);
     return response.data?.data;
   },
 
   // Delete conversation
   deleteConversation: async (conversationId: number): Promise<void> => {
-    await apiClient.delete(`/api/conversations/${conversationId}`);
+    await apiClient.delete(`/conversations/${conversationId}`);
   },
 
   // Get conversation by session ID
   getConversationBySession: async (sessionId: string): Promise<Conversation> => {
-    const response = await apiClient.get(`/api/conversations/by-session/${sessionId}`);
+    const response = await apiClient.get(`/conversations/by-session/${sessionId}`);
     return response.data?.data;
   },
 
   // Get conversations by user ID
   getConversationsByUser: async (userId: number, limit?: number, offset?: number): Promise<Conversation[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get(`/api/conversations/by-user/${userId}`, { params });
+    const response = await apiClient.get(`/conversations/by-user/${userId}`, { params });
     return response.data?.data || [];
   },
 };
@@ -59,64 +59,64 @@ export const conversationDetailsApi = {
     offset?: number;
   }): Promise<ChatMessage[]> => {
     const params = filters ? { ...filters } : {};
-    const response = await apiClient.get('/api/conversation-details', { params });
+    const response = await apiClient.get('/conversation-details', { params });
     return response.data?.data || [];
   },
 
   // Create conversation detail (message)
   createConversationDetail: async (detailData: ConversationDetailCreateRequest): Promise<ChatMessage> => {
-    const response = await apiClient.post('/api/conversation-details', detailData);
+    const response = await apiClient.post('/conversation-details', detailData);
     return response.data?.data;
   },
 
   // Create multiple conversation details (bulk)
   createConversationDetailsBulk: async (detailsData: ConversationDetailCreateRequest[]): Promise<ChatMessage[]> => {
-    const response = await apiClient.post('/api/conversation-details', { details: detailsData });
+    const response = await apiClient.post('/conversation-details', { details: detailsData });
     return response.data?.data || [];
   },
 
   // Update conversation detail
   updateConversationDetail: async (detailData: ConversationDetailUpdateRequest): Promise<ChatMessage> => {
-    const response = await apiClient.put('/api/conversation-details', detailData);
+    const response = await apiClient.put('/conversation-details', detailData);
     return response.data?.data;
   },
 
   // Get conversation detail by ID
   getConversationDetail: async (detailId: number): Promise<ChatMessage> => {
-    const response = await apiClient.get(`/api/conversation-details/${detailId}`);
+    const response = await apiClient.get(`/conversation-details/${detailId}`);
     return response.data?.data;
   },
 
   // Delete conversation detail
   deleteConversationDetail: async (detailId: number): Promise<void> => {
-    await apiClient.delete(`/api/conversation-details/${detailId}`);
+    await apiClient.delete(`/conversation-details/${detailId}`);
   },
 
   // Get conversation details by conversation ID
   getConversationDetailsByConversation: async (conversationId: number, limit?: number, offset?: number): Promise<ChatMessage[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get(`/api/conversations/${conversationId}/details`, { params });
+    const response = await apiClient.get(`/conversations/${conversationId}/details`, { params });
     return response.data?.data || [];
   },
 
   // Get conversation details by user ID
   getConversationDetailsByUser: async (userId: string, limit?: number, offset?: number): Promise<ChatMessage[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get(`/api/conversation-details/by-user/${userId}`, { params });
+    const response = await apiClient.get(`/conversation-details/by-user/${userId}`, { params });
     return response.data?.data || [];
   },
 
   // Get conversation details by agent ID
   getConversationDetailsByAgent: async (agentId: number, limit?: number, offset?: number): Promise<ChatMessage[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get(`/api/conversation-details/by-agent/${agentId}`, { params });
+    const response = await apiClient.get(`/conversation-details/by-agent/${agentId}`, { params });
     return response.data?.data || [];
   },
 
   // Get conversation details by ticket ID
   getConversationDetailsByTicket: async (ticketId: string | number, limit?: number, offset?: number): Promise<ChatMessage[]> => {
     const params = { limit, offset };
-    const response = await apiClient.get(`/api/conversation-details/by-ticket/${ticketId}`, { params });
+    const response = await apiClient.get(`/conversation-details/by-ticket/${ticketId}`, { params });
     return response.data?.data || [];
   },
 };

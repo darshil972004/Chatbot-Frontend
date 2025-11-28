@@ -62,10 +62,18 @@ export type AgentQuickReply = {
   created_at?: string;
 };
 
-const API_BASE = (window as any).VITE_CHATBOT_API_BASE || 'http://localhost:8000';
-const BACKEND_WS_HOST = (window as any).VITE_BACKEND_WS_HOST || (window.location.hostname || '127.0.0.1');
-const BACKEND_WS_PORT = (window as any).VITE_BACKEND_WS_PORT || '8000';
-const CHATBOT_TOKEN = (window as any).VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const CHATBOT_TOKEN = import.meta.env.VITE_CHATBOT_TOKEN || 'chatbot-api-token-2024';
+
+// Derive WebSocket URL from API_BASE
+const getWebSocketUrl = () => {
+  if (!API_BASE) {
+    throw new Error('VITE_API_BASE_URL environment variable is not set');
+  }
+  const apiUrl = new URL(API_BASE);
+  const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsProtocol}//${apiUrl.host}`;
+};
 
 /**
  * Agent login API call
@@ -78,7 +86,7 @@ export async function agentLogin(
   password: string
 ): Promise<AgentLoginResponse> {
   try {
-    const res = await fetch(`${API_BASE}/api/agent-login`, {
+    const res = await fetch(`${API_BASE}/agent-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -131,7 +139,7 @@ export function openAgentNotifierWS(
   onMessage?: (msg: AgentNotifierMessage) => void,
   onError?: (err: string) => void
 ): WebSocket {
-  const wsUrl = `ws://${BACKEND_WS_HOST}:${BACKEND_WS_PORT}/ws/agents/${agentId}`;
+  const wsUrl = `${getWebSocketUrl()}/ws/agents/${agentId}`;
   console.log('Opening agent notifier WS:', wsUrl);
 
   const ws = new WebSocket(wsUrl);
@@ -207,7 +215,7 @@ export function openAgentChatWS(
   onMessage?: (msg: ChatMessage) => void,
   onError?: (err: string) => void
 ): WebSocket {
-  const wsUrl = `ws://${BACKEND_WS_HOST}:${BACKEND_WS_PORT}/ws/chat/${ticketId}/agent`;
+  const wsUrl = `${getWebSocketUrl()}/ws/chat/${ticketId}/agent`;
   console.log('Opening agent chat WS:', wsUrl);
 
   const ws = new WebSocket(wsUrl);
@@ -346,7 +354,7 @@ export function clearAgentInfo(): void {
  */
 export async function fetchActiveRooms(): Promise<{success: boolean; data?: any[]; error?: any}> {
   try {
-    const res = await fetch(`${API_BASE}/api/active-rooms`, {
+    const res = await fetch(`${API_BASE}/active-rooms`, {
       headers: { Authorization: `Bearer ${CHATBOT_TOKEN}` },
     })
     if (!res.ok) {
@@ -369,7 +377,7 @@ export async function updateAgentStatus(
   details: Record<string, any> = {}
 ): Promise<void> {
   try {
-    const res = await fetch(`${API_BASE}/api/agent-status-events`, {
+    const res = await fetch(`${API_BASE}/agent-status-events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -400,7 +408,7 @@ export async function updateAgentStatus(
  */
 export async function fetchAgentCurrentStatus(agentId: number | string): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/agents/${agentId}/current-status`, {
+    const res = await fetch(`${API_BASE}/agents/${agentId}/current-status`, {
       headers: { Authorization: `Bearer ${CHATBOT_TOKEN}` },
     })
 
@@ -430,7 +438,7 @@ export async function fetchAgentSkills(agentId: number | string): Promise<AgentS
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/agents/${agentId}/skills`, {
+    const res = await fetch(`${API_BASE}/agents/${agentId}/skills`, {
       headers: { Authorization: `Bearer ${CHATBOT_TOKEN}` },
     });
 
@@ -476,7 +484,7 @@ export async function fetchAgentQuickReplies(agentId: number | string): Promise<
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies`, {
+    const res = await fetch(`${API_BASE}/agents/${agentId}/quick-replies`, {
       headers: {
         Authorization: `Bearer ${CHATBOT_TOKEN}`,
       },
@@ -522,7 +530,7 @@ export async function createAgentQuickReply(
     body.form_schema = payload.form_schema;
   }
 
-  const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies`, {
+  const res = await fetch(`${API_BASE}/agents/${agentId}/quick-replies`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -556,7 +564,7 @@ export async function createAgentQuickReply(
  * Delete a quick reply for an agent
  */
 export async function deleteAgentQuickReply(agentId: number | string, replyId: number | string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies/${replyId}`, {
+  const res = await fetch(`${API_BASE}/agents/${agentId}/quick-replies/${replyId}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${CHATBOT_TOKEN}`,
@@ -592,7 +600,7 @@ export async function updateAgentQuickReply(
     body.form_schema = payload.form_schema;
   }
 
-  const res = await fetch(`${API_BASE}/api/agents/${agentId}/quick-replies/${replyId}`, {
+  const res = await fetch(`${API_BASE}/agents/${agentId}/quick-replies/${replyId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
