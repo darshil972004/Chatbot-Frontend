@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { FormEvent, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import QuickReplyModal from './QuickReplyModal';
+// import QuickReplyModal from './QuickReplyModal';
 import QuickRepliesPage from './QuickRepliesPage';
 import AdminNavbar from './AdminPanel/AdminNavbar';
 import ChatbotWidget from './ChatbotWidget';
@@ -502,14 +502,14 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
     </li>
   );
 
-  const handleAddAgent = () => {
-    setRoute('agents');
-    // Trigger create modal - this will be handled by AgentsPage component
-    setTimeout(() => {
-      const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
-      if (createButton) createButton.click();
-    }, 100);
-  };
+  // const handleAddAgent = () => {
+  //   setRoute('agents');
+  //   // Trigger create modal - this will be handled by AgentsPage component
+  //   setTimeout(() => {
+  //     const createButton = document.querySelector('.admin-agents-page .admin-button-primary') as HTMLButtonElement;
+  //     if (createButton) createButton.click();
+  //   }, 100);
+  // };
 
   return (
     <ul className="admin-sidebar-list">
@@ -521,7 +521,6 @@ function Sidebar({ route, setRoute, agents, onLogout }: SidebarProps) {
       {item('alerts', 'Alerts', null)}
       {item('skills', 'Skills', null)}
       {item('quickreplies', 'Quick Replies', null)}
-      {/* Settings button removed, now only accessible from header dropdown */}
       {item('workflows', 'Workflows', null)}
     </ul>
   );
@@ -537,7 +536,7 @@ function Dashboard({ agents }: DashboardProps) {
 
   // Sort agents by chats today and take top 5
   const topAgents = [...agents]
-    .sort((a,b) => b.id - a.id) // Placeholder sort, replace with actual metric
+    .sort((a,b) => b.id - a.id) 
     .slice(0, 5);
 
   return (
@@ -608,9 +607,6 @@ function Dashboard({ agents }: DashboardProps) {
                   <div className="agent-compact-info">
                     <div className="agent-compact-name">{a.name}</div>
                     <div className="agent-compact-role">{a.role}</div>
-                    {/* <div style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', marginTop: '2px' }}>
-                      {a.metrics.chatsToday} chats today
-                    </div> */}
                   </div>
                   <div className={`agent-compact-status ${a.status}`}>
                     {a.status}
@@ -635,7 +631,6 @@ type StatCardProps = {
 function StatCard({ title, value, icon }: StatCardProps) {
   return (
     <div className="admin-stat-card">
-      
       <div className="admin-stat-content">
         <span className="admin-stat-title">{title} </span>
         <span className="admin-stat-value">{value}</span>
@@ -829,7 +824,6 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             });
           } catch (statusErr) {
             console.error('Error creating status event:', statusErr);
-            // Don't fail the whole operation if status event creation fails
           }
           await reloadAgents();
           setEditingAgent(null);
@@ -928,17 +922,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
               <button
                 onClick={() => { setShowCreateModal(false); setEditingAgent(null); setFormData({ username: '', password: '', name: '', email: '', role: 'support', status: 'online', skillIds: [], max_concurrent_chats: 2 }); }}
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  padding: '4px',
-                  borderRadius: '4px'
+                style={{position: 'absolute',top: '16px',right: '16px',background: 'none',border: 'none',fontSize: '24px',cursor: 'pointer',color: '#6b7280',padding: '4px',borderRadius: '4px'
                 }}
                 onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
                 onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
@@ -1020,19 +1004,6 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
                     ))}
                   </div>
                 </label>
-                {/* <label>
-                  Status
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Agent['status'] })}
-                    className="admin-login-input"
-                  >
-                    <option value="online">Online</option>
-                    <option value="offline">Offline</option>
-                    <option value="busy">Busy</option>
-                    <option value="away">Away</option>
-                  </select>
-                </label> */}
                 <label>
                   Max Concurrent Chats : 
                   <input
@@ -1066,17 +1037,7 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
             <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
               <button
                 onClick={() => { setShowViewModal(false); setViewingAgent(null); }}
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  padding: '4px',
-                  borderRadius: '4px'
+                style={{position: 'absolute',top: '16px',right: '16px',background: 'none',border: 'none',fontSize: '24px',cursor: 'pointer',color: '#6b7280',padding: '4px',borderRadius: '4px'
                 }}
                 onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
                 onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
@@ -1194,74 +1155,74 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
 }
 
 // LiveChatsPage Component
-type LiveChatsPageProps = {
-  sessions: Session[];
-  setSessions: React.Dispatch<React.SetStateAction<Session[]>>;
-  agents: Agent[];
-  setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
-};
+// type LiveChatsPageProps = {
+//   sessions: Session[];
+//   setSessions: React.Dispatch<React.SetStateAction<Session[]>>;
+//   agents: Agent[];
+//   setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
+// };
 
-function LiveChatsPage({ sessions, setSessions, agents, setAgents }: LiveChatsPageProps) {
-  const [selected, setSelected] = useState<number | null>(null);
+// function LiveChatsPage({ sessions, setSessions, agents, setAgents }: LiveChatsPageProps) {
+//   const [selected, setSelected] = useState<number | null>(null);
 
-  function takeSession(sessionId: number, agentId: number) {
-    setSessions((s) => s.map((x) => (x.id === sessionId ? { ...x, status: 'assigned', assignedAgentId: agentId } : x)));
-    setAgents((a) => a.map((ag) => (ag.id === agentId ? { ...ag, status: 'busy', currentSessionId: sessionId } : ag)));
-  }
+//   function takeSession(sessionId: number, agentId: number) {
+//     setSessions((s) => s.map((x) => (x.id === sessionId ? { ...x, status: 'assigned', assignedAgentId: agentId } : x)));
+//     setAgents((a) => a.map((ag) => (ag.id === agentId ? { ...ag, status: 'busy', currentSessionId: sessionId } : ag)));
+//   }
 
-  function endSession(sessionId: number) {
-    setSessions((s) => s.map((x) => (x.id === sessionId ? { ...x, status: 'closed' } : x)));
-    setSelected(null);
-  }
+//   function endSession(sessionId: number) {
+//     setSessions((s) => s.map((x) => (x.id === sessionId ? { ...x, status: 'closed' } : x)));
+//     setSelected(null);
+//   }
 
-  const waiting = sessions.filter((s) => s.status === 'waiting');
-  const active = sessions.filter((s) => s.status === 'assigned');
+//   const waiting = sessions.filter((s) => s.status === 'waiting');
+//   const active = sessions.filter((s) => s.status === 'assigned');
 
-  return (
-    <div className="admin-live-chats-grid">
-      <div className="admin-live-chats-col admin-live-chats-col-3">
-        <h3 className="admin-page-title">Waiting</h3>
-        {waiting.length === 0 && <div className="admin-empty-state">No waiting users</div>}
-        <ul className="admin-live-chats-list">
-          {waiting.map((w) => (
-            <li key={w.id} className="admin-live-chats-item" onClick={() => setSelected(w.id)}>
-              <div className="admin-live-chats-item-title">Session {w.id}</div>
-              <div className="admin-live-chats-item-subtitle">{w.topic}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
+//   return (
+//     <div className="admin-live-chats-grid">
+//       <div className="admin-live-chats-col admin-live-chats-col-3">
+//         <h3 className="admin-page-title">Waiting</h3>
+//         {waiting.length === 0 && <div className="admin-empty-state">No waiting users</div>}
+//         <ul className="admin-live-chats-list">
+//           {waiting.map((w) => (
+//             <li key={w.id} className="admin-live-chats-item" onClick={() => setSelected(w.id)}>
+//               <div className="admin-live-chats-item-title">Session {w.id}</div>
+//               <div className="admin-live-chats-item-subtitle">{w.topic}</div>
+//             </li>
+//           ))}
+//         </ul>
+//       </div>
 
-      <div className="admin-live-chats-col admin-live-chats-col-4">
-        <h3 className="admin-page-title">Active Sessions</h3>
-        {active.length === 0 && <div className="admin-empty-state">No active sessions</div>}
-        <ul className="admin-live-chats-list">
-          {active.map((a) => (
-            <li key={a.id} className="admin-live-chats-item" onClick={() => setSelected(a.id)}>
-              <div className="admin-live-chats-item-row">
-                <div>
-                  <div className="admin-live-chats-item-title">Session {a.id}</div>
-                  <div className="admin-live-chats-item-subtitle">Agent {a.assignedAgentId}</div>
-                </div>
-                <div style={{ fontSize: '14px' }}>{a.duration}s</div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+//       <div className="admin-live-chats-col admin-live-chats-col-4">
+//         <h3 className="admin-page-title">Active Sessions</h3>
+//         {active.length === 0 && <div className="admin-empty-state">No active sessions</div>}
+//         <ul className="admin-live-chats-list">
+//           {active.map((a) => (
+//             <li key={a.id} className="admin-live-chats-item" onClick={() => setSelected(a.id)}>
+//               <div className="admin-live-chats-item-row">
+//                 <div>
+//                   <div className="admin-live-chats-item-title">Session {a.id}</div>
+//                   <div className="admin-live-chats-item-subtitle">Agent {a.assignedAgentId}</div>
+//                 </div>
+//                 <div style={{ fontSize: '14px' }}>{a.duration}s</div>
+//               </div>
+//             </li>
+//           ))}
+//         </ul>
+//       </div>
 
-      <div className="admin-live-chats-col admin-live-chats-col-5">
-        <h3 className="admin-page-title">Chat Window</h3>
-        {!selected && <div className="admin-empty-state">Select a session to view chat</div>}
-        {selected && (
-          <div>
-            <ChatWindow session={sessions.find((s) => s.id === selected)} onEnd={() => endSession(selected)} agents={agents} onAssign={takeSession} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+//       <div className="admin-live-chats-col admin-live-chats-col-5">
+//         <h3 className="admin-page-title">Chat Window</h3>
+//         {!selected && <div className="admin-empty-state">Select a session to view chat</div>}
+//         {selected && (
+//           <div>
+//             <ChatWindow session={sessions.find((s) => s.id === selected)} onEnd={() => endSession(selected)} agents={agents} onAssign={takeSession} />
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
 
 // ChatWindow Component
 type ChatWindowProps = {
