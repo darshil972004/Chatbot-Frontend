@@ -35,7 +35,7 @@ function QuickRepliesPage() {
     });
   }, [quickReplyTemplates, searchTerm, selectedCategory]);
 
-  // Load quick replies for admin (agent ID = 0)
+  // Load quick replies for admin (agent ID = 1)
   const loadQuickReplies = useCallback(async () => {
     try {
       const response = await apiClient.get(`/agents/${ADMIN_AGENT_ID}/quick-replies`);

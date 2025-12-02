@@ -3059,8 +3059,8 @@ html, body {
   align-items: center;
   gap: 3px;
   margin-bottom: 3px;
-  font-size: 8px;
-  color: var(--admin-text-secondary);
+  font-size: 9px;
+  color: #000000;
 }
 
 .admin-form-icon {
@@ -3114,12 +3114,12 @@ html, body {
   display: flex;
   align-items: center;
   gap: 2px;
-  color: var(--admin-text-secondary);
-  font-size: 7px;
+  color: #000000;
+  font-size: 8px;
 }
 
 .admin-meta-icon {
-  font-size: 7px;
+  font-size: 8px;
 }
 
 /* Responsive Design - Ultra Ultra Compact */

@@ -55,13 +55,13 @@ type Agent = {
   max_concurrent_chats?: number;
 };
 
-type RoutingRule = {
-  id: number;
-  topic: string;
-  allowedRoles: string[];
-  priority: number;
-  autoAssign: boolean;
-};
+// type RoutingRule = {
+//   id: number;
+//   topic: string;
+//   allowedRoles: string[];
+//   priority: number;
+//   autoAssign: boolean;
+// };
 
 type SessionMessage = {
   sender: 'user' | 'agent' | 'bot' | 'text' | 'prompt';
@@ -82,11 +82,11 @@ type Session = {
   waitTime: number;
 };
 
-type Template = {
-  id: number;
-  type: string;
-  content: string;
-};
+// type Template = {
+//   id: number;
+//   type: string;
+//   content: string;
+// };
 
 type Ticket = {
   id: string;
@@ -1225,498 +1225,498 @@ function AgentsPage({ agents, setAgents, skills, reloadAgents, syncAgentSkills }
 // }
 
 // ChatWindow Component
-type ChatWindowProps = {
-  session: Session | undefined;
-  onEnd: () => void;
-  agents: Agent[];
-  onAssign: (sessionId: number, agentId: number) => void;
-};
+// type ChatWindowProps = {
+//   session: Session | undefined;
+//   onEnd: () => void;
+//   agents: Agent[];
+//   onAssign: (sessionId: number, agentId: number) => void;
+// };
 
-function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
-  const [messageText, setMessageText] = useState('');
-  const [localMessages, setLocalMessages] = useState<Array<{ sender: string; text: string }>>([]);
+// function ChatWindow({ session, onEnd, agents, onAssign }: ChatWindowProps) {
+//   const [messageText, setMessageText] = useState('');
+//   const [localMessages, setLocalMessages] = useState<Array<{ sender: string; text: string }>>([]);
 
-  if (!session) return null;
-  const availableAgents = agents.filter((a) => a.status === 'online');
-  const allMessages = [...session.messages, ...localMessages];
+//   if (!session) return null;
+//   const availableAgents = agents.filter((a) => a.status === 'online');
+//   const allMessages = [...session.messages, ...localMessages];
 
-  const handleSendMessage = () => {
-    if (messageText.trim()) {
-      const newMessage = { sender: 'agent', text: messageText.trim() };
-      setLocalMessages((prev) => [...prev, newMessage]);
-      setMessageText('');
-      // In a real app, this would send to the API
-    }
-  };
+//   const handleSendMessage = () => {
+//     if (messageText.trim()) {
+//       const newMessage = { sender: 'agent', text: messageText.trim() };
+//       setLocalMessages((prev) => [...prev, newMessage]);
+//       setMessageText('');
+//       // In a real app, this would send to the API
+//     }
+//   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+//   const handleKeyPress = (e: React.KeyboardEvent) => {
+//     if (e.key === 'Enter' && !e.shiftKey) {
+//       e.preventDefault();
+//       handleSendMessage();
+//     }
+//   };
 
-  return (
-    <div className="admin-chat-window">
-      <div className="admin-chat-window-header">
-        <div>
-          <div className="admin-live-chats-item-title">Session {session.id}</div>
-          <div className="admin-live-chats-item-subtitle">Topic: {session.topic}</div>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={onEnd} className="admin-button admin-button-danger">End</button>
-        </div>
-      </div>
+//   return (
+//     <div className="admin-chat-window">
+//       <div className="admin-chat-window-header">
+//         <div>
+//           <div className="admin-live-chats-item-title">Session {session.id}</div>
+//           <div className="admin-live-chats-item-subtitle">Topic: {session.topic}</div>
+//         </div>
+//         <div style={{ display: 'flex', gap: '8px' }}>
+//           <button onClick={onEnd} className="admin-button admin-button-danger">End</button>
+//         </div>
+//       </div>
 
-      <div className="admin-chat-window-messages">
-        {allMessages.map((m, i) => {
-          // Type guard for prompt/output fields
-          const hasPrompt = typeof (m as any).prompt === 'string' && (m as any).prompt.trim() !== '';
-          const hasOutput = typeof (m as any).output === 'string' && (m as any).output.trim() !== '';
-          const bubbles = [];
-          if (hasPrompt) {
-            bubbles.push(
-              <div key={`prompt-${i}`} className="admin-chat-message admin-chat-message-user" style={{ alignSelf: 'flex-start' }}>
-                <div className="admin-chat-message-sender">User</div>
-                <div>{(m as any).prompt}</div>
-              </div>
-            );
-          }
-          if (hasOutput) {
-            const outputVal = (m as any).output;
-            bubbles.push(
-              <div key={`output-${i}`} className="admin-chat-message admin-chat-message-agent" style={{ alignSelf: 'flex-end' }}>
-                <div className="admin-chat-message-sender">AI</div>
-                <div>{typeof outputVal === 'string' ? outputVal.replace(/^"|"$/g, '') : outputVal}</div>
-              </div>
-            );
-          }
-          // If neither, fallback to text
-          if (!hasPrompt && !hasOutput) {
-            let userText = m.text || '';
-            bubbles.push(
-              <div key={`text-${i}`} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
-                <div className="admin-chat-message-sender">{m.sender}</div>
-                <div>{userText}</div>
-              </div>
-            );
-          }
-          return bubbles;
-        })}
-      </div>
+//       <div className="admin-chat-window-messages">
+//         {allMessages.map((m, i) => {
+//           // Type guard for prompt/output fields
+//           const hasPrompt = typeof (m as any).prompt === 'string' && (m as any).prompt.trim() !== '';
+//           const hasOutput = typeof (m as any).output === 'string' && (m as any).output.trim() !== '';
+//           const bubbles = [];
+//           if (hasPrompt) {
+//             bubbles.push(
+//               <div key={`prompt-${i}`} className="admin-chat-message admin-chat-message-user" style={{ alignSelf: 'flex-start' }}>
+//                 <div className="admin-chat-message-sender">User</div>
+//                 <div>{(m as any).prompt}</div>
+//               </div>
+//             );
+//           }
+//           if (hasOutput) {
+//             const outputVal = (m as any).output;
+//             bubbles.push(
+//               <div key={`output-${i}`} className="admin-chat-message admin-chat-message-agent" style={{ alignSelf: 'flex-end' }}>
+//                 <div className="admin-chat-message-sender">AI</div>
+//                 <div>{typeof outputVal === 'string' ? outputVal.replace(/^"|"$/g, '') : outputVal}</div>
+//               </div>
+//             );
+//           }
+//           // If neither, fallback to text
+//           if (!hasPrompt && !hasOutput) {
+//             let userText = m.text || '';
+//             bubbles.push(
+//               <div key={`text-${i}`} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
+//                 <div className="admin-chat-message-sender">{m.sender}</div>
+//                 <div>{userText}</div>
+//               </div>
+//             );
+//           }
+//           return bubbles;
+//         })}
+//       </div>
 
-      <div className="admin-chat-window-controls">
-        <select defaultValue="" onChange={(e) => { if (e.target.value) onAssign(session.id, Number(e.target.value)); }}>
-          <option value="">Assign to agent...</option>
-          {availableAgents.map((a) => (
-            <option key={a.id} value={a.id}>{a.name} — {a.role}</option>
-          ))}
-        </select>
-        <input 
-          placeholder="Type a message to user" 
-          value={messageText}
-          onChange={(e) => setMessageText(e.target.value)}
-          onKeyPress={handleKeyPress}
-        />
-      </div>
-    </div>
-  );
-}
+//       <div className="admin-chat-window-controls">
+//         <select defaultValue="" onChange={(e) => { if (e.target.value) onAssign(session.id, Number(e.target.value)); }}>
+//           <option value="">Assign to agent...</option>
+//           {availableAgents.map((a) => (
+//             <option key={a.id} value={a.id}>{a.name} — {a.role}</option>
+//           ))}
+//         </select>
+//         <input 
+//           placeholder="Type a message to user" 
+//           value={messageText}
+//           onChange={(e) => setMessageText(e.target.value)}
+//           onKeyPress={handleKeyPress}
+//         />
+//       </div>
+//     </div>
+//   );
+// }
 
 // RoutingPage Component
-type RoutingPageProps = {
-  rules: RoutingRule[];
-  setRules: React.Dispatch<React.SetStateAction<RoutingRule[]>>;
-  agents: Agent[];
-};
+// type RoutingPageProps = {
+//   rules: RoutingRule[];
+//   setRules: React.Dispatch<React.SetStateAction<RoutingRule[]>>;
+//   agents: Agent[];
+// };
 
-function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
-  const [editing, setEditing] = useState<number | null>(null);
-  const [editingData, setEditingData] = useState<{ topic: string; priority: number; allowedRoles: string[] } | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
+// function RoutingPage({ rules, setRules, agents }: RoutingPageProps) {
+//   const [editing, setEditing] = useState<number | null>(null);
+//   const [editingData, setEditingData] = useState<{ topic: string; priority: number; allowedRoles: string[] } | null>(null);
+//   const [showCreateModal, setShowCreateModal] = useState(false);
+//   const [newRuleData, setNewRuleData] = useState({ topic: '', priority: 5, allowedRoles: ['technical'] });
 
-  const availableRoles = ['technical', 'sales', 'support'];
+//   const availableRoles = ['technical', 'sales', 'support'];
 
-  function addRule() {
-    if (newRuleData.topic.trim()) {
-      const newRule: RoutingRule = {
-        id: Date.now(),
-        topic: newRuleData.topic.trim(),
-        allowedRoles: newRuleData.allowedRoles,
-        priority: newRuleData.priority,
-        autoAssign: true
-      };
-      setRules((r) => [newRule, ...r]);
-      setShowCreateModal(false);
-      setNewRuleData({ topic: '', priority: 5, allowedRoles: ['technical'] });
-    }
-  }
+//   function addRule() {
+//     if (newRuleData.topic.trim()) {
+//       const newRule: RoutingRule = {
+//         id: Date.now(),
+//         topic: newRuleData.topic.trim(),
+//         allowedRoles: newRuleData.allowedRoles,
+//         priority: newRuleData.priority,
+//         autoAssign: true
+//       };
+//       setRules((r) => [newRule, ...r]);
+//       setShowCreateModal(false);
+//       setNewRuleData({ topic: '', priority: 5, allowedRoles: ['technical'] });
+//     }
+//   }
 
-  function startEdit(rule: RoutingRule) {
-    setEditing(rule.id);
-    setEditingData({ topic: rule.topic, priority: rule.priority, allowedRoles: [...rule.allowedRoles] });
-  }
+//   function startEdit(rule: RoutingRule) {
+//     setEditing(rule.id);
+//     setEditingData({ topic: rule.topic, priority: rule.priority, allowedRoles: [...rule.allowedRoles] });
+//   }
 
-  function saveEdit(ruleId: number) {
-    if (editingData) {
-      setRules((prev) => prev.map((r) => 
-        r.id === ruleId 
-          ? { ...r, topic: editingData.topic, priority: editingData.priority, allowedRoles: editingData.allowedRoles }
-          : r
-      ));
-      setEditing(null);
-      setEditingData(null);
-    }
-  }
+//   function saveEdit(ruleId: number) {
+//     if (editingData) {
+//       setRules((prev) => prev.map((r) => 
+//         r.id === ruleId 
+//           ? { ...r, topic: editingData.topic, priority: editingData.priority, allowedRoles: editingData.allowedRoles }
+//           : r
+//       ));
+//       setEditing(null);
+//       setEditingData(null);
+//     }
+//   }
 
-  function toggleRole(role: string) {
-    if (editingData) {
-      const newRoles = editingData.allowedRoles.includes(role)
-        ? editingData.allowedRoles.filter((r) => r !== role)
-        : [...editingData.allowedRoles, role];
-      setEditingData({ ...editingData, allowedRoles: newRoles });
-    }
-  }
+//   function toggleRole(role: string) {
+//     if (editingData) {
+//       const newRoles = editingData.allowedRoles.includes(role)
+//         ? editingData.allowedRoles.filter((r) => r !== role)
+//         : [...editingData.allowedRoles, role];
+//       setEditingData({ ...editingData, allowedRoles: newRoles });
+//     }
+//   }
 
-  return (
-    <div className="admin-routing-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Routing Rules</h2>
-        <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-primary">Create Rule</button>
-      </div>
+//   return (
+//     <div className="admin-routing-page">
+//       <div className="admin-page-header">
+//         <h2 className="admin-page-title">Routing Rules</h2>
+//         <button onClick={() => setShowCreateModal(true)} className="admin-button admin-button-primary">Create Rule</button>
+//       </div>
 
-      {showCreateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-            <button
-              onClick={() => setShowCreateModal(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: '#6b7280',
-                padding: '4px',
-                borderRadius: '4px'
-              }}
-              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
-              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-            >
-              ×
-            </button>
-            <h3 style={{ marginTop: 0, marginRight: '40px' }}>Create New Routing Rule</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-              <label>
-                Topic
-                <input
-                  type="text"
-                  value={newRuleData.topic}
-                  onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
-                  className="admin-login-input"
-                  placeholder="e.g., technical, sales, support"
-                />
-              </label>
-              <label>
-                Priority
-                <input
-                  type="number"
-                  value={newRuleData.priority}
-                  onChange={(e) => setNewRuleData({ ...newRuleData, priority: Number(e.target.value) })}
-                  className="admin-login-input"
-                />
-              </label>
-              <label>
-                Allowed Roles
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
-                  {availableRoles.map((role) => (
-                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937', padding: '4px 0', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={newRuleData.allowedRoles.includes(role)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewRuleData({ ...newRuleData, allowedRoles: [...newRuleData.allowedRoles, role] });
-                          } else {
-                            setNewRuleData({ ...newRuleData, allowedRoles: newRuleData.allowedRoles.filter((r) => r !== role) });
-                          }
-                        }}
-                      />
-                      {role}
-                    </label>
-                  ))}
-                </div>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowCreateModal(false)} className="admin-button" style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>
-                Close
-              </button>
-              <button onClick={addRule} className="admin-button admin-button-primary">
-                Create Rule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+//       {showCreateModal && (
+//         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+//           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+//             <button
+//               onClick={() => setShowCreateModal(false)}
+//               style={{
+//                 position: 'absolute',
+//                 top: '16px',
+//                 right: '16px',
+//                 background: 'none',
+//                 border: 'none',
+//                 fontSize: '24px',
+//                 cursor: 'pointer',
+//                 color: '#6b7280',
+//                 padding: '4px',
+//                 borderRadius: '4px'
+//               }}
+//               onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#f3f4f6'}
+//               onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+//             >
+//               ×
+//             </button>
+//             <h3 style={{ marginTop: 0, marginRight: '40px' }}>Create New Routing Rule</h3>
+//             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+//               <label>
+//                 Topic
+//                 <input
+//                   type="text"
+//                   value={newRuleData.topic}
+//                   onChange={(e) => setNewRuleData({ ...newRuleData, topic: e.target.value })}
+//                   className="admin-login-input"
+//                   placeholder="e.g., technical, sales, support"
+//                 />
+//               </label>
+//               <label>
+//                 Priority
+//                 <input
+//                   type="number"
+//                   value={newRuleData.priority}
+//                   onChange={(e) => setNewRuleData({ ...newRuleData, priority: Number(e.target.value) })}
+//                   className="admin-login-input"
+//                 />
+//               </label>
+//               <label>
+//                 Allowed Roles
+//                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', scrollBehavior: 'smooth' }}>
+//                   {availableRoles.map((role) => (
+//                     <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#1f2937', padding: '4px 0', cursor: 'pointer' }}>
+//                       <input
+//                         type="checkbox"
+//                         checked={newRuleData.allowedRoles.includes(role)}
+//                         onChange={(e) => {
+//                           if (e.target.checked) {
+//                             setNewRuleData({ ...newRuleData, allowedRoles: [...newRuleData.allowedRoles, role] });
+//                           } else {
+//                             setNewRuleData({ ...newRuleData, allowedRoles: newRuleData.allowedRoles.filter((r) => r !== role) });
+//                           }
+//                         }}
+//                       />
+//                       {role}
+//                     </label>
+//                   ))}
+//                 </div>
+//               </label>
+//             </div>
+//             <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+//               <button onClick={() => setShowCreateModal(false)} className="admin-button" style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>
+//                 Close
+//               </button>
+//               <button onClick={addRule} className="admin-button admin-button-primary">
+//                 Create Rule
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
 
-      <div className="admin-routing-rules">
-        {rules.map((r) => (
-          <div key={r.id} className="admin-routing-rule">
-            <div className="admin-routing-rule-header">
-              <div>
-                {editing === r.id ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={editingData?.topic || ''}
-                      onChange={(e) => setEditingData({ ...editingData!, topic: e.target.value })}
-                      className="admin-login-input"
-                      style={{ width: '100%' }}
-                    />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {availableRoles.map((role) => (
-                        <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-                          <input
-                            type="checkbox"
-                            checked={editingData?.allowedRoles.includes(role) || false}
-                            onChange={() => toggleRole(role)}
-                          />
-                          {role}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="admin-routing-rule-topic">{r.topic}</div>
-                    <div className="admin-routing-rule-roles">Roles: {r.allowedRoles.join(', ')}</div>
-                  </>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {editing === r.id ? (
-                  <>
-                    <button className="admin-button admin-button-primary" onClick={() => saveEdit(r.id)}>Save</button>
-                    <button className="admin-button" onClick={() => { setEditing(null); setEditingData(null); }}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <button className="admin-button" onClick={() => startEdit(r)}>Edit</button>
-                    <button className="admin-button admin-button-danger" onClick={() => {
-                      if (window.confirm('Are you sure you want to delete this rule?')) {
-                        setRules((prev) => prev.filter((x) => x.id !== r.id));
-                      }
-                    }}>Delete</button>
-                  </>
-                )}
-              </div>
-            </div>
+//       <div className="admin-routing-rules">
+//         {rules.map((r) => (
+//           <div key={r.id} className="admin-routing-rule">
+//             <div className="admin-routing-rule-header">
+//               <div>
+//                 {editing === r.id ? (
+//                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+//                     <input
+//                       type="text"
+//                       value={editingData?.topic || ''}
+//                       onChange={(e) => setEditingData({ ...editingData!, topic: e.target.value })}
+//                       className="admin-login-input"
+//                       style={{ width: '100%' }}
+//                     />
+//                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+//                       {availableRoles.map((role) => (
+//                         <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+//                           <input
+//                             type="checkbox"
+//                             checked={editingData?.allowedRoles.includes(role) || false}
+//                             onChange={() => toggleRole(role)}
+//                           />
+//                           {role}
+//                         </label>
+//                       ))}
+//                     </div>
+//                   </div>
+//                 ) : (
+//                   <>
+//                     <div className="admin-routing-rule-topic">{r.topic}</div>
+//                     <div className="admin-routing-rule-roles">Roles: {r.allowedRoles.join(', ')}</div>
+//                   </>
+//                 )}
+//               </div>
+//               <div style={{ display: 'flex', gap: '8px' }}>
+//                 {editing === r.id ? (
+//                   <>
+//                     <button className="admin-button admin-button-primary" onClick={() => saveEdit(r.id)}>Save</button>
+//                     <button className="admin-button" onClick={() => { setEditing(null); setEditingData(null); }}>Cancel</button>
+//                   </>
+//                 ) : (
+//                   <>
+//                     <button className="admin-button" onClick={() => startEdit(r)}>Edit</button>
+//                     <button className="admin-button admin-button-danger" onClick={() => {
+//                       if (window.confirm('Are you sure you want to delete this rule?')) {
+//                         setRules((prev) => prev.filter((x) => x.id !== r.id));
+//                       }
+//                     }}>Delete</button>
+//                   </>
+//                 )}
+//               </div>
+//             </div>
 
-            {editing === r.id && editingData && (
-              <div className="admin-routing-rule-edit">
-                <label>Priority</label>
-                <input 
-                  type="number" 
-                  value={editingData.priority}
-                  onChange={(e) => setEditingData({ ...editingData, priority: Number(e.target.value) })}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+//             {editing === r.id && editingData && (
+//               <div className="admin-routing-rule-edit">
+//                 <label>Priority</label>
+//                 <input 
+//                   type="number" 
+//                   value={editingData.priority}
+//                   onChange={(e) => setEditingData({ ...editingData, priority: Number(e.target.value) })}
+//                 />
+//               </div>
+//             )}
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
 
 // TemplatesPage Component
-type TemplatesPageProps = {
-  templates: Template[];
-  setTemplates: React.Dispatch<React.SetStateAction<Template[]>>;
-};
+// type TemplatesPageProps = {
+//   templates: Template[];
+//   setTemplates: React.Dispatch<React.SetStateAction<Template[]>>;
+// };
 
-function TemplatesPage({ templates, setTemplates }: TemplatesPageProps) {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newTemplate, setNewTemplate] = useState({ type: '', content: '' });
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+// function TemplatesPage({ templates, setTemplates }: TemplatesPageProps) {
+//   const [showCreateModal, setShowCreateModal] = useState(false);
+//   const [newTemplate, setNewTemplate] = useState({ type: '', content: '' });
+//   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
-  function updateTemplate(id: number, content: string) {
-    setTemplates((t) => t.map((x) => (x.id === id ? { ...x, content } : x)));
-  }
+//   function updateTemplate(id: number, content: string) {
+//     setTemplates((t) => t.map((x) => (x.id === id ? { ...x, content } : x)));
+//   }
 
-  function handleCreateTemplate() {
-    if (newTemplate.type.trim() && newTemplate.content.trim()) {
-      const template: Template = {
-        id: Date.now(),
-        type: newTemplate.type.trim(),
-        content: newTemplate.content.trim()
-      };
-      setTemplates((prev) => [...prev, template]);
-      setShowCreateModal(false);
-      setNewTemplate({ type: '', content: '' });
-    }
-  }
+//   function handleCreateTemplate() {
+//     if (newTemplate.type.trim() && newTemplate.content.trim()) {
+//       const template: Template = {
+//         id: Date.now(),
+//         type: newTemplate.type.trim(),
+//         content: newTemplate.content.trim()
+//       };
+//       setTemplates((prev) => [...prev, template]);
+//       setShowCreateModal(false);
+//       setNewTemplate({ type: '', content: '' });
+//     }
+//   }
 
-  function handleEditTemplate(template: Template) {
-    setEditingTemplate(template);
-    setNewTemplate({ type: template.type, content: template.content });
-    setShowCreateModal(true);
-  }
+//   function handleEditTemplate(template: Template) {
+//     setEditingTemplate(template);
+//     setNewTemplate({ type: template.type, content: template.content });
+//     setShowCreateModal(true);
+//   }
 
-  function handleUpdateTemplate() {
-    if (editingTemplate && newTemplate.type.trim() && newTemplate.content.trim()) {
-      setTemplates((prev) => prev.map((t) => 
-        t.id === editingTemplate.id 
-          ? { ...t, type: newTemplate.type.trim(), content: newTemplate.content.trim() }
-          : t
-      ));
-      setEditingTemplate(null);
-      setShowCreateModal(false);
-      setNewTemplate({ type: '', content: '' });
-    }
-  }
+//   function handleUpdateTemplate() {
+//     if (editingTemplate && newTemplate.type.trim() && newTemplate.content.trim()) {
+//       setTemplates((prev) => prev.map((t) => 
+//         t.id === editingTemplate.id 
+//           ? { ...t, type: newTemplate.type.trim(), content: newTemplate.content.trim() }
+//           : t
+//       ));
+//       setEditingTemplate(null);
+//       setShowCreateModal(false);
+//       setNewTemplate({ type: '', content: '' });
+//     }
+//   }
 
-  function handleDeleteTemplate(id: number) {
-    if (window.confirm('Are you sure you want to delete this template?')) {
-      setTemplates((prev) => prev.filter((t) => t.id !== id));
-    }
-  }
+//   function handleDeleteTemplate(id: number) {
+//     if (window.confirm('Are you sure you want to delete this template?')) {
+//       setTemplates((prev) => prev.filter((t) => t.id !== id));
+//     }
+//   }
 
-  return (
-    <div className="admin-templates-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Message Templates</h2>
-        <button onClick={() => { setEditingTemplate(null); setNewTemplate({ type: '', content: '' }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Template</button>
-      </div>
+//   return (
+//     <div className="admin-templates-page">
+//       <div className="admin-page-header">
+//         <h2 className="admin-page-title">Message Templates</h2>
+//         <button onClick={() => { setEditingTemplate(null); setNewTemplate({ type: '', content: '' }); setShowCreateModal(true); }} className="admin-button admin-button-primary">Create Template</button>
+//       </div>
 
-      {showCreateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '90%' }}>
-            <h3 style={{ marginTop: 0 }}>{editingTemplate ? 'Edit Template' : 'Create New Template'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-              <label>
-                Type
-                <input
-                  type="text"
-                  value={newTemplate.type}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, type: e.target.value })}
-                  className="admin-login-input"
-                  placeholder="e.g., greeting, waiting, fallback"
-                />
-              </label>
-              <label>
-                Content
-                <textarea
-                  value={newTemplate.content}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
-                  className="admin-login-input"
-                  rows={4}
-                  placeholder="Template content..."
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate} className="admin-button admin-button-primary">
-                {editingTemplate ? 'Update' : 'Create'}
-              </button>
-              <button onClick={() => { setShowCreateModal(false); setEditingTemplate(null); setNewTemplate({ type: '', content: '' }); }} className="admin-button">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+//       {showCreateModal && (
+//         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+//           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '90%' }}>
+//             <h3 style={{ marginTop: 0 }}>{editingTemplate ? 'Edit Template' : 'Create New Template'}</h3>
+//             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+//               <label>
+//                 Type
+//                 <input
+//                   type="text"
+//                   value={newTemplate.type}
+//                   onChange={(e) => setNewTemplate({ ...newTemplate, type: e.target.value })}
+//                   className="admin-login-input"
+//                   placeholder="e.g., greeting, waiting, fallback"
+//                 />
+//               </label>
+//               <label>
+//                 Content
+//                 <textarea
+//                   value={newTemplate.content}
+//                   onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+//                   className="admin-login-input"
+//                   rows={4}
+//                   placeholder="Template content..."
+//                 />
+//               </label>
+//             </div>
+//             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+//               <button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate} className="admin-button admin-button-primary">
+//                 {editingTemplate ? 'Update' : 'Create'}
+//               </button>
+//               <button onClick={() => { setShowCreateModal(false); setEditingTemplate(null); setNewTemplate({ type: '', content: '' }); }} className="admin-button">Cancel</button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
 
-      <div className="admin-templates-list">
-        {templates.map((tpl) => (
-          <div key={tpl.id} className="admin-template-item">
-            <div className="admin-template-item-header">
-              <div>
-                <div className="admin-template-item-type">{tpl.type}</div>
-                <div className="admin-template-item-preview">Preview</div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => handleEditTemplate(tpl)} className="admin-button">Edit</button>
-                <button onClick={() => handleDeleteTemplate(tpl.id)} className="admin-button admin-button-danger">Delete</button>
-              </div>
-            </div>
-            <textarea 
-              value={tpl.content} 
-              onChange={(e) => updateTemplate(tpl.id, e.target.value)} 
-              rows={3} 
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+//       <div className="admin-templates-list">
+//         {templates.map((tpl) => (
+//           <div key={tpl.id} className="admin-template-item">
+//             <div className="admin-template-item-header">
+//               <div>
+//                 <div className="admin-template-item-type">{tpl.type}</div>
+//                 <div className="admin-template-item-preview">Preview</div>
+//               </div>
+//               <div style={{ display: 'flex', gap: '8px' }}>
+//                 <button onClick={() => handleEditTemplate(tpl)} className="admin-button">Edit</button>
+//                 <button onClick={() => handleDeleteTemplate(tpl.id)} className="admin-button admin-button-danger">Delete</button>
+//               </div>
+//             </div>
+//             <textarea 
+//               value={tpl.content} 
+//               onChange={(e) => updateTemplate(tpl.id, e.target.value)} 
+//               rows={3} 
+//             />
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
 
 // ChatHistoryPage Component
-type ChatHistoryPageProps = {
-  sessions: Session[];
-};
+// type ChatHistoryPageProps = {
+//   sessions: Session[];
+// };
 
-function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+// function ChatHistoryPage({ sessions }: ChatHistoryPageProps) {
+//   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
-  return (
-    <div className="admin-history-page">
-      <h2 className="admin-page-title">Chat History</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div>
-          <div className="admin-history-list">
-            {sessions.map((s) => (
-              <div 
-                key={s.id} 
-                className={`admin-history-item ${selectedSession?.id === s.id ? 'admin-sidebar-item active' : ''}`}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setSelectedSession(s)}
-              >
-                <div className="admin-history-item-header">
-                  <div>
-                    <div className="admin-history-item-title">Session {s.id}</div>
-                    <div className="admin-history-item-topic">Topic: {s.topic} • Status: {s.status}</div>
-                  </div>
-                  <div style={{ fontSize: '14px' }}>Messages: {s.messages.length}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div>
-          {selectedSession ? (
-            <div className="admin-content-card">
-              <h3>Session {selectedSession.id} Details</h3>
-              <div style={{ marginBottom: '16px' }}>
-                <div><strong>Topic:</strong> {selectedSession.topic}</div>
-                <div><strong>Status:</strong> {selectedSession.status}</div>
-                <div><strong>Duration:</strong> {selectedSession.duration}s</div>
-                <div><strong>Wait Time:</strong> {selectedSession.waitTime}s</div>
-                {selectedSession.assignedAgentId && <div><strong>Assigned Agent:</strong> {selectedSession.assignedAgentId}</div>}
-              </div>
-              <h4>Messages:</h4>
-              <div className="admin-chat-window-messages" style={{ height: '300px' }}>
-                {selectedSession.messages.map((m, i) => (
-                  <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
-                    <div className="admin-chat-message-sender">{m.sender}</div>
-                    <div>{m.text}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="admin-content-card">
-              <div className="admin-empty-state">Select a session to view details</div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div className="admin-history-page">
+//       <h2 className="admin-page-title">Chat History</h2>
+//       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+//         <div>
+//           <div className="admin-history-list">
+//             {sessions.map((s) => (
+//               <div 
+//                 key={s.id} 
+//                 className={`admin-history-item ${selectedSession?.id === s.id ? 'admin-sidebar-item active' : ''}`}
+//                 style={{ cursor: 'pointer' }}
+//                 onClick={() => setSelectedSession(s)}
+//               >
+//                 <div className="admin-history-item-header">
+//                   <div>
+//                     <div className="admin-history-item-title">Session {s.id}</div>
+//                     <div className="admin-history-item-topic">Topic: {s.topic} • Status: {s.status}</div>
+//                   </div>
+//                   <div style={{ fontSize: '14px' }}>Messages: {s.messages.length}</div>
+//                 </div>
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+//         <div>
+//           {selectedSession ? (
+//             <div className="admin-content-card">
+//               <h3>Session {selectedSession.id} Details</h3>
+//               <div style={{ marginBottom: '16px' }}>
+//                 <div><strong>Topic:</strong> {selectedSession.topic}</div>
+//                 <div><strong>Status:</strong> {selectedSession.status}</div>
+//                 <div><strong>Duration:</strong> {selectedSession.duration}s</div>
+//                 <div><strong>Wait Time:</strong> {selectedSession.waitTime}s</div>
+//                 {selectedSession.assignedAgentId && <div><strong>Assigned Agent:</strong> {selectedSession.assignedAgentId}</div>}
+//               </div>
+//               <h4>Messages:</h4>
+//               <div className="admin-chat-window-messages" style={{ height: '300px' }}>
+//                 {selectedSession.messages.map((m, i) => (
+//                   <div key={i} className={`admin-chat-message ${m.sender === 'agent' ? 'admin-chat-message-agent' : 'admin-chat-message-user'}`}>
+//                     <div className="admin-chat-message-sender">{m.sender}</div>
+//                     <div>{m.text}</div>
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           ) : (
+//             <div className="admin-content-card">
+//               <div className="admin-empty-state">Select a session to view details</div>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 
 // AnalyticsPage Component
 type AnalyticsPageProps = {
@@ -1753,49 +1753,49 @@ function AnalyticsPage({ sessions, agents }: AnalyticsPageProps) {
 }
 
 // SettingsPage Component
-function SettingsPage() {
-  const [settings, setSettings] = useState({
-    businessHours: 'Mon-Fri 9:00-18:00',
-    fallbackOption: 'Continue with bot'
-  });
-  const [saved, setSaved] = useState(false);
+// function SettingsPage() {
+//   const [settings, setSettings] = useState({
+//     businessHours: 'Mon-Fri 9:00-18:00',
+//     fallbackOption: 'Continue with bot'
+//   });
+//   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
-    // In a real app, this would save to API
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
+//   const handleSave = () => {
+//     // In a real app, this would save to API
+//     setSaved(true);
+//     setTimeout(() => setSaved(false), 3000);
+//   };
 
-  return (
-    <div className="admin-settings-page">
-      <div className="admin-page-header">
-        <h2 className="admin-page-title">Settings</h2>
-        <button onClick={handleSave} className="admin-button admin-button-primary">Save Settings</button>
-      </div>
-      {saved && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>Settings saved successfully!</div>}
-      <div className="admin-settings-form">
-        <div className="admin-settings-field">
-          <label>Business Hours</label>
-          <input 
-            value={settings.businessHours}
-            onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
-          />
-        </div>
-        <div className="admin-settings-field">
-          <label>Fallback Option</label>
-          <select 
-            value={settings.fallbackOption}
-            onChange={(e) => setSettings({ ...settings, fallbackOption: e.target.value })}
-          >
-            <option>Continue with bot</option>
-            <option>Request callback</option>
-            <option>Send email</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div className="admin-settings-page">
+//       <div className="admin-page-header">
+//         <h2 className="admin-page-title">Settings</h2>
+//         <button onClick={handleSave} className="admin-button admin-button-primary">Save Settings</button>
+//       </div>
+//       {saved && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>Settings saved successfully!</div>}
+//       <div className="admin-settings-form">
+//         <div className="admin-settings-field">
+//           <label>Business Hours</label>
+//           <input 
+//             value={settings.businessHours}
+//             onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
+//           />
+//         </div>
+//         <div className="admin-settings-field">
+//           <label>Fallback Option</label>
+//           <select 
+//             value={settings.fallbackOption}
+//             onChange={(e) => setSettings({ ...settings, fallbackOption: e.target.value })}
+//           >
+//             <option>Continue with bot</option>
+//             <option>Request callback</option>
+//             <option>Send email</option>
+//           </select>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 
 // TicketsPage Component
 type TicketsPageProps = {
