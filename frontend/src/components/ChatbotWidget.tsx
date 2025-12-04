@@ -254,6 +254,10 @@ export default function ChatbotWidget() {
       // Remove any with same convoId
       all = all.filter((c: any) => c.id !== convoId);
       all.push({ id: convoId, userId, messages, created: Date.now() });
+      // Limit to 50 conversations, remove oldest if over
+      if (all.length > 50) {
+        all = all.slice(all.length - 50);
+      }
       localStorage.setItem(CONVOS_KEY, JSON.stringify(all));
     }
   }, [messages, userId]);
